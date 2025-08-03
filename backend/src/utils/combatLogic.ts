@@ -1,6 +1,13 @@
 import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, SolarFlareState, SolarFlareStatus } from '../types.js';
 import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants.js';
 
+// The combat logic has been refactored to use a "health pool" (HP pool) model for each group of units.
+// This solves a critical flaw in the previous per-unit simulation where damage against a large number of weak units
+// would be spread too thinly, resulting in no units being destroyed and causing incorrect "draw" outcomes.
+// In this model, all units of the same type act as a single entity with a combined shield and hull pool.
+// Damage from incoming shots is applied to the pool, destroying units sequentially as enough damage accumulates.
+// This correctly concentrates fire and produces more realistic and expected combat results.
+
 type CombatGroup = {
     id: ShipType | DefenseType;
     type: 'ship' | 'defense';
