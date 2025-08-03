@@ -495,7 +495,6 @@ function App() {
                          onHarvest={(coords, debris) => setHarvestModalTarget({ coords, debris })}
                          npcStates={npcStates}
                          sleeperNpcStates={sleeperNpcStates}
-                         onNpcUpdate={(updates, sleeperUpdates) => performAction('GALAXY_VIEW_UPDATE', { updates, sleeperUpdates })}
                          debrisFields={debrisFields}
                          colonies={colonies}
                          playerState={gameState}

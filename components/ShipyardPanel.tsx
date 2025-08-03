@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ShipType, Resources, ResearchLevels, QueueItem, BuildingLevels, Fleet, ShipLevels } from '../types';
-import { SHIPYARD_DATA } from '../constants';
+import { SHIPYARD_DATA, ALL_SHIP_DATA } from '../constants';
 import ShipRow from './ShipRow';
 
 interface ShipyardPanelProps {
@@ -47,7 +47,7 @@ const ShipyardPanel: React.FC<ShipyardPanelProps> = ({ research, buildings, reso
       <h2 className="text-2xl font-bold text-cyan-300 mb-6 border-b-2 border-cyan-800 pb-3">Dostępne Jednostki (Stocznia poz. {shipyardLevel})</h2>
       <div className="space-y-6">
         {buildableShips.map((type) => {
-          const data = SHIPYARD_DATA[type];
+          const data = ALL_SHIP_DATA[type];
           const requirementsMet = checkRequirements(data.requirements, buildings, research);
 
           return (

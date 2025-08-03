@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MissionType, NPCStates, NPCPersonality, NPCState, NPCFleetMission, DebrisField, Colony, BuildingType, ResearchType, GameState, ShipType, DefenseType, SleeperNpcStates, SleeperNpcState } from '../types';
-import { INITIAL_NPC_STATE, PLAYER_HOME_COORDS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, ACTIVE_NPC_LIMIT } from '../constants';
+import { PLAYER_HOME_COORDS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA } from '../constants';
 
 interface GalaxyPanelProps {
     onAction: (targetCoords: string, missionType: MissionType) => void;
@@ -10,7 +10,6 @@ interface GalaxyPanelProps {
     onHarvest: (targetCoords: string, debris: DebrisField) => void;
     npcStates: NPCStates;
     sleeperNpcStates: SleeperNpcStates;
-    onNpcUpdate: (updates: Partial<NPCStates>, sleeperUpdates?: Partial<SleeperNpcStates>) => void;
     debrisFields: Record<string, DebrisField>;
     colonies: Colony[];
     playerState: GameState;
@@ -18,65 +17,26 @@ interface GalaxyPanelProps {
     onToggleFavorite: (coords: string) => void;
 }
 
-// Simple seeded random function for consistent galaxy generation
-const seededRandom = (seed: number) => {
-    const x = Math.sin(seed) * 10000;
-    return x - Math.floor(x);
-};
-
 const formatNumber = (num: number) => Math.floor(num).toLocaleString('pl-PL');
 
 const FAKE_PLAYER_NAMES = ['Zenith', 'Nova', 'Orion', 'Cygnus', 'Draco', 'Lyra', 'Aquila', 'Centurion', 'Void', 'Stalker', 'Pulsar', 'Goliath'];
 
-const getPlanetImage = (seed: number) => {
-    const planetTypeSeed = seededRandom(seed);
-    if (planetTypeSeed > 0.8) return '🌋'; // Volcanic
-    if (planetTypeSeed > 0.6) return '🧊'; // Ice
-    if (planetTypeSeed > 0.4) return '🏜️'; // Desert
-    return '🪐'; // Temperate
-}
-
 const calculatePoints = (target: { fleet: any, defenses: any, buildings: any, research: any, shipLevels?: any }): number => {
     let points = 0;
+    const costToPoints = (cost: { metal: number, crystal: number, deuterium: number }) => (cost.metal + cost.crystal + cost.deuterium) / 1000;
 
-    // Simplified points: 1 point per 1000 resource cost
-    const costToPoints = (cost: { metal: number, crystal: number, deuterium: number }) => {
-        return (cost.metal + cost.crystal + cost.deuterium) / 1000;
-    }
-
-    // Buildings
     for (const id in target.buildings) {
-        const level = target.buildings[id as BuildingType];
-        if (level > 0) {
-            for (let i = 1; i <= level; i++) {
-                points += costToPoints(BUILDING_DATA[id as BuildingType].cost(i));
-            }
-        }
+        for (let i = 1; i <= target.buildings[id as BuildingType]; i++) points += costToPoints(BUILDING_DATA[id as BuildingType].cost(i));
     }
-    // Research
     for (const id in target.research) {
-        const level = target.research[id as ResearchType];
-        if (level > 0) {
-            for (let i = 1; i <= level; i++) {
-                points += costToPoints(RESEARCH_DATA[id as ResearchType].cost(i));
-            }
-        }
+        for (let i = 1; i <= target.research[id as ResearchType]; i++) points += costToPoints(RESEARCH_DATA[id as ResearchType].cost(i));
     }
-    // Fleet
     for (const id in target.fleet) {
-        const count = target.fleet[id as ShipType];
-        if (count > 0) {
-            points += costToPoints(ALL_SHIP_DATA[id as ShipType].cost(1)) * count;
-        }
+        points += costToPoints(ALL_SHIP_DATA[id as ShipType].cost(1)) * (target.fleet[id as ShipType] || 0);
     }
-    // Defense
     for (const id in target.defenses) {
-        const count = target.defenses[id as DefenseType];
-        if (count > 0) {
-            points += costToPoints(DEFENSE_DATA[id as DefenseType].cost(1)) * count;
-        }
+        points += costToPoints(DEFENSE_DATA[id as DefenseType].cost(1)) * (target.defenses[id as DefenseType] || 0);
     }
-
     return Math.floor(points);
 }
 
@@ -112,7 +72,6 @@ const PlanetRow: React.FC<{
 
     return (
         <div className={`group relative p-3 rounded-lg flex flex-col md:flex-row items-center justify-between bg-gray-900 bg-opacity-60 border-l-4 ${borderColorClass}`}>
-            {/* Tooltip */}
             {planetData && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-gray-900 border border-gray-600 rounded-lg shadow-xl text-sm text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
                     <h4 className="font-bold text-lg text-cyan-300">{planetData.name} [{coords}]</h4>
@@ -120,9 +79,6 @@ const PlanetRow: React.FC<{
                         <p><span className="text-gray-400">Gracz:</span> {planetData.player}
                             {planetData.developmentSpeed && planetData.developmentSpeed > 1.4 && (
                                 <span className="ml-2 px-2 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 rounded-full">Elita</span>
-                            )}
-                            {planetData.developmentSpeed && planetData.developmentSpeed > 1.0 && planetData.developmentSpeed <= 1.4 && (
-                                <span className="ml-2 px-2 py-0.5 text-xs font-bold text-orange-900 bg-orange-400 rounded-full">Weteran</span>
                             )}
                         </p>
                         <p><span className="text-gray-400">Status:</span> <span className={activity.color}>{activity.text}</span></p>
@@ -134,7 +90,6 @@ const PlanetRow: React.FC<{
                     </div>
                 </div>
             )}
-
             <div className="flex items-center font-semibold w-full md:w-2/5">
                 <span className="text-4xl mr-4 w-10 text-center">{planet.planetData?.image || '⚫'}</span>
                 <div className="flex-1">
@@ -209,40 +164,23 @@ const PlanetRow: React.FC<{
     )
 }
 
-
-const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, sleeperNpcStates, onNpcUpdate, debrisFields, colonies, playerState, favoritePlanets, onToggleFavorite }) => {
+const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, sleeperNpcStates, debrisFields, colonies, playerState, favoritePlanets, onToggleFavorite }) => {
     const [galaxy, setGalaxy] = useState(1);
     const [system, setSystem] = useState(42);
 
     const handleSystemChange = (delta: number) => {
         let newSystem = system + delta;
         let newGalaxy = galaxy;
-        if (newSystem > 499) {
-            newSystem = 1;
-            newGalaxy++;
-        }
-        if (newSystem < 1) {
-            newSystem = 499;
-            newGalaxy = Math.max(1, newGalaxy - 1);
-        }
+        if (newSystem > 499) { newSystem = 1; newGalaxy++; }
+        if (newSystem < 1) { newSystem = 499; newGalaxy = Math.max(1, newGalaxy - 1); }
         setSystem(newSystem);
         setGalaxy(newGalaxy);
-    };
-    
-    const handleFavoriteSelect = (coords: string) => {
-        if (coords) {
-            onAction(coords, MissionType.ATTACK);
-        }
     };
 
     const playerPoints = calculatePoints(playerState);
     const now = Date.now();
     const explorationTargets = playerState.fleetMissions
-        .filter(m => 
-            m.missionType === MissionType.EXPLORE &&
-            now > m.arrivalTime &&
-            m.explorationEndTime && now < m.explorationEndTime
-        )
+        .filter(m => m.missionType === MissionType.EXPLORE && now > m.arrivalTime && m.explorationEndTime && now < m.explorationEndTime)
         .map(m => m.targetCoords);
 
     const planets = Array.from({ length: 15 }, (_, i) => {
@@ -250,7 +188,6 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
         const coords = `${galaxy}:${system}:${position}`;
         const isPlayerHome = coords === PLAYER_HOME_COORDS;
         const playerColony = colonies.find(c => c.id === coords);
-        const isPlayerColony = !!playerColony;
         const npc = npcStates[coords];
         const sleeperNpc = sleeperNpcStates[coords];
         const debris = debrisFields[coords];
@@ -263,13 +200,9 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
 
         if (isPlayerHome) {
             planetData = { name: 'Planeta Matka', player: 'Ty', image: '🌍', isPlayer: true, isHome: true };
-            points = playerPoints;
-            activity = { text: 'Online', color: 'text-green-400' };
             borderColorClass = 'border-cyan-400';
-        } else if (isPlayerColony) {
-            planetData = { name: playerColony.name, player: 'Ty (Kolonia)', image: '🌍', isPlayer: true, isHome: false };
-            points = playerPoints;
-            activity = { text: 'Online', color: 'text-green-400' };
+        } else if (playerColony) {
+            planetData = { name: playerColony.name, player: 'Ty (Kolonia)', image: '🌍', isPlayer: true };
             borderColorClass = 'border-cyan-400';
         } else if (npc) {
             planetData = { name: `Planeta ${npc.name}`, player: `${npc.name} (NPC)`, image: npc.image, isPlayer: false, developmentSpeed: npc.developmentSpeed };
@@ -277,30 +210,13 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
             activity = getActivityStatus(npc.lastUpdateTime);
             borderColorClass = getStrengthColor(playerPoints, points, activity);
         } else if (sleeperNpc) {
-             planetData = { name: `Planeta ${sleeperNpc.name}`, player: `${sleeperNpc.name} (NPC)`, image: sleeperNpc.image, isPlayer: false, developmentSpeed: sleeperNpc.developmentSpeed };
+            planetData = { name: `Planeta ${sleeperNpc.name}`, player: `${sleeperNpc.name} (NPC)`, image: sleeperNpc.image, isPlayer: false, developmentSpeed: sleeperNpc.developmentSpeed };
             points = sleeperNpc.points;
             activity = { text: 'Uśpiony', color: 'text-gray-500' };
             borderColorClass = getStrengthColor(playerPoints, points, activity);
-        } else {
-            const planetSeed = galaxy * 1000000 + system * 1000 + position;
-            const isOccupiedByNpc = seededRandom(planetSeed) > 0.6;
-            if (isOccupiedByNpc) {
-                const nameIndex = Math.floor(seededRandom(planetSeed * 2) * FAKE_PLAYER_NAMES.length);
-                 planetData = { 
-                    name: `Planeta ${FAKE_PLAYER_NAMES[nameIndex]}`, 
-                    player: `${FAKE_PLAYER_NAMES[nameIndex]} (NPC)`, 
-                    image: getPlanetImage(planetSeed * 4), 
-                    isPlayer: false 
-                };
-                 points = 50; // Placeholder for unawakened sleepers
-                 activity = { text: 'Uśpiony', color: 'text-gray-500' };
-                 borderColorClass = getStrengthColor(playerPoints, points, activity);
-            }
         }
 
-        if (isBeingExplored) {
-            borderColorClass = 'border-teal-400 animate-pulse';
-        }
+        if (isBeingExplored) borderColorClass = 'border-teal-400 animate-pulse';
 
         return { coords, planetData, position, debris, points, activity, borderColorClass };
     });
@@ -316,7 +232,6 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
     return (
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
             <h2 className="text-2xl font-bold text-cyan-300 mb-4 border-b-2 border-cyan-800 pb-3">Galaktyka</h2>
-            
             <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-3 rounded-lg mb-6 gap-4">
                  <div className="flex items-center space-x-2">
                     <button onClick={() => handleSystemChange(-1)} className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded-md font-bold">Poprzedni</button>
@@ -325,53 +240,24 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
                     <input type="number" value={system} onChange={e => setSystem(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 bg-gray-800 border border-gray-600 text-white rounded-md px-2 py-1 text-center"/>
                     <button onClick={() => handleSystemChange(1)} className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded-md font-bold">Następny</button>
                 </div>
-
-                <div className="flex items-center gap-4">
-                     {favoritePlanets.length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <span className="text-lg text-red-400" title="Ulubione">♥</span>
-                            <select 
-                                id="favorites-select"
-                                value=""
-                                onChange={(e) => handleFavoriteSelect(e.target.value)}
-                                className="bg-gray-800 border border-gray-600 text-white rounded-md pl-2 pr-7 py-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm appearance-none"
-                                 style={{
-                                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                                    backgroundPosition: 'right 0.5rem center',
-                                    backgroundRepeat: 'no-repeat',
-                                    backgroundSize: '1.5em 1.5em',
-                                }}
-                            >
-                                <option value="">Ulubione...</option>
-                                {favoritePlanets.map(fav => (
-                                    <option key={fav} value={fav}>{fav}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-                    <h3 className="text-xl font-bold text-white">Układ: [{galaxy}:{system}]</h3>
-                </div>
+                <h3 className="text-xl font-bold text-white">Układ: [{galaxy}:{system}]</h3>
             </div>
-
             <div className="space-y-3">
-                {planets.map((planet) => {
-                    const isFavorite = favoritePlanets.includes(planet.coords);
-                    return (
-                        <PlanetRow 
-                            key={planet.coords} 
-                            planet={planet} 
-                            onAction={onAction}
-                            onSpy={onSpy}
-                            onExplore={onExplore}
-                            onHarvest={onHarvest}
-                            onToggleFavorite={onToggleFavorite}
-                            isFavorite={isFavorite}
-                            hasSpyProbes={hasSpyProbes}
-                            hasResearchVessel={hasResearchVessel}
-                            hasRecyclers={hasRecyclers}
-                        />
-                    );
-                })}
+                {planets.map((planet) => (
+                    <PlanetRow 
+                        key={planet.coords} 
+                        planet={planet} 
+                        onAction={onAction}
+                        onSpy={onSpy}
+                        onExplore={onExplore}
+                        onHarvest={onHarvest}
+                        onToggleFavorite={onToggleFavorite}
+                        isFavorite={favoritePlanets.includes(planet.coords)}
+                        hasSpyProbes={hasSpyProbes}
+                        hasResearchVessel={hasResearchVessel}
+                        hasRecyclers={hasRecyclers}
+                    />
+                ))}
                  <div key={expeditionCoords} className="p-3 rounded-lg flex flex-col md:flex-row items-center justify-between bg-purple-900 bg-opacity-40 border-l-4 border-purple-500">
                     <div className="flex items-center font-semibold w-full md:w-2/5">
                         <span className="text-4xl mr-4 w-10 text-center">🌌</span>

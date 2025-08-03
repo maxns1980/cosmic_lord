@@ -1,12 +1,13 @@
+
 import express, { Request, Response } from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import process from 'process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
+import { exit } from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,31 +15,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS Configuration
-const allowedOrigins = [
-    'http://localhost:5173', // Vite default dev port
-];
-if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
-const corsOptions: cors.CorsOptions = {
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+// Simplified CORS Configuration
+const corsOptions: CorsOptions = {
+    origin: [process.env.FRONTEND_URL || 'http://localhost:5173'],
     optionsSuccessStatus: 200
 };
-
 app.use(cors(corsOptions));
-// Note: express.json() middleware moved to the specific POST route to resolve type issue.
+app.use(express.json({ limit: '10mb' }));
 
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
 
 let gameState: GameState | null = null;
@@ -73,7 +58,7 @@ app.get('/api/state', (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', express.json({ limit: '10mb' }), (req: Request, res: Response) => {
+app.post('/api/action', (req: Request, res: Response) => {
     if (!gameState) {
         return res.status(503).json({ message: 'Game state not initialized yet.' });
     }
@@ -100,6 +85,6 @@ loadGameState().then(() => {
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
-        process.exit(1);
+        exit(1);
     }
 });

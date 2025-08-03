@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Resources, ResourceVeinBonus, Inventory, ActiveBoosts, BoostType, NPCFleetMission, SolarFlareState, SolarFlareStatus, Colony, Moon, StellarAuroraState } from '../types';
 import { PLAYER_HOME_COORDS } from '../constants';
@@ -215,50 +214,6 @@ const ResourceDisplay: React.FC<{ label: string; resKey: keyof Resources; value:
     );
 };
 
-const EnergyDisplay: React.FC<{ energy: HeaderProps['productions']['energy'], solarFlare: SolarFlareState, stellarAurora: StellarAuroraState }> = ({ energy, solarFlare, stellarAurora }) => {
-    const energyColor = energy.efficiency < 1 ? 'text-red-400' : 'text-cyan-400';
-    
-    const techBonusPercent = energy.techBonus > 0 ? `+${energy.techBonus.toFixed(0)}%` : null;
-    const solarFlareBonusPercent = solarFlare.status === SolarFlareStatus.POWER_BOOST ? `+50%` : null;
-    const stellarAuroraBonusPercent = stellarAurora.active ? `+30%` : null;
-    
-    const bonuses = [stellarAuroraBonusPercent, solarFlareBonusPercent, techBonusPercent].filter(Boolean);
-    const bonusText = bonuses.join(' & ');
-    
-    let bonusTitle = '';
-    if (stellarAuroraBonusPercent) {
-        bonusTitle += 'Bonus z Zorzy Gwiezdnej';
-    }
-    if (solarFlareBonusPercent) {
-        if (bonusTitle) bonusTitle += ' i ';
-        bonusTitle += 'Bonus z Rozbłysku Słonecznego';
-    }
-    if (techBonusPercent) {
-        if (bonusTitle) bonusTitle += ' i ';
-        bonusTitle += 'Bonus z Technologii Energetycznej';
-    }
-
-    return (
-        <div className="p-2 rounded-lg flex flex-col items-center shadow-md bg-gray-800 bg-opacity-70 border border-cyan-700">
-            <div className="text-sm font-semibold text-gray-300 flex items-center">☀️ Energia</div>
-            <div className={`text-lg font-bold ${energyColor} tracking-wider`}>{formatNumber(energy.produced - energy.consumed)}</div>
-            <div className="text-xs text-gray-400">{formatNumber(energy.produced)} / {formatNumber(energy.consumed)}</div>
-            {bonusText ? (
-                <div className="text-xs mt-1 text-green-400" title={bonusTitle}>
-                    (Bonus: {bonusText})
-                </div>
-            ) : (
-                 <div className="h-[16px] mt-1"></div>
-            )}
-            {stellarAurora.active ? (
-                <div className="text-xs font-mono text-cyan-300">(<Countdown targetTime={stellarAurora.endTime} />)</div>
-            ) : (
-                <div className="h-[16px]"></div> 
-            )}
-        </div>
-    )
-}
-
 const CreditsDisplay: React.FC<{ value: number; hourlyIncome: number }> = ({ value, hourlyIncome }) => {
     return (
          <div className="p-2 rounded-lg flex flex-col items-center shadow-md bg-gray-800 bg-opacity-70 border border-yellow-600">
@@ -316,11 +271,10 @@ const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, c
                             <SolarFlareDisplay solarFlare={solarFlare} />
                         </div>
                         
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                            <ResourceDisplay label="Metal" resKey="metal" value={resources.metal} production={productions.metal} capacity={maxResources.metal} icon="🔩" colorClass="border-orange-700" bonus={resourceVeinBonus} isBoosted={isProdBoosted} />
                            <ResourceDisplay label="Kryształ" resKey="crystal" value={resources.crystal} production={productions.crystal} capacity={maxResources.crystal} icon="💎" colorClass="border-blue-600" bonus={resourceVeinBonus} isBoosted={isProdBoosted} />
                            <ResourceDisplay label="Deuter" resKey="deuterium" value={resources.deuterium} production={productions.deuterium} capacity={maxResources.deuterium} icon="💧" colorClass="border-purple-600" bonus={resourceVeinBonus} isBoosted={isProdBoosted} />
-                           <EnergyDisplay energy={productions.energy} solarFlare={solarFlare} stellarAurora={stellarAuroraState} />
                            <ResourceDisplay label="Energia" resKey="energy" value={resources.energy} production={productions.energy.produced - productions.energy.consumed} capacity={maxResources.energy} icon="🔋" colorClass="border-green-600" bonus={{active: false, resourceType: null, endTime: 0, bonusMultiplier: 1}} isBoosted={false} />
                            <CreditsDisplay value={credits} hourlyIncome={blackMarketHourlyIncome} />
                         </div>

@@ -181,25 +181,17 @@ export const calculateCombat = (
 ): CombatResult => {
     let attackerGroups = createCombatGroups(attacker);
     let defenderGroups = createCombatGroups(defender);
-    const rounds: RoundReport[] = [];
-
-    const MAX_ROUNDS = 6;
-
-    for (let round = 1; round <= MAX_ROUNDS; round++) {
+    
+    for (let round = 1; round <= 6; round++) {
         const attackerUnitCount = attackerGroups.reduce((sum, g) => sum + g.count, 0);
         const defenderUnitCount = defenderGroups.reduce((sum, g) => sum + g.count, 0);
         if (attackerUnitCount === 0 || defenderUnitCount === 0) break;
-
-        const attackerStateBefore = groupsToFleetDefenses(attackerGroups);
-        const defenderStateBefore = groupsToFleetDefenses(defenderGroups);
         
         fireOnGroups(attackerGroups, defenderGroups);
         fireOnGroups(defenderGroups, attackerGroups);
         
-        // Regenerate shields for surviving units
         attackerGroups.forEach(g => g.currentTotalShield = g.count * g.shield);
         defenderGroups.forEach(g => g.currentTotalShield = g.count * g.shield);
-        // Update initialCount for next round's firing phase
         attackerGroups.forEach(g => g.initialCount = g.count);
         defenderGroups.forEach(g => g.initialCount = g.count);
     }
@@ -217,23 +209,23 @@ export const calculateCombat = (
     
     const attackerLosses: Partial<Fleet> = {};
     Object.keys(attacker.fleet).forEach(shipId => {
-        const initialCount = attacker.fleet[shipId as ShipType] || 0;
-        const finalCount = finalAttackerFleet[shipId as ShipType] || 0;
-        if (initialCount > finalCount) attackerLosses[shipId as ShipType] = initialCount - finalCount;
+        const initial = attacker.fleet[shipId as ShipType] || 0;
+        const final = finalAttackerFleet[shipId as ShipType] || 0;
+        if (initial > final) attackerLosses[shipId as ShipType] = initial - final;
     });
 
     const defenderLosses: Partial<Fleet> = {};
     Object.keys(defender.fleet).forEach(shipId => {
-        const initialCount = defender.fleet[shipId as ShipType] || 0;
-        const finalCount = finalDefenderFleet[shipId as ShipType] || 0;
-        if (initialCount > finalCount) defenderLosses[shipId as ShipType] = initialCount - finalCount;
+        const initial = defender.fleet[shipId as ShipType] || 0;
+        const final = finalDefenderFleet[shipId as ShipType] || 0;
+        if (initial > final) defenderLosses[shipId as ShipType] = initial - final;
     });
     
     const defenderDefensesLosses: Partial<Defenses> = {};
-     Object.keys(defender.defenses || {}).forEach(defenseId => {
-        const initialCount = defender.defenses?.[defenseId as DefenseType] || 0;
-        const finalCount = finalDefenderDefenses[defenseId as DefenseType] || 0;
-        if (initialCount > finalCount) defenderDefensesLosses[defenseId as DefenseType] = initialCount - finalCount;
+     Object.keys(defender.defenses || {}).forEach(defId => {
+        const initial = defender.defenses?.[defId as DefenseType] || 0;
+        const final = finalDefenderDefenses[defId as DefenseType] || 0;
+        if (initial > final) defenderDefensesLosses[defId as DefenseType] = initial - final;
     });
     
     const debris: Pick<Resources, 'metal' | 'crystal'> = { metal: 0, crystal: 0 };
@@ -250,24 +242,17 @@ export const calculateCombat = (
         let cargoCapacity = attackerGroups.reduce((sum, group) => {
             if (group.type === 'ship' && group.count > 0) {
                 const data = ALL_SHIP_DATA[group.id as ShipType];
-                let shipCargo = data?.cargoCapacity || 0;
-                if (attacker.shipLevels) {
-                    const level = attacker.shipLevels[group.id as ShipType] || 0;
-                    shipCargo *= (1 + level * 0.1);
-                }
-                return sum + shipCargo * group.count;
+                return sum + (data?.cargoCapacity || 0) * group.count;
             }
             return sum;
         }, 0);
 
         const getCapacity = (type: BuildingType, level: number) => BUILDING_DATA[type].capacity?.(level) || BASE_STORAGE_CAPACITY;
         const metalCapacity = getCapacity(BuildingType.METAL_STORAGE, defenderBuildings[BuildingType.METAL_STORAGE] || 0);
-        const crystalCapacity = getCapacity(BuildingType.CRYSTAL_STORAGE, defenderBuildings[BuildingType.CRYSTAL_STORAGE] || 0);
-        const deuteriumCapacity = getCapacity(BuildingType.DEUTERIUM_TANK, defenderBuildings[BuildingType.DEUTERIUM_TANK] || 0);
         
-        const lootableMetal = Math.max(0, defenderResources.metal - (metalCapacity * PROTECTED_RESOURCES_FACTOR)) * 0.5;
-        const lootableCrystal = Math.max(0, defenderResources.crystal - (crystalCapacity * PROTECTED_RESOURCES_FACTOR)) * 0.5;
-        const lootableDeuterium = Math.max(0, defenderResources.deuterium - (deuteriumCapacity * PROTECTED_RESOURCES_FACTOR)) * 0.5;
+        const lootableMetal = Math.max(0, defenderResources.metal / 2);
+        const lootableCrystal = Math.max(0, defenderResources.crystal / 2);
+        const lootableDeuterium = Math.max(0, defenderResources.deuterium / 2);
         
         const totalLootable = lootableMetal + lootableCrystal + lootableDeuterium;
         if (totalLootable > 0 && cargoCapacity > 0) {
@@ -278,5 +263,5 @@ export const calculateCombat = (
         }
     }
 
-    return { winner, attackerLosses, defenderLosses, defenderDefensesLosses, loot, debrisCreated: debris, finalDefenderFleet, finalDefenderDefenses, rounds: [] /* Simplified */ };
+    return { winner, attackerLosses, defenderLosses, defenderDefensesLosses, loot, debrisCreated: debris, finalDefenderFleet, finalDefenderDefenses, rounds: [] };
 };

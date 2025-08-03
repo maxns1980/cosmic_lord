@@ -4,11 +4,10 @@ import { calculateCombat } from './utils/combatLogic.js';
 import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
 import { evolveNpc, regenerateNpcFromSleeper, calculatePointsForNpc } from './utils/npcLogic.js';
 
-let gameLoop: any = null;
-let saveLoop: any = null;
+let gameLoop: NodeJS.Timeout | null = null;
+let saveLoop: NodeJS.Timeout | null = null;
 let lastTickTime = Date.now();
 
-// This is where the core logic of the game runs.
 function gameTick(gameState: GameState) {
     const now = Date.now();
     const timeDiff = (now - lastTickTime) / 1000;
@@ -42,7 +41,6 @@ function gameTick(gameState: GameState) {
         if (!mission.processedArrival && now >= mission.arrivalTime) {
             mission.processedArrival = true;
             // Handle arrival logic here (battle, spy, etc.)
-            // For now, just sets return time
         }
         return now < mission.returnTime;
     });
@@ -50,7 +48,8 @@ function gameTick(gameState: GameState) {
     // NPC Evolution (Simplified)
     if (now - gameState.lastGlobalNpcCheck > 5000) {
         Object.keys(gameState.npcStates).forEach(coords => {
-            const { updatedNpc } = evolveNpc(gameState.npcStates[coords], 5, coords, false);
+            const isThreatened = gameState.npcFleetMissions.some(m => m.id.startsWith('player-') && m.arrivalTime > now);
+            const { updatedNpc } = evolveNpc(gameState.npcStates[coords], 5, coords, isThreatened);
             gameState.npcStates[coords] = updatedNpc;
         });
         gameState.lastGlobalNpcCheck = now;
@@ -66,6 +65,7 @@ export function startGameEngine(gameState: GameState, saveCallback: () => void) 
     const offlineSeconds = (Date.now() - lastTickTime) / 1000;
     if (offlineSeconds > 1) {
         console.log(`Player was offline for ${offlineSeconds.toFixed(0)} seconds. Calculating progress...`);
+        // We call gameTick with the full offline duration to catch up
         gameTick(gameState);
     }
 
@@ -75,7 +75,7 @@ export function startGameEngine(gameState: GameState, saveCallback: () => void) 
     saveLoop = setInterval(() => {
         gameState.lastSaveTime = Date.now();
         saveCallback();
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // Save every 5 minutes
     
     console.log("Game engine started.");
 }
@@ -83,9 +83,10 @@ export function startGameEngine(gameState: GameState, saveCallback: () => void) 
 export function handleAction(gameState: GameState, type: string, payload: any): { message?: string, error?: string } {
     switch (type) {
         case 'ADD_TO_QUEUE': {
-            const { id, type: itemType, amount } = payload;
+            const { id, type: itemType, amount, activeLocationId } = payload;
             const data = ALL_GAME_OBJECTS[id as GameObject];
             const isShipOrDefense = itemType === 'ship' || itemType === 'defense';
+            
             let levelOrAmount = isShipOrDefense ? amount : 0;
             if (itemType === 'building') levelOrAmount = gameState.buildings[id as BuildingType] + 1;
             else if (itemType === 'research') levelOrAmount = gameState.research[id as ResearchType] + 1;
@@ -101,7 +102,7 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
             const queue = isShipOrDefense ? gameState.shipyardQueue : gameState.buildingQueue;
             const lastItemEndTime = queue.length > 0 ? queue[queue.length - 1].endTime : Date.now();
             let buildTime = data.buildTime(levelOrAmount);
-            if(isShipOrDefense) buildTime *= amount;
+            if (isShipOrDefense) buildTime *= amount;
 
             gameState.resources.metal -= totalCost.metal;
             gameState.resources.crystal -= totalCost.crystal;
@@ -125,12 +126,7 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
             gameState.resources.deuterium -= fuelCost;
             for(const ship in missionFleet) {
                 const shipType = ship as ShipType;
-                if(activeLocationId.endsWith('_moon')){
-                    const moon = gameState.moons[activeLocationId.replace('_moon', '')];
-                    if(moon) moon.fleet[shipType] = (moon.fleet[shipType] || 0) - missionFleet[shipType];
-                } else {
-                     gameState.fleet[shipType] = (gameState.fleet[shipType] || 0) - missionFleet[shipType];
-                }
+                gameState.fleet[shipType] = (gameState.fleet[shipType] || 0) - missionFleet[shipType];
             }
             
             const now = Date.now();
@@ -150,26 +146,8 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
         }
          case 'RESET_GAME': {
             const initial = getInitialState();
-            Object.keys(initial).forEach(key => {
-                (gameState as any)[key] = (initial as any)[key];
-            });
+            Object.assign(gameState, initial);
             return { message: "Gra została zresetowana." };
-        }
-        case 'GALAXY_VIEW_UPDATE': {
-            const { updates, sleeperUpdates } = payload;
-            if (updates) {
-                Object.assign(gameState.npcStates, updates);
-            }
-            if (sleeperUpdates) {
-                 for(const coords in sleeperUpdates) {
-                    if(sleeperUpdates[coords] === undefined) {
-                        delete gameState.sleeperNpcStates[coords];
-                    } else {
-                        gameState.sleeperNpcStates[coords] = sleeperUpdates[coords];
-                    }
-                }
-            }
-            return {};
         }
         default:
             return { error: `Unknown action type: ${type}` };
