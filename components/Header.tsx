@@ -181,7 +181,53 @@ const ActiveBoostDisplay: React.FC<{activeBoosts: ActiveBoosts, npcFleetMissions
 };
 
 
-const ResourceDisplay: React.FC<{ label: string; resKey: keyof Resources; value: number; production: number; capacity: number; icon: string; colorClass: string; bonus: ResourceVeinBonus; isBoosted: boolean; }> = ({ label, resKey, value, production, capacity, icon, colorClass, bonus, isBoosted }) => {
+const ResourceDisplay: React.FC<{ 
+    label: string; 
+    resKey: keyof Resources; 
+    value: number; 
+    production: number; 
+    capacity: number; 
+    icon: string; 
+    colorClass: string; 
+    bonus: ResourceVeinBonus; 
+    isBoosted: boolean;
+    energyDetails?: { produced: number; consumed: number; efficiency: number; };
+}> = ({ label, resKey, value, production, capacity, icon, colorClass, bonus, isBoosted, energyDetails }) => {
+    if (resKey === 'energy' && energyDetails) {
+        const netEnergy = energyDetails.produced - energyDetails.consumed;
+        const netColor = netEnergy >= 0 ? 'text-green-400' : 'text-red-400';
+        const hasStorage = capacity > 0;
+        let storageColor = 'text-white';
+        const storageUsage = hasStorage ? value / capacity : 0;
+        if (storageUsage >= 1) {
+            storageColor = 'text-red-400 animate-pulse';
+        } else if (storageUsage > 0.9) {
+            storageColor = 'text-yellow-400';
+        }
+
+        return (
+            <div className={`p-2 rounded-lg flex flex-col items-center shadow-md bg-gray-800 bg-opacity-70 border ${colorClass}`}>
+                <div className="text-sm font-semibold text-gray-300 flex items-center">
+                    {icon} {label}
+                </div>
+                <div className={`text-lg font-bold ${netColor} tracking-wider`} title="Bilans energetyczny">
+                    {netEnergy >= 0 ? '+' : ''}{formatNumber(netEnergy)}
+                </div>
+                <div className="text-xs text-gray-400 -mt-1" title="Produkcja / Zużycie">
+                    {formatNumber(energyDetails.produced)} / {formatNumber(energyDetails.consumed)}
+                </div>
+                 {hasStorage ? (
+                    <div className={`text-xs mt-1 ${storageColor}`} title="Zmagazynowane">
+                        {formatNumber(value)} / {formatNumber(capacity)}
+                    </div>
+                 ) : (
+                    <div className="h-[16px] mt-1"></div>
+                 )}
+                <div className="h-[16px]"></div> {/* Placeholder to match height */}
+            </div>
+        );
+    }
+    
     const usage = capacity > 0 ? value / capacity : 0;
     let valueColor = 'text-white';
     if (usage >= 1) {
@@ -276,7 +322,18 @@ const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, c
                            <ResourceDisplay label="Metal" resKey="metal" value={resources.metal} production={productions.metal} capacity={maxResources.metal} icon="🔩" colorClass="border-orange-700" bonus={resourceVeinBonus} isBoosted={isProdBoosted} />
                            <ResourceDisplay label="Kryształ" resKey="crystal" value={resources.crystal} production={productions.crystal} capacity={maxResources.crystal} icon="💎" colorClass="border-blue-600" bonus={resourceVeinBonus} isBoosted={isProdBoosted} />
                            <ResourceDisplay label="Deuter" resKey="deuterium" value={resources.deuterium} production={productions.deuterium} capacity={maxResources.deuterium} icon="💧" colorClass="border-purple-600" bonus={resourceVeinBonus} isBoosted={isProdBoosted} />
-                           <ResourceDisplay label="Energia" resKey="energy" value={resources.energy} production={productions.energy.produced - productions.energy.consumed} capacity={maxResources.energy} icon="🔋" colorClass="border-green-600" bonus={{active: false, resourceType: null, endTime: 0, bonusMultiplier: 1}} isBoosted={false} />
+                           <ResourceDisplay 
+                                label="Energia" 
+                                resKey="energy" 
+                                value={resources.energy} 
+                                production={productions.energy.produced - productions.energy.consumed} 
+                                capacity={maxResources.energy} 
+                                icon="🔋" 
+                                colorClass="border-green-600" 
+                                bonus={{active: false, resourceType: null, endTime: 0, bonusMultiplier: 1}} 
+                                isBoosted={false} 
+                                energyDetails={productions.energy}
+                           />
                            <CreditsDisplay value={credits} hourlyIncome={blackMarketHourlyIncome} />
                         </div>
                     </div>
