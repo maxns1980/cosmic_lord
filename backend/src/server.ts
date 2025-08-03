@@ -3,6 +3,7 @@ import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { process } from 'node:process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
@@ -24,7 +25,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
+app.use('/', express.json({ limit: '10mb' }));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
