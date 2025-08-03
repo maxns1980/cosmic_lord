@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
+import { process } from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +42,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use('/', express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
