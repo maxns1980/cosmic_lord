@@ -3,7 +3,6 @@ import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exit } from 'process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
@@ -14,36 +13,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const allowedOrigins: (string | RegExp)[] = [
-    'http://localhost:5173', // For local dev with Vite
-];
-const frontendUrl = process.env.FRONTEND_URL;
-
-if (frontendUrl) {
-    allowedOrigins.push(frontendUrl);
-    // Add variations to be safe
-    if (!frontendUrl.startsWith('http')) {
-        allowedOrigins.push(`https://${frontendUrl}`);
-    }
-} else {
-    console.warn('WARNING: FRONTEND_URL is not set. CORS might block requests from the production frontend.');
-}
-
-const corsOptions = {
-    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-        if (!origin || allowedOrigins.some(o => typeof o === 'string' ? o === origin : o.test(origin))) {
-            callback(null, true);
-        } else {
-            console.error(`CORS error: Origin ${origin} not allowed.`);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    optionsSuccessStatus: 200
-};
-
-// Reordered to potentially fix a type inference issue with app.use
 app.use(express.json({ limit: '10mb' }));
-app.use(cors(corsOptions));
+app.use(cors());
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
@@ -111,6 +82,6 @@ loadGameState().then(() => {
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
-        exit(1);
+        process.exit(1);
     }
 });
