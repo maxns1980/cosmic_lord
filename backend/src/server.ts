@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import { GameState } from './types.js';
@@ -15,7 +16,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use('/', express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 let gameState: GameState | null = null;
 

@@ -4,8 +4,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
+// More detailed error logging to help debug environment issues on Render
 if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase URL and Key must be provided in environment variables.');
+    console.error("--- SUPABASE CONNECTION FAILED ---");
+    console.error(`SUPABASE_URL is: ${supabaseUrl ? 'SET' : 'MISSING'}`);
+    console.error(`SUPABASE_KEY is: ${supabaseKey ? 'SET (hidden)' : 'MISSING'}`);
+    console.error("Please double-check your environment variables in the Render dashboard.");
+    console.error("------------------------------------");
+    throw new Error('Supabase configuration is incomplete. Check server logs for details.');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
