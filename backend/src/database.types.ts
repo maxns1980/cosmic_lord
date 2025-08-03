@@ -12,15 +12,15 @@ export interface Database {
       game_state: {
         Row: {
           id: number
-          state: Json
+          state: any
         }
         Insert: {
           id?: number
-          state: Json
+          state: any
         }
         Update: {
           id?: number
-          state?: Json
+          state?: any
         }
         Relationships: []
       }

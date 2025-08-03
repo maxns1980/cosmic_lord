@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import { GameState } from './types.js';
@@ -44,7 +43,7 @@ async function loadGameState() {
         gameState = getInitialState();
         const { error: insertError } = await supabase
             .from('game_state')
-            .insert([{ id: 1, state: gameState as unknown as Json }]);
+            .insert([{ id: 1, state: gameState }]);
         
         if (insertError) {
             console.error("Error creating initial game state in Supabase:", insertError);
@@ -58,7 +57,7 @@ async function saveGameState() {
         try {
             const { error } = await supabase
                 .from('game_state')
-                .update({ state: gameState as unknown as Json })
+                .update({ state: gameState })
                 .eq('id', 1);
 
             if (error) {

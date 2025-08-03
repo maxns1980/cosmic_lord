@@ -62,7 +62,7 @@ const processFleetMissions = (gameState: GameState) => {
                         type: 'info',
                         subject: 'Flota dotarła do celu',
                         text: `Twoja flota dotarła do ${mission.targetCoords} i rozpoczyna atak.`
-                    });
+                    } as InfoMessage);
                     break;
                 // Other cases...
             }
