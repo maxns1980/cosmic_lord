@@ -1,8 +1,9 @@
+
 import express from 'express';
 import cors from 'cors';
-import { GameState } from './types.js';
+import { GameState, PlanetSpecialization } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
-import { getInitialState } from './constants.js';
+import { getInitialState, PLAYER_HOME_COORDS } from './constants.js';
 import { supabase } from './config/db.js';
 import { Json } from './database.types.js';
 
@@ -35,15 +36,90 @@ async function loadGameState() {
         throw error;
     }
 
-    if (data) {
-        gameState = data.state as GameState;
-        console.log(`Game state loaded from Supabase.`);
+    if (data && data.state) {
+        // --- MIGRATION LOGIC START ---
+        // This ensures that games saved before a feature was added
+        // get the default state for that feature, preventing crashes.
+        const loadedState = data.state as unknown as Partial<GameState>;
+        const defaultState = getInitialState();
+
+        const migrateState = (loaded: Partial<GameState>): GameState => {
+            const defaults = getInitialState();
+            
+            const merge = <T extends object>(defaultObj: T, loadedObj?: Partial<T>): T => {
+                return { ...defaultObj, ...loadedObj };
+            };
+
+            // Start with a shallow merge for primitives and arrays
+            const migrated = { ...defaults, ...loaded };
+
+            // Deep merge nested objects to add new keys without losing saved data
+            migrated.resources = merge(defaults.resources, loaded.resources);
+            migrated.research = merge(defaults.research, loaded.research);
+            migrated.shipLevels = merge(defaults.shipLevels, loaded.shipLevels);
+            migrated.activeBoosts = merge(defaults.activeBoosts, loaded.activeBoosts);
+            migrated.inventory = merge(defaults.inventory, loaded.inventory);
+            
+            migrated.merchantState = merge(defaults.merchantState, loaded.merchantState);
+            migrated.pirateMercenaryState = merge(defaults.pirateMercenaryState, loaded.pirateMercenaryState);
+            migrated.resourceVeinBonus = merge(defaults.resourceVeinBonus, loaded.resourceVeinBonus);
+            migrated.ancientArtifactState = merge(defaults.ancientArtifactState, loaded.ancientArtifactState);
+            migrated.spacePlague = merge(defaults.spacePlague, loaded.spacePlague);
+            migrated.solarFlare = merge(defaults.solarFlare, loaded.solarFlare);
+            migrated.contrabandState = merge(defaults.contrabandState, loaded.contrabandState);
+            migrated.ghostShipState = merge(defaults.ghostShipState, loaded.ghostShipState);
+            migrated.galacticGoldRushState = merge(defaults.galacticGoldRushState, loaded.galacticGoldRushState);
+            migrated.stellarAuroraState = merge(defaults.stellarAuroraState, loaded.stellarAuroraState);
+            migrated.dailyBonus = merge(defaults.dailyBonus, loaded.dailyBonus);
+
+            // Deep merge colonies
+            if (loaded.colonies) {
+                const defaultColony = defaults.colonies[PLAYER_HOME_COORDS]!;
+                for (const id in loaded.colonies) {
+                    const loadedColony = loaded.colonies[id];
+                    if (!loadedColony) continue;
+                    
+                    const baseColony = defaultColony; // Fallback
+                    
+                    migrated.colonies[id] = merge(baseColony, loadedColony);
+                    migrated.colonies[id].buildings = merge(baseColony.buildings, loadedColony.buildings);
+                    migrated.colonies[id].fleet = merge(baseColony.fleet, loadedColony.fleet);
+                    migrated.colonies[id].defenses = merge(baseColony.defenses, loadedColony.defenses);
+                }
+            }
+
+            // Deep merge moons
+            if (loaded.moons) {
+                const defaultColony = defaults.colonies[PLAYER_HOME_COORDS]!; // A moon is like a mini-colony
+                for (const id in loaded.moons) {
+                    const loadedMoon = loaded.moons[id];
+                    if (!loadedMoon) continue;
+                    
+                    const defaultMoonTemplate = {
+                        ...defaultColony,
+                        name: 'Moon',
+                        id: loadedMoon.id,
+                        specialization: PlanetSpecialization.NONE,
+                    };
+                    migrated.moons[id] = merge(defaultMoonTemplate, loadedMoon);
+                    migrated.moons[id].buildings = merge(defaultColony.buildings, loadedMoon.buildings);
+                    migrated.moons[id].fleet = merge(defaultColony.fleet, loadedMoon.fleet);
+                    migrated.moons[id].defenses = merge(defaultColony.defenses, loadedMoon.defenses);
+                }
+            }
+
+            return migrated as GameState;
+        };
+
+        gameState = migrateState(loadedState);
+        console.log(`Game state loaded and migrated from Supabase.`);
+        // --- MIGRATION LOGIC END ---
     } else {
         console.log(`No saved game state found in Supabase. Creating new game state.`);
         gameState = getInitialState();
         const { error: insertError } = await supabase
             .from('game_state')
-            .insert([{ id: 1, state: gameState }]);
+            .insert([{ id: 1, state: gameState as unknown as Json }]);
         
         if (insertError) {
             console.error("Error creating initial game state in Supabase:", insertError);
@@ -57,7 +133,7 @@ async function saveGameState() {
         try {
             const { error } = await supabase
                 .from('game_state')
-                .update({ state: gameState })
+                .update({ state: gameState as unknown as Json })
                 .eq('id', 1);
 
             if (error) {

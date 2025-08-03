@@ -451,7 +451,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         image: sleeper.image,
         personality: sleeper.personality,
         developmentSpeed: sleeper.developmentSpeed,
-        resources: sleeper.resources ? { ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
+        resources: sleeper.resources ? { ...INITIAL_NPC_STATE.resources, ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
         
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
