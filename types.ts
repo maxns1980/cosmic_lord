@@ -675,19 +675,17 @@ export interface NPCState {
     developmentSpeed?: number;
 }
 
-export type NPCStates = Record<string, NPCState>;
-
 export interface SleeperNpcState {
+    points: number;
     name: string;
     image: string;
     personality: NPCPersonality;
     developmentSpeed: number;
-    points: number;
     lastUpdate: number;
-    resources: Resources;
+    resources?: Partial<Resources>;
 }
 
-export type SleeperNpcStates = Record<string, SleeperNpcState>;
+export type NPCStates = Record<string, NPCState>;
 
 // --- Event Testing ---
 export enum TestableEventType {
@@ -752,7 +750,6 @@ export interface GameState {
 
     // NPC State
     npcStates: NPCStates;
-    sleeperNpcStates: SleeperNpcStates;
 
     // Server-side Timestamps & Management
     lastSaveTime: number;
@@ -762,6 +759,4 @@ export interface GameState {
     lastGlobalNpcCheck: number;
     lastEventCheckTime: number;
     lastBonusClaimTime: number;
-    lastNpcPurgeTime: number;
-    lastSleeperNpcCheck: number;
 }

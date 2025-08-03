@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MissionType, NPCStates, NPCPersonality, NPCState, NPCFleetMission, DebrisField, Colony, BuildingType, ResearchType, GameState, ShipType, DefenseType, SleeperNpcStates, SleeperNpcState } from '../types';
+import { MissionType, NPCStates, NPCPersonality, NPCState, NPCFleetMission, DebrisField, Colony, BuildingType, ResearchType, GameState, ShipType, DefenseType } from '../types';
 import { PLAYER_HOME_COORDS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA } from '../constants';
 
 interface GalaxyPanelProps {
@@ -9,7 +9,6 @@ interface GalaxyPanelProps {
     onExplore: (targetCoords: string) => void;
     onHarvest: (targetCoords: string, debris: DebrisField) => void;
     npcStates: NPCStates;
-    sleeperNpcStates: SleeperNpcStates;
     debrisFields: Record<string, DebrisField>;
     colonies: Record<string, Colony>;
     playerState: GameState;
@@ -164,7 +163,7 @@ const PlanetRow: React.FC<{
     )
 }
 
-const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, sleeperNpcStates, debrisFields, colonies, playerState, favoritePlanets, onToggleFavorite }) => {
+const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, debrisFields, colonies, playerState, favoritePlanets, onToggleFavorite }) => {
     const [galaxy, setGalaxy] = useState(1);
     const [system, setSystem] = useState(42);
 
@@ -188,7 +187,6 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
         const coords = `${galaxy}:${system}:${position}`;
         const playerColony = colonies[coords];
         const npc = npcStates[coords];
-        const sleeperNpc = sleeperNpcStates[coords];
         const debris = debrisFields[coords];
         const isBeingExplored = explorationTargets.includes(coords);
         
@@ -205,11 +203,6 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
             planetData = { name: `Planeta ${npc.name}`, player: `${npc.name} (NPC)`, image: npc.image, isPlayer: false, developmentSpeed: npc.developmentSpeed };
             points = calculatePoints(npc);
             activity = getActivityStatus(npc.lastUpdateTime);
-            borderColorClass = getStrengthColor(playerPoints, points, activity);
-        } else if (sleeperNpc) {
-            planetData = { name: `Planeta ${sleeperNpc.name}`, player: `${sleeperNpc.name} (NPC)`, image: sleeperNpc.image, isPlayer: false, developmentSpeed: sleeperNpc.developmentSpeed };
-            points = sleeperNpc.points;
-            activity = { text: 'Uśpiony', color: 'text-gray-500' };
             borderColorClass = getStrengthColor(playerPoints, points, activity);
         }
 

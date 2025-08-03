@@ -18,13 +18,6 @@ export const MERCHANT_CHECK_INTERVAL = (6 * 60 + 15) * 60 * 1000; // 6 hours 15 
 export const MERCHANT_SPAWN_CHANCE = 0.2; // 20%
 export const PHALANX_SCAN_COST = 5000;
 
-// --- NPC Management ---
-export const NPC_PURGE_INTERVAL = 10 * 60 * 1000; // 10 minutes
-export const NPC_PURGE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
-export const ACTIVE_NPC_LIMIT = 700; // Max number of fully simulated NPCs
-export const NPC_HIBERNATION_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours of inactivity
-export const SLEEPER_NPC_UPDATE_INTERVAL = 15 * 60 * 1000; // 15 minutes
-
 // --- Random Event Constants ---
 export const RANDOM_EVENT_CHECK_INTERVAL = 60 * 1000; // 1 minute
 // Chances are per check, not per minute.
@@ -1035,7 +1028,6 @@ export const getInitialState = (): GameState => ({
   stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
   dailyBonus: INITIAL_DAILY_BONUS_STATE,
   npcStates: {},
-  sleeperNpcStates: {},
   debrisFields: INITIAL_DEBRIS_FIELDS,
   colonies: {
     [PLAYER_HOME_COORDS]: {
@@ -1063,6 +1055,4 @@ export const getInitialState = (): GameState => ({
   lastEventCheckTime: Date.now(),
   lastBonusClaimTime: 0,
   alliance: null,
-  lastNpcPurgeTime: 0,
-  lastSleeperNpcCheck: Date.now(),
 });

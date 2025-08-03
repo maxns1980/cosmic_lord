@@ -10,7 +10,7 @@ import {
     SolarFlareState, SolarFlareStatus, SolarFlareMessage,
     ContrabandState, ContrabandStatus, ContrabandOfferType, ContrabandMessage, ContrabandOffer,
     Colony, PlanetSpecialization, InfoMessage,
-    Inventory, ActiveBoosts, BoostType, Boost, GameState, NPCPersonality, ExplorationOutcomeType, ExplorationMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, ShipOffer, OfflineSummaryMessage, Moon, MoonCreationMessage, FleetTemplate, SleeperNpcStates, SleeperNpcState,
+    Inventory, ActiveBoosts, BoostType, Boost, GameState, NPCPersonality, ExplorationOutcomeType, ExplorationMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, ShipOffer, OfflineSummaryMessage, Moon, MoonCreationMessage, FleetTemplate,
     GhostShipState, GhostShipStatus, GhostShipChoice, GhostShipDiscoveryMessage, GhostShipOutcomeMessage,
     GalacticGoldRushState, GalacticGoldRushMessage,
     StellarAuroraState, StellarAuroraMessage,
@@ -335,7 +335,7 @@ function App() {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
-  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, sleeperNpcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
+  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
 
   const isMoon = activeLocationId.endsWith('_moon');
   const planetId = isMoon ? activeLocationId.replace('_moon', '') : activeLocationId;
@@ -523,7 +523,6 @@ function App() {
                          onExplore={(coords) => setExploreModalTargetCoords(coords)}
                          onHarvest={(coords, debris) => setHarvestModalTarget({ coords, debris })}
                          npcStates={npcStates}
-                         sleeperNpcStates={sleeperNpcStates}
                          debrisFields={debrisFields}
                          colonies={colonies}
                          playerState={gameState}
