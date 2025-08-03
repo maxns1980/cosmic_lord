@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
-import process from 'node:process';
 import { fileURLToPath } from 'url';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
@@ -36,7 +35,7 @@ const corsOptions: cors.CorsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
+// Note: express.json() middleware moved to the specific POST route to resolve type issue.
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
@@ -73,7 +72,7 @@ app.get('/api/state', (req, res) => {
     }
 });
 
-app.post('/api/action', (req, res) => {
+app.post('/api/action', express.json({ limit: '10mb' }), (req, res) => {
     if (!gameState) {
         return res.status(503).json({ message: 'Game state not initialized yet.' });
     }

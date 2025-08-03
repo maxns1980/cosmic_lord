@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { MerchantState, Resources, ShipType, MerchantStatus } from '../types';
-import { SHIPYARD_DATA } from '../constants';
+import { ALL_SHIP_DATA } from '../constants';
 
 interface MerchantPanelProps {
     merchantState: MerchantState;
@@ -104,7 +103,7 @@ const ShipTradeRow: React.FC<{
     onBuyShip: (shipType: ShipType, amount: number) => void;
 }> = ({ shipType, offer, credits, onBuyShip }) => {
     const [amount, setAmount] = useState('');
-    const data = SHIPYARD_DATA[shipType];
+    const data = ALL_SHIP_DATA[shipType];
     const numAmount = parseInt(amount, 10) || 0;
     const totalCost = numAmount * offer.price;
     const canAfford = credits >= totalCost;

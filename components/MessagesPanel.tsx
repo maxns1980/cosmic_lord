@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Message, InfoMessage, SpyReport, BattleReport, MerchantStatus, MerchantInfoMessage, EspionageEventMessage, Loot, PirateMessage, PirateMercenaryStatus, ShipType, AsteroidImpactMessage, AsteroidImpactType, BuildingType, ResourceVeinMessage, AncientArtifactMessage, AncientArtifactChoice, ResearchType, SpacePlagueMessage, OfflineSummaryMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, BattleMessage, SpyMessage, ExplorationMessage, ExplorationOutcomeType, BoostType, Boost, Resources, SolarFlareMessage, SolarFlareStatus, ContrabandMessage, MoonCreationMessage, PlanetSpecialization, GhostShipDiscoveryMessage, GhostShipOutcomeMessage, GhostShipChoice, GalacticGoldRushMessage, StellarAuroraMessage, MissionType } from '../types';
-import { ALL_GAME_OBJECTS, SHIPYARD_DATA, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA } from '../constants';
+import { ALL_GAME_OBJECTS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA } from '../constants';
 
 interface MessagesPanelProps {
     messages: Message[];
@@ -306,7 +305,7 @@ const AncientArtifactDisplay: React.FC<{ message: AncientArtifactMessage }> = ({
 };
 
 const SpacePlagueDisplay: React.FC<{ message: SpacePlagueMessage }> = ({ message }) => {
-    const shipName = SHIPYARD_DATA[message.infectedShip as Exclude<ShipType, ShipType.SHADOW_CORSAIR>].name;
+    const shipName = ALL_SHIP_DATA[message.infectedShip].name;
     if (message.status === 'activated') {
         return <p>Wykryto kosmiczną zarazę! Twoje statki typu <span className="font-bold text-red-400">{shipName}</span> zostały zainfekowane. Ich siła ataku jest tymczasowo zmniejszona.</p>;
     } else {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShipType, Resources, BuildingLevels, ResearchLevels, BuildingType, ResearchType, ShipLevels } from '../types';
-import { SHIPYARD_DATA, ALL_GAME_OBJECTS } from '../constants';
+import { ALL_SHIP_DATA, ALL_GAME_OBJECTS } from '../constants';
 
 interface ShipRowProps {
   type: ShipType;
@@ -85,7 +85,7 @@ const RequirementsDisplay: React.FC<{
 
 const ShipRow: React.FC<ShipRowProps> = ({ type, onBuild, resources, isQueued, requirementsMet, amountOwned, buildings, research, shipLevels }) => {
   const [amount, setAmount] = useState(1);
-  const data = SHIPYARD_DATA[type];
+  const data = ALL_SHIP_DATA[type];
   const cost = data.cost(1);
   
   const totalCost: Resources = {

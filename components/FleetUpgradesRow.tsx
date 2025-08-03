@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShipType, Resources, BuildingLevels, ResearchLevels, BuildingType, ResearchType } from '../types';
-import { SHIP_UPGRADE_DATA, SHIPYARD_DATA, ALL_GAME_OBJECTS } from '../constants';
+import { SHIP_UPGRADE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS } from '../constants';
 
 interface FleetUpgradesRowProps {
   type: ShipType;
@@ -94,7 +94,7 @@ const RequirementsDisplay: React.FC<{
 
 const FleetUpgradesRow: React.FC<FleetUpgradesRowProps> = ({ type, level, onUpgrade, canAfford, isQueued, requirementsMet, buildings, research, resources }) => {
   const upgradeData = SHIP_UPGRADE_DATA[type];
-  const shipData = SHIPYARD_DATA[type as Exclude<ShipType, ShipType.SHADOW_CORSAIR>];
+  const shipData = ALL_SHIP_DATA[type];
   const nextLevel = level + 1;
   const cost = upgradeData.cost(nextLevel);
   

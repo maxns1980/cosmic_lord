@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { PirateMercenaryState, PirateMercenaryStatus, ShipType } from '../types';
-import { SHIPYARD_DATA } from '../constants';
+import { ALL_SHIP_DATA } from '../constants';
 
 const formatTime = (seconds: number) => {
     if (seconds < 0) seconds = 0;
@@ -65,7 +63,7 @@ const PirateMercenaryPanel: React.FC<PirateMercenaryPanelProps> = ({ pirateState
                     </div>
                     <p className="text-sm text-gray-200">
                         Flota do wynajęcia: 
-                        {Object.entries(fleet).map(([type, count]) => ` ${count}x ${SHIPYARD_DATA[type as ShipType].name}`).join(',')}.
+                        {Object.entries(fleet).map(([type, count]) => ` ${count}x ${ALL_SHIP_DATA[type as ShipType].name}`).join(',')}.
                     </p>
                     <p className="text-sm text-gray-200">
                         Koszt: <span className="font-bold text-yellow-300">{formatNumber(hireCost)} 💰</span>
