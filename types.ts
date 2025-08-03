@@ -703,6 +703,17 @@ export enum TestableEventType {
     STELLAR_AURORA = 'STELLAR_AURORA',
 }
 
+// --- Daily Bonus ---
+export interface DailyBonusState {
+    isAvailable: boolean;
+    rewards: {
+        metal?: number;
+        crystal?: number;
+        credits?: number;
+    };
+}
+
+
 // --- GameState for Client-Server communication ---
 export interface GameState {
     // Global Player State
@@ -737,6 +748,7 @@ export interface GameState {
     ghostShipState: GhostShipState;
     galacticGoldRushState: GalacticGoldRushState;
     stellarAuroraState: StellarAuroraState;
+    dailyBonus: DailyBonusState;
 
     // NPC State
     npcStates: NPCStates;

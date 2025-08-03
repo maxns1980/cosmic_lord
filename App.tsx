@@ -214,6 +214,13 @@ function App() {
 
     return () => clearInterval(interval);
   }, [API_URL]);
+
+  useEffect(() => {
+    if (gameState?.dailyBonus?.isAvailable) {
+        setBonusRewards(gameState.dailyBonus.rewards);
+        setIsBonusModalOpen(true);
+    }
+  }, [gameState?.dailyBonus?.isAvailable, gameState?.dailyBonus?.rewards]);
   
   // Generic action handler to send commands to the server
   const performAction = async (type: string, payload: any) => {

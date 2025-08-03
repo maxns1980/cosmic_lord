@@ -1,9 +1,10 @@
-
 import { GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, DebrisField, InfoMessage, BattleReport, SpyReport, MerchantStatus, MerchantInfoMessage, NPCFleetMission, BattleMessage, SpyMessage, EspionageEventMessage, OfflineSummaryMessage, ExpeditionMessage, ColonizationMessage, MoonCreationMessage, ExplorationMessage, NPCState, Message, GameObject, QueueItemType, Loot, Resources, Fleet, ShipOffer, AncientArtifactStatus, PirateMercenaryStatus, SpacePlagueState, SolarFlareState, ContrabandState, GhostShipState, GalacticGoldRushState, StellarAuroraState, PlanetSpecialization, Boost, BoostType, TestableEventType, SolarFlareStatus, ContrabandStatus, GhostShipStatus, AncientArtifactChoice, PirateMercenaryStatus as PirateStatus, ContrabandStatus as ContraStatus, MerchantStatus as MerchStatus, GhostShipStatus as GhostStatus, AncientArtifactStatus as ArtifactStatus, Moon, Colony } from './types.js';
 import { TICK_INTERVAL, ALL_GAME_OBJECTS, PLAYER_HOME_COORDS, TERRAFORMER_FIELDS_BONUS, HOMEWORLD_MAX_FIELDS_BASE, MERCHANT_CHECK_INTERVAL, MERCHANT_SPAWN_CHANCE, RANDOM_EVENT_CHECK_INTERVAL, NPC_PURGE_INTERVAL, NPC_HIBERNATION_THRESHOLD, ACTIVE_NPC_LIMIT, SLEEPER_NPC_UPDATE_INTERVAL, getInitialState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE, NPC_PURGE_THRESHOLD } from './constants.js';
 import { calculateCombat } from './utils/combatLogic.js';
 import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
 import { evolveNpc, regenerateNpcFromSleeper, calculatePointsForNpc, generateNewNpc } from './utils/npcLogic.js';
+import { triggerSolarFlare, triggerPirateMercenary, triggerContraband, triggerAncientArtifact, triggerAsteroidImpact, triggerResourceVein, triggerSpacePlague, triggerGhostShip, triggerGalacticGoldRush, triggerStellarAurora } from './utils/eventLogic.js';
+
 
 let gameLoop: NodeJS.Timeout | null = null;
 let saveLoop: NodeJS.Timeout | null = null;
@@ -53,6 +54,35 @@ function gameTick(gameState: GameState) {
         }
         return now < mission.returnTime;
     });
+
+    // --- Random Event Checks ---
+    if (now - gameState.lastEventCheckTime > RANDOM_EVENT_CHECK_INTERVAL) {
+        if (Math.random() < SOLAR_FLARE_CHANCE) triggerSolarFlare(gameState);
+        if (Math.random() < PIRATE_MERCENARY_CHANCE) triggerPirateMercenary(gameState);
+        if (Math.random() < CONTRABAND_CHANCE) triggerContraband(gameState);
+        if (Math.random() < ANCIENT_ARTIFACT_CHANCE) triggerAncientArtifact(gameState);
+        if (Math.random() < ASTEROID_IMPACT_CHANCE) triggerAsteroidImpact(gameState);
+        if (Math.random() < RESOURCE_VEIN_CHANCE) triggerResourceVein(gameState);
+        if (Math.random() < SPACE_PLAGUE_CHANCE) triggerSpacePlague(gameState);
+        if (Math.random() < GHOST_SHIP_CHANCE) triggerGhostShip(gameState);
+        if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) triggerGalacticGoldRush(gameState);
+        if (Math.random() < STELLAR_AURORA_CHANCE) triggerStellarAurora(gameState);
+
+        gameState.lastEventCheckTime = now;
+    }
+
+
+    // --- Daily Bonus Check ---
+    const DAILY_BONUS_COOLDOWN = 23 * 60 * 60 * 1000; // 23 hours
+    if (!gameState.dailyBonus.isAvailable && now - gameState.lastBonusClaimTime > DAILY_BONUS_COOLDOWN) {
+        gameState.dailyBonus.isAvailable = true;
+        const metalMineLevel = gameState.colonies[PLAYER_HOME_COORDS]?.buildings[BuildingType.METAL_MINE] || 1;
+        gameState.dailyBonus.rewards = {
+            metal: 1000 + metalMineLevel * 500,
+            crystal: 500 + metalMineLevel * 250,
+            credits: 2000 + metalMineLevel * 100
+        };
+    }
 
     // --- Full NPC Lifecycle Management ---
 
@@ -260,6 +290,47 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
                 loot: {}
             });
             return { message: "Flota wysłana!" };
+        }
+        case 'CLAIM_BONUS': {
+            if (!gameState.dailyBonus.isAvailable) {
+                return { error: 'Bonus jest niedostępny.' };
+            }
+            const { rewards } = gameState.dailyBonus;
+            gameState.resources.metal += rewards.metal || 0;
+            gameState.resources.crystal += rewards.crystal || 0;
+            gameState.credits += rewards.credits || 0;
+
+            gameState.lastBonusClaimTime = Date.now();
+            gameState.dailyBonus.isAvailable = false;
+            gameState.dailyBonus.rewards = {};
+            
+            return { message: 'Odebrano dzienny bonus!' };
+        }
+        case 'DISMISS_BONUS': {
+            if (!gameState.dailyBonus.isAvailable) {
+                return { error: 'Bonus jest niedostępny.' };
+            }
+            gameState.lastBonusClaimTime = Date.now(); // Forfeits bonus for today
+            gameState.dailyBonus.isAvailable = false;
+            gameState.dailyBonus.rewards = {};
+            return { message: "Odrzucono bonus." };
+        }
+        case 'TRIGGER_EVENT': {
+            const { eventType } = payload;
+            switch (eventType as TestableEventType) {
+                case TestableEventType.SOLAR_FLARE: triggerSolarFlare(gameState); break;
+                case TestableEventType.PIRATE_MERCENARY: triggerPirateMercenary(gameState); break;
+                case TestableEventType.CONTRABAND: triggerContraband(gameState); break;
+                case TestableEventType.ANCIENT_ARTIFACT: triggerAncientArtifact(gameState); break;
+                case TestableEventType.ASTEROID_IMPACT: triggerAsteroidImpact(gameState); break;
+                case TestableEventType.RESOURCE_VEIN: triggerResourceVein(gameState); break;
+                case TestableEventType.SPACE_PLAGUE: triggerSpacePlague(gameState); break;
+                case TestableEventType.GHOST_SHIP: triggerGhostShip(gameState); break;
+                case TestableEventType.GALACTIC_GOLD_RUSH: triggerGalacticGoldRush(gameState); break;
+                case TestableEventType.STELLAR_AURORA: triggerStellarAurora(gameState); break;
+                default: return { error: 'Nieznany typ wydarzenia do testowania.' };
+            }
+            return { message: `Ręcznie wywołano wydarzenie: ${eventType}` };
         }
          case 'RESET_GAME': {
             const initial = getInitialState();

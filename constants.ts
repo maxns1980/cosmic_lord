@@ -1,4 +1,4 @@
-import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization } from './types';
+import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState } from './types';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -945,6 +945,11 @@ export const INITIAL_STELLAR_AURORA_STATE: StellarAuroraState = {
     endTime: 0,
 };
 
+export const INITIAL_DAILY_BONUS_STATE: DailyBonusState = {
+    isAvailable: false,
+    rewards: {},
+};
+
 
 export const INITIAL_NPC_STATE: Omit<NPCState, 'lastUpdateTime' | 'personality' | 'name' | 'image'> = {
     resources: { metal: 1000, crystal: 500, deuterium: 100, energy: 0 },
@@ -1028,6 +1033,7 @@ export const getInitialState = (): GameState => ({
   ghostShipState: INITIAL_GHOST_SHIP_STATE,
   galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
   stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
+  dailyBonus: INITIAL_DAILY_BONUS_STATE,
   npcStates: {},
   sleeperNpcStates: {},
   debrisFields: INITIAL_DEBRIS_FIELDS,

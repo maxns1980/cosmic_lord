@@ -36,14 +36,17 @@ async function loadGameState() {
     }
 
     if (data) {
-        gameState = data.state as GameState;
+        // Using `as any` to work around a TypeScript error ("Type instantiation is excessively deep")
+        // that can occur with very large and complex types like GameState. We trust the data
+        // integrity from the database.
+        gameState = data.state as any;
         console.log(`Game state loaded from Supabase.`);
     } else {
         console.log(`No saved game state found in Supabase. Creating new game state.`);
         gameState = getInitialState();
         const { error: insertError } = await supabase
             .from('game_state')
-            .insert([{ id: 1, state: gameState }]);
+            .insert([{ id: 1, state: gameState as any }]);
         
         if (insertError) {
             console.error("Error creating initial game state in Supabase:", insertError);
@@ -57,7 +60,7 @@ async function saveGameState() {
         try {
             const { error } = await supabase
                 .from('game_state')
-                .update({ state: gameState })
+                .update({ state: gameState as any })
                 .eq('id', 1);
 
             if (error) {
