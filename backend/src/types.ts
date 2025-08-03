@@ -695,7 +695,7 @@ export enum TestableEventType {
 }
 
 // --- GameState for Client-Server communication ---
-export type GameState = {
+export interface GameState {
     // Global Player State
     resources: Resources;
     research: ResearchLevels;
@@ -743,4 +743,4 @@ export type GameState = {
     lastBonusClaimTime: number;
     lastNpcPurgeTime: number;
     lastSleeperNpcCheck: number;
-};
+}

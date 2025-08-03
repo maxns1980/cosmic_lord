@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import { GameState } from './types.js';
@@ -9,14 +8,17 @@ import { supabase } from './config/db.js';
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Set up CORS to only allow requests from your frontend application
+// --- CORS Configuration for Debugging ---
+const allowedOrigin = process.env.FRONTEND_URL;
+console.log(`CORS configured to allow origin: ${allowedOrigin || '!!! NOT SET - WILL BLOCK FRONTEND !!!'}`);
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL,
+  origin: allowedOrigin,
   optionsSuccessStatus: 200 
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }) as any);
 
 let gameState: GameState | null = null;
 
@@ -40,7 +42,7 @@ async function loadGameState() {
         gameState = getInitialState();
         const { error: insertError } = await supabase
             .from('game_state')
-            .insert({ id: 1, state: gameState });
+            .insert({ id: 1, state: gameState as any });
         
         if (insertError) {
             console.error("Error creating initial game state in Supabase:", insertError);
@@ -54,7 +56,7 @@ async function saveGameState() {
         try {
             const { error } = await supabase
                 .from('game_state')
-                .update({ state: gameState })
+                .update({ state: gameState as any })
                 .eq('id', 1);
 
             if (error) {
