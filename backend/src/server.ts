@@ -1,5 +1,4 @@
-
-import express, { Express, RequestHandler } from 'express';
+import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
@@ -7,11 +6,12 @@ import { fileURLToPath } from 'url';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
+import process from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app: Express = express();
+const app: express.Express = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
