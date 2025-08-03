@@ -14,7 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(express.json({ limit: '10mb' }));
-app.use(cors());
+app.use(cors({}));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
@@ -82,6 +82,6 @@ loadGameState().then(() => {
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
-        process.exit(1);
+        (process as any).exit(1);
     }
 });

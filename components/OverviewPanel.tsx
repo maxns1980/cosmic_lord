@@ -49,7 +49,9 @@ const QueueItemDisplay: React.FC<{item: QueueItem}> = ({ item }) => {
     )
 }
 
-const PlanetCard: React.FC<{ planet: { id: string, name: string }, moon?: Moon, queue: QueueItem[], isHome?: boolean }> = ({ planet, moon, queue, isHome }) => {
+const PlanetCard: React.FC<{ planet: Colony, moon?: Moon, isHome?: boolean }> = ({ planet, moon, isHome }) => {
+    const queue = [...planet.buildingQueue, ...planet.shipyardQueue].sort((a,b) => a.endTime - b.endTime);
+
     return (
         <div className="bg-gray-900 bg-opacity-70 rounded-lg p-4">
             <h4 className="font-bold text-lg text-cyan-300 border-b border-gray-700 pb-2 mb-2 flex items-center">
@@ -175,12 +177,9 @@ const MissionRow: React.FC<{mission: FleetMission | NPCFleetMission, onRecall?: 
 
 
 const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, onRecallFleet }) => {
-    const { colonies, moons, fleetMissions, npcFleetMissions, buildingQueue } = gameState;
+    const { colonies, moons, fleetMissions, npcFleetMissions } = gameState;
 
-    const allPlanets = [
-        { id: PLAYER_HOME_COORDS, name: 'Planeta Matka', queue: buildingQueue, isHome: true },
-        ...Object.values(colonies).map(c => ({ id: c.id, name: c.name, queue: c.buildingQueue, isHome: false }))
-    ];
+    const allPlanets = Object.values(colonies);
 
     const allMissions = [...fleetMissions, ...npcFleetMissions].sort((a, b) => a.arrivalTime - b.arrivalTime);
     
@@ -197,8 +196,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, o
                             key={planet.id}
                             planet={planet}
                             moon={moons[planet.id]}
-                            queue={planet.queue}
-                            isHome={planet.isHome}
+                            isHome={planet.id === PLAYER_HOME_COORDS}
                         />
                     ))}
                  </div>

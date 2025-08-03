@@ -75,17 +75,12 @@ const calculateMaxResources = (buildings: BuildingLevels): Resources => {
 };
 
 const calculateProductions = (gameState: GameState) => {
-    const { buildings, colonies, resourceVeinBonus, activeBoosts, solarFlare, fleet, stellarAuroraState, research } = gameState;
+    const { colonies, resourceVeinBonus, activeBoosts, solarFlare, stellarAuroraState, research } = gameState;
     
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 
-    const allPlanets = [
-        { id: PLAYER_HOME_COORDS, buildings: buildings, fleet: fleet, isHomeworld: true, specialization: PlanetSpecialization.NONE },
-        ...Object.values(colonies),
-    ];
-
-    for (const planet of allPlanets) {
+    for (const planet of Object.values(colonies)) {
         const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
         const energyTechBonus = 1 + (energyTechLevel * 0.02);
 
@@ -100,10 +95,8 @@ const calculateProductions = (gameState: GameState) => {
             planetEnergyProduction += (BUILDING_DATA[BuildingType.FUSION_REACTOR].production?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0) * energyTechBonus;
         }
 
-        if (planet.id === PLAYER_HOME_COORDS) {
-             const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
-             planetEnergyProduction += (fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
-        }
+        const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
+        planetEnergyProduction += (planet.fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
        
         if (solarFlare.status === SolarFlareStatus.POWER_BOOST) {
             planetEnergyProduction *= 1.5;
@@ -127,7 +120,7 @@ const calculateProductions = (gameState: GameState) => {
             deuteriumProd -= BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0;
         }
 
-        if (!planet.isHomeworld) {
+        if (planet.id !== PLAYER_HOME_COORDS) {
             metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
             crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
             let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
@@ -331,33 +324,26 @@ function App() {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
-  const { resources, buildings, research, shipLevels, fleet, defenses, fleetMissions, npcFleetMissions, messages, buildingQueue, shipyardQueue, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, sleeperNpcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets, homeworldMaxFields } = gameState;
+  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, sleeperNpcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
 
   const isMoon = activeLocationId.endsWith('_moon');
   const planetId = isMoon ? activeLocationId.replace('_moon', '') : activeLocationId;
   
-  let activeEntity: any;
-    if (isMoon) {
-        activeEntity = moons[planetId];
-    } else if (planetId === PLAYER_HOME_COORDS) {
-        activeEntity = { buildings, fleet, defenses, buildingQueue, shipyardQueue, maxFields: homeworldMaxFields };
-    } else {
-        activeEntity = colonies[planetId];
-    }
+  const activeEntity = isMoon ? moons[planetId] : colonies[planetId];
+
+  if (!activeEntity) {
+      return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl">Ładowanie lokacji...</p></div>;
+  }
   
-  const activeFleet = activeEntity?.fleet || {};
-  const activeBuildings = activeEntity?.buildings || {};
-  const activeDefenses = activeEntity?.defenses || {};
-  const activeBuildingQueue = activeEntity?.buildingQueue || [];
-  const activeShipyardQueue = activeEntity?.shipyardQueue || [];
-  const maxFields = activeEntity?.maxFields || 0;
+  const { fleet: activeFleet, buildings: activeBuildings, defenses: activeDefenses, buildingQueue: activeBuildingQueue, shipyardQueue: activeShipyardQueue, maxFields } = activeEntity;
+  const homeworld = colonies[PLAYER_HOME_COORDS];
 
   const productions = calculateProductions(gameState);
-  const maxResources = calculateMaxResources(buildings);
+  const maxResources = calculateMaxResources(activeBuildings);
   const unreadMessagesCount = messages.filter(m => !m.isRead).length;
   
   const usedFields = Object.values(activeBuildings).reduce((sum, level) => sum + level, 0);
-  const maxFleetSlots = 1 + (research[ResearchType.COMPUTER_TECHNOLOGY] || 0) + (buildings[BuildingType.COMMAND_CENTER] || 0);
+  const maxFleetSlots = 1 + (research[ResearchType.COMPUTER_TECHNOLOGY] || 0) + (homeworld?.buildings[BuildingType.COMMAND_CENTER] || 0);
 
   const availableProbesOnActiveLocation = activeFleet[ShipType.SPY_PROBE] || 0;
   const availableRecyclersOnActiveLocation = activeFleet[ShipType.RECYCLER] || 0;
@@ -399,8 +385,8 @@ function App() {
             />
             <div className="flex-grow space-y-4">
                 <QueuePanel 
-                    buildingQueue={buildingQueue} 
-                    shipyardQueue={shipyardQueue} 
+                    buildingQueue={activeBuildingQueue} 
+                    shipyardQueue={activeShipyardQueue} 
                     buildingQueueCapacity={buildingQueueCapacity}
                     shipyardQueueCapacity={shipyardQueueCapacity}
                 />
@@ -425,23 +411,23 @@ function App() {
                         maxFields={maxFields}
                     />
                 )}
-                 {activeView === 'research' && (
+                 {activeView === 'research' && homeworld && (
                     <ResearchPanel
                         research={research}
-                        buildings={buildings}
+                        buildings={homeworld.buildings}
                         resources={resources}
                         onUpgrade={(type) => handleAddToQueue(type, 'research')}
-                        buildQueue={buildingQueue}
+                        buildQueue={homeworld.buildingQueue}
                     />
                 )}
-                 {activeView === 'fleet_upgrades' && (
+                 {activeView === 'fleet_upgrades' && homeworld && (
                     <FleetUpgradesPanel
                         research={research}
-                        buildings={buildings}
+                        buildings={homeworld.buildings}
                         shipLevels={shipLevels}
                         resources={resources}
                         onUpgrade={(type) => handleAddToQueue(type, 'ship_upgrade')}
-                        buildQueue={buildingQueue}
+                        buildQueue={homeworld.buildingQueue}
                     />
                 )}
                 {activeView === 'shipyard' && (

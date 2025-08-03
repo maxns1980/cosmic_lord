@@ -1,4 +1,3 @@
-
 export type View = 'overview' | 'buildings' | 'research' | 'shipyard' | 'defense' | 'fleet' | 'messages' | 'merchant' | 'galaxy' | 'fleet_upgrades' | 'phalanx' | 'alliance';
 
 export enum BuildingType {
@@ -529,6 +528,14 @@ export interface Colony {
     creationTime: number;
     specialization: PlanetSpecialization;
     moonId?: string;
+
+    // Colony-specific state
+    buildings: BuildingLevels;
+    defenses: Defenses;
+    fleet: Fleet;
+    buildingQueue: QueueItem[];
+    shipyardQueue: QueueItem[];
+    maxFields: number;
 }
 
 export interface Moon {
@@ -689,20 +696,29 @@ export enum TestableEventType {
 
 // --- GameState for Client-Server communication ---
 export type GameState = {
+    // Global Player State
     resources: Resources;
-    buildings: BuildingLevels;
     research: ResearchLevels;
     shipLevels: ShipLevels;
-    fleet: Fleet;
-    defenses: Defenses;
+    credits: number;
+    inventory: Inventory;
+    activeBoosts: ActiveBoosts;
+    fleetTemplates: FleetTemplate[];
+    favoritePlanets: string[];
+    alliance: { id: string; name: string; } | null;
+
+    // Multi-planet State
+    colonies: Record<string, Colony>;
+    moons: Record<string, Moon>;
+
+    // Dynamic State
     fleetMissions: FleetMission[];
     npcFleetMissions: NPCFleetMission[];
     messages: Message[];
-    buildingQueue: QueueItem[];
-    shipyardQueue: QueueItem[];
-    credits: number;
+    debrisFields: Record<string, DebrisField>;
+    
+    // Event States
     merchantState: MerchantState;
-    lastSaveTime: number; // Changed from client-side state
     pirateMercenaryState: PirateMercenaryState;
     resourceVeinBonus: ResourceVeinBonus;
     ancientArtifactState: AncientArtifactState;
@@ -712,25 +728,19 @@ export type GameState = {
     ghostShipState: GhostShipState;
     galacticGoldRushState: GalacticGoldRushState;
     stellarAuroraState: StellarAuroraState;
+
+    // NPC State
     npcStates: NPCStates;
     sleeperNpcStates: SleeperNpcStates;
-    awardedBonuses: BuildingType[];
-    debrisFields: Record<string, DebrisField>;
-    colonies: Colony[];
-    moons: Record<string, Moon>;
-    inventory: Inventory;
-    activeBoosts: ActiveBoosts;
-    fleetTemplates: FleetTemplate[];
-    favoritePlanets: string[];
-    activeCostReduction?: number; // Kept for client-side optimistic updates
+
+    // Server-side Timestamps & Management
+    lastSaveTime: number;
     nextBlackMarketIncome: number;
     lastBlackMarketIncomeCheck: number;
     nextMerchantCheckTime: number;
     lastGlobalNpcCheck: number;
     lastEventCheckTime: number;
     lastBonusClaimTime: number;
-    homeworldMaxFields: number;
-    alliance: { id: string; name: string; } | null;
     lastNpcPurgeTime: number;
     lastSleeperNpcCheck: number;
 };

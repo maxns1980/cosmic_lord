@@ -707,14 +707,6 @@ export type GameState = {
     favoritePlanets: string[];
     alliance: { id: string; name: string; } | null;
 
-    // Homeworld State (as it's unique)
-    buildings: BuildingLevels;
-    fleet: Fleet;
-    defenses: Defenses;
-    buildingQueue: QueueItem[];
-    shipyardQueue: QueueItem[];
-    homeworldMaxFields: number;
-    
     // Multi-planet State
     colonies: Record<string, Colony>;
     moons: Record<string, Moon>;

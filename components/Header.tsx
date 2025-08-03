@@ -68,15 +68,17 @@ const LocationSwitcher: React.FC<{
     activeLocationId: string;
     onLocationChange: (id: string) => void;
 }> = ({ colonies, moons, activeLocationId, onLocationChange }) => {
-    const locations = [
-        { id: PLAYER_HOME_COORDS, name: `Planeta Matka [${PLAYER_HOME_COORDS}]` },
-    ];
-
-    if (moons[PLAYER_HOME_COORDS]) {
-        locations.push({ id: `${PLAYER_HOME_COORDS}_moon`, name: `  -> Księżyc [${PLAYER_HOME_COORDS}]` });
+    const locations = [];
+    const homeworld = colonies[PLAYER_HOME_COORDS];
+    if (homeworld) {
+        locations.push({ id: homeworld.id, name: `${homeworld.name} [${homeworld.id}]` });
+        if (moons[PLAYER_HOME_COORDS]) {
+            locations.push({ id: `${PLAYER_HOME_COORDS}_moon`, name: `  -> Księżyc [${PLAYER_HOME_COORDS}]` });
+        }
     }
 
-    Object.values(colonies).forEach(colony => {
+
+    Object.values(colonies).filter(c => c.id !== PLAYER_HOME_COORDS).forEach(colony => {
         locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });
         if (moons[colony.id]) {
             locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${colony.id}]` });

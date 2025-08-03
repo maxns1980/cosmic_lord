@@ -14,7 +14,7 @@ interface FleetPanelProps {
     onClearInitialTarget: () => void;
     spacePlague: SpacePlagueState;
     solarFlare: SolarFlareState;
-    colonies: Colony[];
+    colonies: Record<string, Colony>;
     npcStates: NPCStates;
     fleetTemplates: FleetTemplate[];
     onSaveTemplate: (name: string, fleet: Fleet) => void;
@@ -310,7 +310,7 @@ const FleetPanel: React.FC<FleetPanelProps> = ({ fleet, resources, fleetMissions
     const hasRecyclers = (fleet[ShipType.RECYCLER] || 0) > 0;
     const hasColonyShip = (fleet[ShipType.COLONY_SHIP] || 0) > 0;
     const hasResearchVessel = (fleet[ShipType.RESEARCH_VESSEL] || 0) > 0;
-    const isTargetOccupied = npcStates[targetCoords] || colonies.some(c => c.id === targetCoords) || targetCoords === PLAYER_HOME_COORDS;
+    const isTargetOccupied = !!(npcStates[targetCoords] || colonies[targetCoords]);
     const isDisruptionActive = solarFlare.status === SolarFlareStatus.DISRUPTION;
     const hasEnoughFuel = fuelCost === null || fuelCost === 0 || resources.deuterium >= fuelCost;
     

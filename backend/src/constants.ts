@@ -1,5 +1,5 @@
 
-import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState } from './types.js';
+import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization } from './types.js';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -871,7 +871,7 @@ export const INITIAL_SHIP_LEVELS: ShipLevels = {
 
 export const INITIAL_FLEET: Fleet = {};
 export const INITIAL_DEFENSES: Defenses = {};
-export const INITIAL_COLONIES: Colony[] = [];
+export const INITIAL_COLONIES: Record<string, Colony> = {};
 export const INITIAL_MOONS: Record<string, Moon> = {};
 export const INITIAL_FLEET_TEMPLATES: FleetTemplate[] = [];
 export const INITIAL_NPC_FLEET_MISSIONS: NPCFleetMission[] = [];
@@ -1011,16 +1011,11 @@ export const getBoostDescription = (boost: Boost): string => {
 
 export const getInitialState = (): GameState => ({
   resources: INITIAL_RESOURCES,
-  buildings: INITIAL_BUILDING_LEVELS,
   research: INITIAL_RESEARCH_LEVELS,
   shipLevels: INITIAL_SHIP_LEVELS,
-  fleet: INITIAL_FLEET,
-  defenses: INITIAL_DEFENSES,
   fleetMissions: [],
   npcFleetMissions: INITIAL_NPC_FLEET_MISSIONS,
   messages: [],
-  buildingQueue: [],
-  shipyardQueue: [],
   credits: 10000,
   merchantState: INITIAL_MERCHANT_STATE,
   lastSaveTime: Date.now(),
@@ -1036,22 +1031,32 @@ export const getInitialState = (): GameState => ({
   npcStates: {},
   sleeperNpcStates: {},
   debrisFields: INITIAL_DEBRIS_FIELDS,
-  colonies: INITIAL_COLONIES,
+  colonies: {
+    [PLAYER_HOME_COORDS]: {
+        id: PLAYER_HOME_COORDS,
+        name: 'Planeta Matka',
+        creationTime: Date.now(),
+        specialization: PlanetSpecialization.NONE,
+        buildings: { ...INITIAL_BUILDING_LEVELS },
+        fleet: { ...INITIAL_FLEET },
+        defenses: { ...INITIAL_DEFENSES },
+        buildingQueue: [],
+        shipyardQueue: [],
+        maxFields: HOMEWORLD_MAX_FIELDS_BASE
+    }
+  },
   moons: INITIAL_MOONS,
   inventory: INITIAL_INVENTORY,
   activeBoosts: INITIAL_ACTIVE_BOOSTS,
   fleetTemplates: INITIAL_FLEET_TEMPLATES,
   favoritePlanets: [],
-  activeCostReduction: undefined,
   nextBlackMarketIncome: 0,
   lastBlackMarketIncomeCheck: Date.now(),
   nextMerchantCheckTime: Date.now() + (15 * 60 * 1000), // First check in 15 minutes
   lastGlobalNpcCheck: Date.now(),
   lastEventCheckTime: Date.now(),
   lastBonusClaimTime: 0,
-  homeworldMaxFields: HOMEWORLD_MAX_FIELDS_BASE,
   alliance: null,
   lastNpcPurgeTime: Date.now(),
   lastSleeperNpcCheck: Date.now(),
-  awardedBonuses: [],
 });

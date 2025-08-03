@@ -1,5 +1,6 @@
 
-import { BuildingLevels, Resources, ResourceVeinBonus, Colony, ActiveBoosts, SolarFlareState, Fleet, StellarAuroraState, ResearchLevels, BuildingType, ResearchType, ShipType, PlanetSpecialization, SolarFlareStatus, BoostType } from '../types.js';
+
+import { BuildingLevels, Resources, ResourceVeinBonus, Colony, ActiveBoosts, SolarFlareState, Fleet, StellarAuroraState, ResearchLevels, BuildingType, ResearchType, ShipType, PlanetSpecialization, SolarFlareStatus, BoostType, GameState } from '../types.js';
 import { BUILDING_DATA, ALL_SHIP_DATA, COLONY_INCOME_BONUS_PER_HOUR, BASE_STORAGE_CAPACITY } from '../constants.js';
 
 export const calculateNextBlackMarketIncome = (level: number): number => {
@@ -9,89 +10,102 @@ export const calculateNextBlackMarketIncome = (level: number): number => {
     return Math.floor(Math.random() * (maxIncome - minIncome + 1)) + minIncome;
 };
 
-export const calculateMaxResources = (buildings: BuildingLevels): Resources => {
-    const metalCapacity = BUILDING_DATA[BuildingType.METAL_STORAGE].capacity?.(buildings[BuildingType.METAL_STORAGE]) ?? BASE_STORAGE_CAPACITY;
-    const crystalCapacity = BUILDING_DATA[BuildingType.CRYSTAL_STORAGE].capacity?.(buildings[BuildingType.CRYSTAL_STORAGE]) ?? BASE_STORAGE_CAPACITY;
-    const deuteriumCapacity = BUILDING_DATA[BuildingType.DEUTERIUM_TANK].capacity?.(buildings[BuildingType.DEUTERIUM_TANK]) ?? BASE_STORAGE_CAPACITY;
-    const energyCapacity = BUILDING_DATA[BuildingType.ENERGY_STORAGE].capacity?.(buildings[BuildingType.ENERGY_STORAGE]) ?? 0;
-
-    return {
-      metal: metalCapacity,
-      crystal: crystalCapacity,
-      deuterium: deuteriumCapacity,
-      energy: energyCapacity,
-    };
+export const calculateMaxResources = (colonies: Record<string, Colony>): Resources => {
+    let totalCapacity: Resources = { metal: 0, crystal: 0, deuterium: 0, energy: 0 };
+     for (const colony of Object.values(colonies)) {
+        totalCapacity.metal += BUILDING_DATA[BuildingType.METAL_STORAGE].capacity?.(colony.buildings[BuildingType.METAL_STORAGE]) ?? BASE_STORAGE_CAPACITY;
+        totalCapacity.crystal += BUILDING_DATA[BuildingType.CRYSTAL_STORAGE].capacity?.(colony.buildings[BuildingType.CRYSTAL_STORAGE]) ?? BASE_STORAGE_CAPACITY;
+        totalCapacity.deuterium += BUILDING_DATA[BuildingType.DEUTERIUM_TANK].capacity?.(colony.buildings[BuildingType.DEUTERIUM_TANK]) ?? BASE_STORAGE_CAPACITY;
+        totalCapacity.energy += BUILDING_DATA[BuildingType.ENERGY_STORAGE].capacity?.(colony.buildings[BuildingType.ENERGY_STORAGE]) ?? 0;
+    }
+    return totalCapacity;
 };
 
-export const calculateProductions = (buildings: BuildingLevels, resourceVeinBonus: ResourceVeinBonus, colonies: Colony[], activeBoosts: ActiveBoosts, solarFlare: SolarFlareState, fleet: Fleet, stellarAurora: StellarAuroraState, research: ResearchLevels) => {
-    const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
-    const energyTechBonus = 1 + (energyTechLevel * 0.02);
-
-    let solarPlantProduction = (BUILDING_DATA[BuildingType.SOLAR_PLANT].production?.(buildings[BuildingType.SOLAR_PLANT]) ?? 0) * energyTechBonus;
+export const calculateProductions = (gameState: GameState) => {
+    const { colonies, resourceVeinBonus, activeBoosts, solarFlare, stellarAuroraState, research } = gameState;
     
-    if (stellarAurora.active) {
-        solarPlantProduction *= 1.30;
-    }
+    let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
+    let totalEnergy = { produced: 0, consumed: 0 };
 
-    let energyProduction = solarPlantProduction;
+    for (const planet of Object.values(colonies)) {
+        const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
+        const energyTechBonus = 1 + (energyTechLevel * 0.02);
 
-    if (buildings[BuildingType.FUSION_REACTOR] > 0) {
-        energyProduction += (BUILDING_DATA[BuildingType.FUSION_REACTOR].production?.(buildings[BuildingType.FUSION_REACTOR]) ?? 0) * energyTechBonus;
-    }
-
-    const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
-    energyProduction += (fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
-
-    if (solarFlare.status === SolarFlareStatus.POWER_BOOST) {
-        energyProduction *= 1.5;
-    }
-    
-    const energyConsumption = (Object.keys(buildings) as BuildingType[]).reduce((total, type) => {
-        const buildingInfo = BUILDING_DATA[type as BuildingType];
-        if (type !== BuildingType.FUSION_REACTOR && buildings[type as BuildingType] > 0) {
-           return total + (buildingInfo.energyConsumption?.(buildings[type as BuildingType]) ?? 0);
+        let solarPlantProduction = (BUILDING_DATA[BuildingType.SOLAR_PLANT].production?.(planet.buildings[BuildingType.SOLAR_PLANT]) ?? 0) * energyTechBonus;
+        if (stellarAuroraState.active) {
+            solarPlantProduction *= 1.30;
         }
-        return total;
-    }, 0);
-    
-    const efficiency = energyProduction >= energyConsumption ? 1 : (energyConsumption > 0 ? Math.max(0, energyProduction / energyConsumption) : 1);
-    
-    let metalProd = (BUILDING_DATA[BuildingType.METAL_MINE].production?.(buildings[BuildingType.METAL_MINE]) ?? 0);
-    let crystalProd = (BUILDING_DATA[BuildingType.CRYSTAL_MINE].production?.(buildings[BuildingType.CRYSTAL_MINE]) ?? 0);
-    let deuteriumProd = (BUILDING_DATA[BuildingType.DEUTERIUM_SYNTHESIZER].production?.(buildings[BuildingType.DEUTERIUM_SYNTHESIZER]) ?? 0);
+
+        let planetEnergyProduction = solarPlantProduction;
+
+        if (planet.buildings[BuildingType.FUSION_REACTOR] > 0) {
+            planetEnergyProduction += (BUILDING_DATA[BuildingType.FUSION_REACTOR].production?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0) * energyTechBonus;
+        }
+
+        const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
+        planetEnergyProduction += (planet.fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
+       
+        if (solarFlare.status === SolarFlareStatus.POWER_BOOST) {
+            planetEnergyProduction *= 1.5;
+        }
+
+        const planetEnergyConsumption = (Object.keys(planet.buildings) as BuildingType[]).reduce((total, type) => {
+            const buildingInfo = BUILDING_DATA[type as BuildingType];
+            if (type !== BuildingType.FUSION_REACTOR && planet.buildings[type as BuildingType] > 0) {
+               return total + (buildingInfo.energyConsumption?.(planet.buildings[type as BuildingType]) ?? 0);
+            }
+            return total;
+        }, 0);
+        
+        const efficiency = planetEnergyProduction >= planetEnergyConsumption ? 1 : (planetEnergyConsumption > 0 ? Math.max(0, planetEnergyProduction / planetEnergyConsumption) : 1);
+
+        let metalProd = (BUILDING_DATA[BuildingType.METAL_MINE].production?.(planet.buildings[BuildingType.METAL_MINE]) ?? 0) * efficiency;
+        let crystalProd = (BUILDING_DATA[BuildingType.CRYSTAL_MINE].production?.(planet.buildings[BuildingType.CRYSTAL_MINE]) ?? 0) * efficiency;
+        let deuteriumProd = (BUILDING_DATA[BuildingType.DEUTERIUM_SYNTHESIZER].production?.(planet.buildings[BuildingType.DEUTERIUM_SYNTHESIZER]) ?? 0) * efficiency;
+        
+        if (planet.buildings[BuildingType.FUSION_REACTOR] > 0) {
+            deuteriumProd -= BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0;
+        }
+
+        if (planet.id !== PLAYER_HOME_COORDS) {
+            metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
+            crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
+            let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
+            if (planet.specialization === PlanetSpecialization.DEUTERIUM_BOOST) {
+                colonyDeuterium *= 1.10; // 10% bonus
+            }
+            deuteriumProd += colonyDeuterium;
+        }
+        
+        totalProductions.metal += metalProd;
+        totalProductions.crystal += crystalProd;
+        totalProductions.deuterium += deuteriumProd;
+        totalEnergy.produced += planetEnergyProduction;
+        totalEnergy.consumed += planetEnergyConsumption;
+    }
+
 
     if (resourceVeinBonus?.active && resourceVeinBonus.resourceType) {
-        if (resourceVeinBonus.resourceType === 'metal') metalProd *= resourceVeinBonus.bonusMultiplier;
-        else if (resourceVeinBonus.resourceType === 'crystal') crystalProd *= resourceVeinBonus.bonusMultiplier;
-        else if (resourceVeinBonus.resourceType === 'deuterium') deuteriumProd *= resourceVeinBonus.bonusMultiplier;
+        if (resourceVeinBonus.resourceType === 'metal') totalProductions.metal *= resourceVeinBonus.bonusMultiplier;
+        else if (resourceVeinBonus.resourceType === 'crystal') totalProductions.crystal *= resourceVeinBonus.bonusMultiplier;
+        else if (resourceVeinBonus.resourceType === 'deuterium') totalProductions.deuterium *= resourceVeinBonus.bonusMultiplier;
     }
 
     if (activeBoosts?.[BoostType.RESOURCE_PRODUCTION_BOOST]) {
         const boostPercent = activeBoosts[BoostType.RESOURCE_PRODUCTION_BOOST]!.level / 100;
-        metalProd *= (1 + boostPercent);
-        crystalProd *= (1 + boostPercent);
-        deuteriumProd *= (1 + boostPercent);
-    }
-
-    colonies.forEach(colony => {
-        metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
-        crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
-        let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
-        if(colony.specialization === PlanetSpecialization.DEUTERIUM_BOOST) {
-            colonyDeuterium *= 1.10;
-        }
-        deuteriumProd += colonyDeuterium;
-    });
-
-    if (buildings[BuildingType.FUSION_REACTOR] > 0) {
-        const fusionReactorDeuteriumConsumption = BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(buildings[BuildingType.FUSION_REACTOR]) ?? 0;
-        deuteriumProd -= fusionReactorDeuteriumConsumption;
+        totalProductions.metal *= (1 + boostPercent);
+        totalProductions.crystal *= (1 + boostPercent);
+        totalProductions.deuterium *= (1 + boostPercent);
     }
      
     return {
-        metal: metalProd * efficiency,
-        crystal: crystalProd * efficiency,
-        deuterium: deuteriumProd * efficiency,
-        energy: { produced: energyProduction, consumed: energyConsumption, efficiency: efficiency, techBonus: energyTechLevel * 2 }
+        metal: totalProductions.metal,
+        crystal: totalProductions.crystal,
+        deuterium: totalProductions.deuterium,
+        energy: { 
+            produced: totalEnergy.produced, 
+            consumed: totalEnergy.consumed, 
+            efficiency: totalEnergy.produced >= totalEnergy.consumed ? 1 : (totalEnergy.consumed > 0 ? totalEnergy.produced / totalEnergy.consumed : 1)
+        }
     };
 };
