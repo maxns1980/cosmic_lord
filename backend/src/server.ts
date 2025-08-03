@@ -1,44 +1,66 @@
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { supabase } from './config/db.js';
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(express.json({ limit: '10mb' }));
-app.use('/', cors());
+// Set up CORS to only allow requests from your frontend application
+const corsOptions = {
+  origin: process.env.FRONTEND_URL,
+  optionsSuccessStatus: 200 
+};
 
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
-const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
+app.use(cors(corsOptions));
+app.use('/', express.json({ limit: '10mb' }));
 
 let gameState: GameState | null = null;
 
 async function loadGameState() {
-    try {
-        await fs.mkdir(DATA_DIR, { recursive: true });
-        const data = await fs.readFile(GAME_STATE_FILE, 'utf-8');
-        gameState = JSON.parse(data);
-        console.log(`Game state loaded from ${GAME_STATE_FILE}.`);
-    } catch (error) {
-        console.log(`No saved game state found at ${GAME_STATE_FILE}. Starting new game.`);
+    const { data, error } = await supabase
+        .from('game_state')
+        .select('state')
+        .eq('id', 1)
+        .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116: "object not found"
+        console.error("Error loading game state from Supabase:", error);
+        throw error;
+    }
+
+    if (data) {
+        gameState = data.state as GameState;
+        console.log(`Game state loaded from Supabase.`);
+    } else {
+        console.log(`No saved game state found in Supabase. Creating new game state.`);
         gameState = getInitialState();
+        const { error: insertError } = await supabase
+            .from('game_state')
+            .insert({ id: 1, state: gameState });
+        
+        if (insertError) {
+            console.error("Error creating initial game state in Supabase:", insertError);
+            throw insertError;
+        }
     }
 }
 
 async function saveGameState() {
     if (gameState) {
         try {
-            await fs.writeFile(GAME_STATE_FILE, JSON.stringify(gameState, null, 2));
+            const { error } = await supabase
+                .from('game_state')
+                .update({ state: gameState })
+                .eq('id', 1);
+
+            if (error) {
+                console.error("Failed to save game state to Supabase:", error);
+            }
         } catch (error) {
-            console.error("Failed to save game state:", error);
+            console.error("An exception occurred while saving game state:", error);
         }
     }
 }
@@ -78,7 +100,7 @@ loadGameState().then(() => {
         
         app.listen(PORT, () => {
             console.log(`Backend server running on port ${PORT}`);
-            console.log(`Data will be saved in: ${DATA_DIR}`);
+            console.log(`Persistence provider: Supabase`);
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
