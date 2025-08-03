@@ -1,5 +1,6 @@
 import {
-    GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, DebrisField, InfoMessage, BattleReport, SpyReport, MerchantStatus, MerchantInfoMessage, NPCFleetMission, BattleMessage, SpyMessage, EspionageEventMessage, OfflineSummaryMessage, ExpeditionMessage, ColonizationMessage, MoonCreationMessage, ExplorationMessage, NPCState, Message, GameObject, QueueItemType, Loot, Resources, Fleet, ShipOffer, AncientArtifactStatus, PirateMercenaryStatus, SpacePlagueState, ContrabandStatus, ContrabandOfferType, ActiveBoosts, BoostType, TestableEventType, GhostShipStatus, AncientArtifactChoice, GhostShipChoice, PlanetSpecialization
+    GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, DebrisField, InfoMessage, BattleReport, SpyReport, MerchantStatus, MerchantInfoMessage, NPCFleetMission, BattleMessage, SpyMessage, EspionageEventMessage, OfflineSummaryMessage, ExpeditionMessage, ColonizationMessage, MoonCreationMessage, ExplorationMessage, NPCState, Message, GameObject, QueueItemType, Loot, Resources, Fleet, ShipOffer, AncientArtifactStatus, PirateMercenaryStatus, SpacePlagueState, ContrabandStatus, ContrabandOfferType, ActiveBoosts, BoostType, TestableEventType, GhostShipStatus, AncientArtifactChoice, GhostShipChoice, PlanetSpecialization,
+    Alliance
 } from './types.js';
 import { ALL_GAME_OBJECTS, TICK_INTERVAL, getInitialState, PLAYER_HOME_COORDS, ALL_SHIP_DATA, PHALANX_SCAN_COST } from './constants.js';
 import { calculateProductions } from './utils/gameLogic.js';
@@ -126,6 +127,35 @@ export function startGameEngine(gameState: GameState, saveGameState: () => Promi
 
 export function handleAction(gameState: GameState, type: string, payload: any): { message?: string, error?: string } {
     switch(type) {
+        case 'CREATE_ALLIANCE': {
+            const { name, tag } = payload;
+            if (gameState.alliance) {
+                return { error: 'Jesteś już w sojuszu.' };
+            }
+            if (!name || name.length < 3 || name.length > 30) {
+                return { error: 'Nazwa sojuszu musi mieć od 3 do 30 znaków.' };
+            }
+            if (!tag || tag.length < 2 || tag.length > 5) {
+                return { error: 'Tag sojuszu musi mieć od 2 do 5 znaków.' };
+            }
+
+            const newAlliance: Alliance = {
+                id: tag, // Use tag as ID for now
+                name: name,
+                tag: tag,
+                description: 'Witaj w naszym sojuszu!',
+            };
+            gameState.alliance = newAlliance;
+            return { message: `Sojusz [${tag}] ${name} został założony!` };
+        }
+        case 'LEAVE_ALLIANCE': {
+            if (!gameState.alliance) {
+                return { error: 'Nie jesteś w żadnym sojuszu.' };
+            }
+            const allianceName = gameState.alliance.name;
+            gameState.alliance = null;
+            return { message: `Opuściłeś sojusz ${allianceName}.` };
+        }
         case 'ADD_TO_QUEUE': {
             const { id, type, amount, activeLocationId } = payload;
             // Simplified: Add logic for checking resources, requirements, queue capacity

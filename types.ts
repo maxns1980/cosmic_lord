@@ -675,16 +675,6 @@ export interface NPCState {
     developmentSpeed?: number;
 }
 
-export interface SleeperNpcState {
-    points: number;
-    name: string;
-    image: string;
-    personality: NPCPersonality;
-    developmentSpeed: number;
-    lastUpdate: number;
-    resources?: Partial<Resources>;
-}
-
 export type NPCStates = Record<string, NPCState>;
 
 // --- Event Testing ---
@@ -711,6 +701,14 @@ export interface DailyBonusState {
     };
 }
 
+// --- Alliance ---
+export interface Alliance {
+    id: string;
+    name: string;
+    tag: string;
+    description: string;
+}
+
 
 // --- GameState for Client-Server communication ---
 export interface GameState {
@@ -723,7 +721,7 @@ export interface GameState {
     activeBoosts: ActiveBoosts;
     fleetTemplates: FleetTemplate[];
     favoritePlanets: string[];
-    alliance: { id: string; name: string; } | null;
+    alliance: Alliance | null;
 
     // Multi-planet State
     colonies: Record<string, Colony>;

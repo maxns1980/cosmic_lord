@@ -15,7 +15,8 @@ import {
     GalacticGoldRushState, GalacticGoldRushMessage,
     StellarAuroraState, StellarAuroraMessage,
     TestableEventType,
-    NPCState
+    NPCState,
+    Alliance
 } from './types';
 import { 
     BUILDING_DATA, ALL_GAME_OBJECTS,
@@ -331,6 +332,16 @@ function App() {
     setIsBonusModalOpen(false);
   }, []);
 
+  const handleCreateAlliance = useCallback((name: string, tag: string) => {
+    performAction('CREATE_ALLIANCE', { name, tag });
+  }, []);
+
+  const handleLeaveAlliance = useCallback(() => {
+    if (window.confirm('Czy na pewno chcesz opuścić sojusz? Spowoduje to jego rozwiązanie, jeśli jesteś jedynym członkiem.')) {
+        performAction('LEAVE_ALLIANCE', {});
+    }
+  }, []);
+
   if (!gameState) {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
@@ -536,7 +547,13 @@ function App() {
                         onScan={handlePhalanxScan}
                     />
                 )}
-                {activeView === 'alliance' && <AlliancePanel alliance={alliance} />}
+                {activeView === 'alliance' && (
+                    <AlliancePanel 
+                        alliance={alliance} 
+                        onCreate={handleCreateAlliance}
+                        onLeave={handleLeaveAlliance}
+                    />
+                )}
             </div>
         </main>
         {isBonusModalOpen && (
