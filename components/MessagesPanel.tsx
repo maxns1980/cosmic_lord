@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Message, InfoMessage, SpyReport, BattleReport, MerchantStatus, MerchantInfoMessage, EspionageEventMessage, Loot, PirateMessage, PirateMercenaryStatus, ShipType, AsteroidImpactMessage, AsteroidImpactType, BuildingType, ResourceVeinMessage, AncientArtifactMessage, AncientArtifactChoice, ResearchType, SpacePlagueMessage, OfflineSummaryMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, BattleMessage, SpyMessage, ExplorationMessage, ExplorationOutcomeType, BoostType, Boost, Resources, SolarFlareMessage, SolarFlareStatus, ContrabandMessage, MoonCreationMessage, PlanetSpecialization, GhostShipDiscoveryMessage, GhostShipOutcomeMessage, GhostShipChoice, GalacticGoldRushMessage, StellarAuroraMessage, MissionType } from '../types';
+import { Message, InfoMessage, SpyReport, BattleReport, MerchantStatus, MerchantInfoMessage, EspionageEventMessage, Loot, PirateMessage, PirateMercenaryStatus, ShipType, AsteroidImpactMessage, AsteroidImpactType, BuildingType, ResourceVeinMessage, AncientArtifactMessage, AncientArtifactChoice, ResearchType, SpacePlagueMessage, OfflineSummaryMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, BattleMessage, SpyMessage, ExplorationMessage, ExplorationOutcomeType, BoostType, Boost, Resources, SolarFlareMessage, SolarFlareStatus, ContrabandMessage, MoonCreationMessage, PlanetSpecialization, GhostShipDiscoveryMessage, GhostShipOutcomeMessage, GhostShipChoice, GalacticGoldRushMessage, StellarAuroraMessage, MissionType, PhalanxReportMessage } from '../types';
 import { ALL_GAME_OBJECTS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA } from '../constants';
 
 interface MessagesPanelProps {
@@ -472,6 +472,35 @@ const StellarAuroraDisplay: React.FC<{ message: StellarAuroraMessage }> = ({ mes
     return <p>Zorza Gwiezdna wygasła, a produkcja energii wróciła do normy.</p>;
 }
 
+const PhalanxReportDisplay: React.FC<{ report: PhalanxReportMessage }> = ({ report }) => {
+    return (
+        <div className="space-y-4 text-sm">
+            <p className="text-gray-400">
+                Skan z księżyca <span className="font-bold text-cyan-400">[{report.scannerCoords}]</span> na planetę <span className="font-bold text-cyan-400">[{report.targetCoords}]</span> wykrył następujące ruchy flot:
+            </p>
+            {report.detectedFleets.length === 0 ? (
+                <p className="text-green-400 italic text-center py-4">Nie wykryto żadnych ruchów flot.</p>
+            ) : (
+                <div className="space-y-3">
+                    {report.detectedFleets.map(mission => (
+                        <div key={mission.id} className="bg-gray-800 p-3 rounded-lg border-l-4 border-yellow-500">
+                            <p className="font-semibold text-white">
+                                Misja {mission.missionType} z [{mission.sourceLocationId.replace('_moon', ' M')}] do [{mission.targetCoords}]
+                            </p>
+                            <div className="text-xs text-gray-400 mt-1">
+                                <p>Skład floty: {Object.entries(mission.fleet).map(([type, count]) => `${ALL_SHIP_DATA[type as ShipType].name}: ${count}`).join(', ')}</p>
+                                <p>
+                                    Status: <span className="font-mono">{mission.isReturning ? `Powrót za ${formatTime((mission.returnTime - Date.now()) / 1000)}` : `Dotrze za ${formatTime((mission.arrivalTime - Date.now()) / 1000)}`}</span>
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => void, onGhostShipChoice: (choice: GhostShipChoice) => void, onAction: (targetCoords: string, missionType: MissionType) => void }> = ({ message, onDelete, onGhostShipChoice, onAction }) => {
     const renderContent = () => {
@@ -497,6 +526,7 @@ const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => voi
             case 'ghost_ship_outcome': return <GhostShipOutcomeDisplay message={message} />;
             case 'galactic_gold_rush': return <GalacticGoldRushDisplay message={message} />;
             case 'stellar_aurora': return <StellarAuroraDisplay message={message} />;
+            case 'phalanx_report': return <PhalanxReportDisplay report={message} />;
             default: return <p>Nieznany typ wiadomości.</p>;
         }
     };
@@ -550,7 +580,7 @@ const MessageListItem: React.FC<{ message: Message, isSelected: boolean, onSelec
 const filterMessages = (messages: Message[], category: MessageCategory): Message[] => {
     switch (category) {
         case 'spy':
-            return messages.filter(m => m.type === 'spy' || m.type === 'espionage_event');
+            return messages.filter(m => m.type === 'spy' || m.type === 'espionage_event' || m.type === 'phalanx_report');
         case 'battle':
             return messages.filter(m => m.type === 'battle');
         case 'mission':
@@ -598,7 +628,7 @@ const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelet
     const messageCounts = useMemo(() => {
         return {
             all: messages.length,
-            spy: messages.filter(m => m.type === 'spy' || m.type === 'espionage_event').length,
+            spy: messages.filter(m => m.type === 'spy' || m.type === 'espionage_event' || m.type === 'phalanx_report').length,
             battle: messages.filter(m => m.type === 'battle').length,
             mission: messages.filter(m => 
                 m.type === 'expedition' || 
@@ -616,7 +646,7 @@ const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelet
 
     const TABS: { id: MessageCategory, label: string, count: number }[] = [
         { id: 'all', label: 'Wszystkie', count: messageCounts.all },
-        { id: 'spy', label: 'Raporty Szpiegujące', count: messageCounts.spy },
+        { id: 'spy', label: 'Raporty Wywiadu', count: messageCounts.spy },
         { id: 'battle', label: 'Raporty Bojowe', count: messageCounts.battle },
         { id: 'mission', label: 'Raporty z Misji', count: messageCounts.mission },
     ];

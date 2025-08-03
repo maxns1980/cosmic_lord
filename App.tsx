@@ -288,6 +288,10 @@ function App() {
       setHarvestModalTarget(null);
   }, [activeLocationId]);
 
+  const handlePhalanxScan = useCallback((sourceMoonId: string, targetCoords: string) => {
+    performAction('PHALANX_SCAN', { sourceMoonId, targetCoords });
+  }, []);
+
   const handleRecallFleet = useCallback((missionId: string) => {
       performAction('RECALL_FLEET', { missionId });
   }, []);
@@ -520,7 +524,12 @@ function App() {
                          onToggleFavorite={handleToggleFavoritePlanet}
                     />
                 )}
-                {activeView === 'phalanx' && <PhalanxPanel />}
+                {activeView === 'phalanx' && (
+                    <PhalanxPanel 
+                        gameState={gameState}
+                        onScan={handlePhalanxScan}
+                    />
+                )}
                 {activeView === 'alliance' && <AlliancePanel alliance={alliance} />}
             </div>
         </main>

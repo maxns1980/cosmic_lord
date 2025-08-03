@@ -1,4 +1,3 @@
-
 import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization } from './types.js';
 
 export const TICK_INTERVAL = 1000; // ms
@@ -17,6 +16,7 @@ export const GAME_STATE_KEY = 'cosmic-lord-game-state';
 
 export const MERCHANT_CHECK_INTERVAL = (6 * 60 + 15) * 60 * 1000; // 6 hours 15 minutes
 export const MERCHANT_SPAWN_CHANCE = 0.2; // 20%
+export const PHALANX_SCAN_COST = 5000;
 
 // --- NPC Management ---
 export const NPC_NAMES = [ "Xylar", "Vortex", "Cygnus", "Orion", "Draconis", "Vega", "Sirius", "Rigel", "Altair", "Pulsar", "Wraith", "Nomad", "Spectre", "Juggernaut", "Reaper" ];
@@ -1059,6 +1059,6 @@ export const getInitialState = (): GameState => ({
   lastEventCheckTime: Date.now(),
   lastBonusClaimTime: 0,
   alliance: null,
-  lastNpcPurgeTime: Date.now(),
+  lastNpcPurgeTime: 0,
   lastSleeperNpcCheck: Date.now(),
 });

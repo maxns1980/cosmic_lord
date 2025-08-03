@@ -641,8 +641,17 @@ export type ExplorationMessage = BaseMessage & {
     }
 };
 
+// --- Phalanx Scan Types ---
+export type DetectedFleetMission = Pick<FleetMission, 'id' | 'fleet' | 'missionType' | 'sourceLocationId' | 'targetCoords' | 'arrivalTime' | 'returnTime'> & { isReturning: boolean };
 
-export type Message = InfoMessage | SpyMessage | BattleMessage | MerchantInfoMessage | EspionageEventMessage | PirateMessage | AsteroidImpactMessage | ResourceVeinMessage | AncientArtifactMessage | SpacePlagueMessage | OfflineSummaryMessage | ExpeditionMessage | ColonizationMessage | ExplorationMessage | SolarFlareMessage | ContrabandMessage | MoonCreationMessage | GhostShipDiscoveryMessage | GhostShipOutcomeMessage | GalacticGoldRushMessage | StellarAuroraMessage;
+export type PhalanxReportMessage = BaseMessage & {
+    type: 'phalanx_report';
+    scannerCoords: string;
+    targetCoords: string;
+    detectedFleets: DetectedFleetMission[];
+};
+
+export type Message = InfoMessage | SpyMessage | BattleMessage | MerchantInfoMessage | EspionageEventMessage | PirateMessage | AsteroidImpactMessage | ResourceVeinMessage | AncientArtifactMessage | SpacePlagueMessage | OfflineSummaryMessage | ExpeditionMessage | ColonizationMessage | ExplorationMessage | SolarFlareMessage | ContrabandMessage | MoonCreationMessage | GhostShipDiscoveryMessage | GhostShipOutcomeMessage | GalacticGoldRushMessage | StellarAuroraMessage | PhalanxReportMessage;
 
 export type DebrisField = Partial<Resources>;
 

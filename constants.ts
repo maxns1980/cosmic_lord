@@ -16,6 +16,7 @@ export const GAME_STATE_KEY = 'cosmic-lord-game-state';
 
 export const MERCHANT_CHECK_INTERVAL = (6 * 60 + 15) * 60 * 1000; // 6 hours 15 minutes
 export const MERCHANT_SPAWN_CHANCE = 0.2; // 20%
+export const PHALANX_SCAN_COST = 5000;
 
 // --- NPC Management ---
 export const NPC_PURGE_INTERVAL = 10 * 60 * 1000; // 10 minutes
@@ -1056,6 +1057,6 @@ export const getInitialState = (): GameState => ({
   lastEventCheckTime: Date.now(),
   lastBonusClaimTime: 0,
   alliance: null,
-  lastNpcPurgeTime: Date.now(),
+  lastNpcPurgeTime: 0,
   lastSleeperNpcCheck: Date.now(),
 });
