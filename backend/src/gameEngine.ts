@@ -1,13 +1,11 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance
+    Alliance, WorldState, PlayerState
 } from './types.js';
-import { ALL_GAME_OBJECTS, getInitialState } from './constants.js';
+import { ALL_GAME_OBJECTS, getInitialPlayerState } from './constants.js';
 import { calculateProductions, calculateMaxResources } from './utils/gameLogic.js';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
 import { TestableEventType } from './types.js';
-
-let gameLoop: NodeJS.Timeout | null = null;
 
 const addMessage = (gameState: GameState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     gameState.messages.unshift({
@@ -21,8 +19,8 @@ const addMessage = (gameState: GameState, message: Omit<Message, 'id' | 'timesta
     }
 };
 
-const processQueues = (gameState: GameState, now: number) => {
-    for (const location of [...Object.values(gameState.colonies), ...Object.values(gameState.moons)]) {
+const processQueues = (playerState: PlayerState, now: number) => {
+    for (const location of [...Object.values(playerState.colonies), ...Object.values(playerState.moons)]) {
         let hasChanged = true;
         while(hasChanged) {
             hasChanged = false;
@@ -33,9 +31,9 @@ const processQueues = (gameState: GameState, now: number) => {
                 if (finished.type === 'building') {
                     location.buildings[finished.id as BuildingType] = finished.levelOrAmount;
                 } else if (finished.type === 'research') {
-                    gameState.research[finished.id as ResearchType] = finished.levelOrAmount;
+                    playerState.research[finished.id as ResearchType] = finished.levelOrAmount;
                 } else if (finished.type === 'ship_upgrade') {
-                    gameState.shipLevels[finished.id as ShipType] = finished.levelOrAmount;
+                    playerState.shipLevels[finished.id as ShipType] = finished.levelOrAmount;
                 }
                 hasChanged = true;
             }
@@ -54,54 +52,65 @@ const processQueues = (gameState: GameState, now: number) => {
     }
 };
 
-const processFleetMissions = (gameState: GameState, now: number) => {
+const processFleetMissions = (playerState: PlayerState, now: number) => {
     const missionsToRemove: string[] = [];
-    for (const mission of gameState.fleetMissions) {
+    for (const mission of playerState.fleetMissions) {
         if (!mission.processedArrival && now >= mission.arrivalTime) {
             mission.processedArrival = true;
             // Handle different mission arrivals
         }
         if (mission.processedArrival && now >= mission.returnTime) {
-            const sourceLocation = gameState.colonies[mission.sourceLocationId] || gameState.moons[mission.sourceLocationId];
+            const sourceLocation = playerState.colonies[mission.sourceLocationId] || playerState.moons[mission.sourceLocationId];
             if (sourceLocation) {
                 for (const shipType in mission.fleet) {
                     sourceLocation.fleet[shipType as ShipType] = (sourceLocation.fleet[shipType as ShipType] || 0) + (mission.fleet[shipType as ShipType] || 0);
                 }
             }
-            gameState.resources.metal += mission.loot.metal || 0;
-            gameState.resources.crystal += mission.loot.crystal || 0;
-            gameState.resources.deuterium += mission.loot.deuterium || 0;
+            playerState.resources.metal += mission.loot.metal || 0;
+            playerState.resources.crystal += mission.loot.crystal || 0;
+            playerState.resources.deuterium += mission.loot.deuterium || 0;
             missionsToRemove.push(mission.id);
         }
     }
-    gameState.fleetMissions = gameState.fleetMissions.filter(m => !missionsToRemove.includes(m.id));
+    playerState.fleetMissions = playerState.fleetMissions.filter(m => !missionsToRemove.includes(m.id));
 };
 
-export const updateStateForOfflineProgress = (gameState: GameState): GameState => {
+export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): PlayerState => {
     const now = Date.now();
-    const lastSave = gameState.lastSaveTime || now;
+    const lastSave = playerState.lastSaveTime || now;
     const deltaSeconds = (now - lastSave) / 1000;
 
     if (deltaSeconds <= 1) {
-        return gameState;
+        return playerState;
     }
+    
+    // We need world state context for productions (e.g. global events affecting production)
+    // This is a simplification; for full accuracy, productions should be calculated with world state.
+    // However, for offline progress, this approximation is acceptable.
+    const tempGameState = { ...playerState, ...{ solarFlare: { status: 'INACTIVE' }, resourceVeinBonus: { active: false }, stellarAuroraState: { active: false } } } as any;
 
-    const productions = calculateProductions(gameState);
-    const maxResources = calculateMaxResources(gameState.colonies);
+    const productions = calculateProductions(tempGameState);
+    const maxResources = calculateMaxResources(playerState.colonies);
 
-    gameState.resources.metal = Math.min(maxResources.metal, gameState.resources.metal + (productions.metal / 3600) * deltaSeconds);
-    gameState.resources.crystal = Math.min(maxResources.crystal, gameState.resources.crystal + (productions.crystal / 3600) * deltaSeconds);
-    const newDeuterium = gameState.resources.deuterium + (productions.deuterium / 3600) * deltaSeconds;
-    gameState.resources.deuterium = Math.max(0, Math.min(maxResources.deuterium, newDeuterium));
+    playerState.resources.metal = Math.min(maxResources.metal, playerState.resources.metal + (productions.metal / 3600) * deltaSeconds);
+    playerState.resources.crystal = Math.min(maxResources.crystal, playerState.resources.crystal + (productions.crystal / 3600) * deltaSeconds);
+    const newDeuterium = playerState.resources.deuterium + (productions.deuterium / 3600) * deltaSeconds;
+    playerState.resources.deuterium = Math.max(0, Math.min(maxResources.deuterium, newDeuterium));
     
-    processQueues(gameState, now);
-    processFleetMissions(gameState, now);
+    processQueues(playerState, now);
+    processFleetMissions(playerState, now);
     
-    // Placeholder for event processing during offline time
-    
-    gameState.lastSaveTime = now;
-    return gameState;
+    playerState.lastSaveTime = now;
+    return playerState;
 };
+
+
+export const updateWorldState = (worldState: WorldState): { updatedWorldState: WorldState, messagesForPlayers: any[] } => {
+    // This function will handle global updates like NPC evolution, global events, etc.
+    // For now, it's a placeholder.
+    return { updatedWorldState: worldState, messagesForPlayers: [] };
+};
+
 
 export function handleAction(gameState: GameState, type: string, payload: any): { message?: string, error?: string } {
     switch(type) {
@@ -169,8 +178,13 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
             return { message: "Flota wysłana!" };
         }
         case 'RESET_GAME': {
-            Object.assign(gameState, getInitialState());
-            return { message: 'Gra została zresetowana.' };
+            // This now needs to reset a player's state, not the whole game.
+            // The logic to find a new home coordinate is in the signup, so we can reuse that idea.
+            // For simplicity, we just reset the player's part of the state. The world state is unaffected.
+            const homeCoords = Object.keys(gameState.colonies)[0]; // Keep their original home coords
+            const username = gameState.occupiedCoordinates[homeCoords] || 'Gracz';
+            Object.assign(gameState, getInitialPlayerState(username, homeCoords));
+            return { message: 'Twoje postępy zostały zresetowane.' };
         }
         case 'ANCIENT_ARTIFACT_CHOICE': {
             if (gameState.ancientArtifactState.status !== AncientArtifactStatus.AWAITING_CHOICE) return { error: 'No artifact choice to be made.' };

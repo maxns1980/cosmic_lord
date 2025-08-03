@@ -1,4 +1,4 @@
-import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState } from './types';
+import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState, PlayerState, InfoMessage } from './types';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -1007,35 +1007,23 @@ export const getBoostDescription = (boost: Boost): string => {
     }
 };
 
-export const getInitialState = (): GameState => ({
+export const getInitialPlayerState = (username: string, homeCoords: string): PlayerState => ({
   resources: INITIAL_RESOURCES,
   research: INITIAL_RESEARCH_LEVELS,
   shipLevels: INITIAL_SHIP_LEVELS,
-  fleetMissions: [],
-  npcFleetMissions: INITIAL_NPC_FLEET_MISSIONS,
-  messages: [],
   credits: 10000,
-  merchantState: INITIAL_MERCHANT_STATE,
-  lastSaveTime: Date.now(),
-  pirateMercenaryState: INITIAL_PIRATE_MERCENARY_STATE,
-  resourceVeinBonus: INITIAL_RESOURCE_VEIN_BONUS,
-  ancientArtifactState: INITIAL_ANCIENT_ARTIFACT_STATE,
-  spacePlague: INITIAL_SPACE_PLAGUE_STATE,
-  solarFlare: INITIAL_SOLAR_FLARE_STATE,
-  contrabandState: INITIAL_CONTRABAND_STATE,
-  ghostShipState: INITIAL_GHOST_SHIP_STATE,
-  galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
-  stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
-  dailyBonus: INITIAL_DAILY_BONUS_STATE,
-  npcStates: {},
-  debrisFields: INITIAL_DEBRIS_FIELDS,
+  inventory: INITIAL_INVENTORY,
+  activeBoosts: INITIAL_ACTIVE_BOOSTS,
+  fleetTemplates: INITIAL_FLEET_TEMPLATES,
+  favoritePlanets: [],
+  alliance: null,
   colonies: {
-    [PLAYER_HOME_COORDS]: {
-        id: PLAYER_HOME_COORDS,
+    [homeCoords]: {
+        id: homeCoords,
         name: 'Planeta Matka',
         creationTime: Date.now(),
         specialization: PlanetSpecialization.NONE,
-        buildings: { ...INITIAL_BUILDING_LEVELS },
+        buildings: { ...INITIAL_BUILDING_LEVELS, [BuildingType.METAL_MINE]: 1, [BuildingType.CRYSTAL_MINE]: 1, [BuildingType.SOLAR_PLANT]: 1 },
         fleet: { ...INITIAL_FLEET },
         defenses: { ...INITIAL_DEFENSES },
         buildingQueue: [],
@@ -1044,15 +1032,18 @@ export const getInitialState = (): GameState => ({
     }
   },
   moons: INITIAL_MOONS,
-  inventory: INITIAL_INVENTORY,
-  activeBoosts: INITIAL_ACTIVE_BOOSTS,
-  fleetTemplates: INITIAL_FLEET_TEMPLATES,
-  favoritePlanets: [],
+  fleetMissions: [],
+  messages: [{
+      id: `msg-welcome-${Date.now()}`,
+      timestamp: Date.now(),
+      isRead: false,
+      type: 'info',
+      subject: `Witaj w Kosmicznym Władcy, ${username}!`,
+      text: 'Twoje imperium czeka na rozkazy. Zacznij od rozbudowy kopalni, aby zwiększyć produkcję surowców. Powodzenia!'
+  } as InfoMessage],
+  dailyBonus: INITIAL_DAILY_BONUS_STATE,
+  lastSaveTime: Date.now(),
   nextBlackMarketIncome: 0,
   lastBlackMarketIncomeCheck: Date.now(),
-  nextMerchantCheckTime: Date.now() + (15 * 60 * 1000), // First check in 15 minutes
-  lastGlobalNpcCheck: Date.now(),
-  lastEventCheckTime: Date.now(),
   lastBonusClaimTime: 0,
-  alliance: null,
 });

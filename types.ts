@@ -709,31 +709,22 @@ export interface Alliance {
     description: string;
 }
 
+export interface SleeperNpcState {
+    points: number;
+    name: string;
+    image: string;
+    personality: NPCPersonality;
+    developmentSpeed?: number;
+    lastUpdate: number;
+    resources?: Partial<Resources>;
+}
 
-// --- GameState for Client-Server communication ---
-export interface GameState {
-    // Global Player State
-    resources: Resources;
-    research: ResearchLevels;
-    shipLevels: ShipLevels;
-    credits: number;
-    inventory: Inventory;
-    activeBoosts: ActiveBoosts;
-    fleetTemplates: FleetTemplate[];
-    favoritePlanets: string[];
-    alliance: Alliance | null;
+// --- NEW STATE STRUCTURE ---
 
-    // Multi-planet State
-    colonies: Record<string, Colony>;
-    moons: Record<string, Moon>;
-
-    // Dynamic State
-    fleetMissions: FleetMission[];
+export interface WorldState {
+    npcStates: NPCStates;
     npcFleetMissions: NPCFleetMission[];
-    messages: Message[];
     debrisFields: Record<string, DebrisField>;
-    
-    // Event States
     merchantState: MerchantState;
     pirateMercenaryState: PirateMercenaryState;
     resourceVeinBonus: ResourceVeinBonus;
@@ -744,27 +735,34 @@ export interface GameState {
     ghostShipState: GhostShipState;
     galacticGoldRushState: GalacticGoldRushState;
     stellarAuroraState: StellarAuroraState;
-    dailyBonus: DailyBonusState;
-
-    // NPC State
-    npcStates: NPCStates;
-
-    // Server-side Timestamps & Management
-    lastSaveTime: number;
-    nextBlackMarketIncome: number;
-    lastBlackMarketIncomeCheck: number;
+    occupiedCoordinates: Record<string, string>; // coord -> username
     nextMerchantCheckTime: number;
     lastGlobalNpcCheck: number;
     lastEventCheckTime: number;
+}
+
+export interface PlayerState {
+    resources: Resources;
+    research: ResearchLevels;
+    shipLevels: ShipLevels;
+    credits: number;
+    inventory: Inventory;
+    activeBoosts: ActiveBoosts;
+    fleetTemplates: FleetTemplate[];
+    favoritePlanets: string[];
+    alliance: Alliance | null;
+    colonies: Record<string, Colony>;
+    moons: Record<string, Moon>;
+    fleetMissions: FleetMission[];
+    messages: Message[];
+    dailyBonus: DailyBonusState;
+    lastSaveTime: number;
+    nextBlackMarketIncome: number;
+    lastBlackMarketIncomeCheck: number;
     lastBonusClaimTime: number;
 }
 
-export interface SleeperNpcState {
-    points: number;
-    name: string;
-    image: string;
-    personality: NPCPersonality;
-    developmentSpeed?: number;
-    lastUpdate: number;
-    resources?: Partial<Resources>;
-}
+
+// --- GameState for Client-Server communication ---
+// The client will always receive the combined state
+export type GameState = PlayerState & WorldState;
