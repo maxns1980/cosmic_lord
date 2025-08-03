@@ -50,6 +50,7 @@ import ExploreModal from './components/ExploreModal';
 import HarvestModal from './components/HarvestModal';
 import AlliancePanel from './components/AlliancePanel';
 import DailyBonusModal from './components/DailyBonusModal';
+import Login from './components/Login';
 
 
 // --- Calculation Helpers (for display purposes) ---
@@ -165,6 +166,8 @@ const calculateProductions = (gameState: GameState) => {
 };
 
 function App() {
+  const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
+  const [username, setUsername] = useState<string | null>(localStorage.getItem('username'));
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('overview');
@@ -189,16 +192,34 @@ function App() {
     setTimeout(() => setNotification(null), 4000);
   }, []);
 
-  // Fetch game state periodically from the server
+  const handleLoginSuccess = (token: string, loggedInUsername: string) => {
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('username', loggedInUsername);
+      setAuthToken(token);
+      setUsername(loggedInUsername);
+      setGameState(null);
+  };
+
+  const handleLogout = () => {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('username');
+      setAuthToken(null);
+      setUsername(null);
+      setGameState(null);
+  };
+
   useEffect(() => {
-    if (!API_URL) {
-        console.error("VITE_API_URL is not set. The application cannot connect to the backend.");
-        setNotification("Błąd krytyczny: Brak konfiguracji serwera!");
-        return;
-    }
+    if (!authToken) return;
+
     const fetchState = async () => {
         try {
-            const response = await fetch(`${API_URL}/api/state`);
+            const response = await fetch(`${API_URL}/api/state`, {
+                headers: { 'Authorization': authToken }
+            });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (!response.ok) {
                 console.error('Failed to fetch state from server');
                 return;
@@ -210,11 +231,11 @@ function App() {
         }
     };
 
-    fetchState(); // Initial fetch
-    const interval = setInterval(fetchState, 2000); // Poll every 2 seconds
+    fetchState();
+    const interval = setInterval(fetchState, 5000);
 
     return () => clearInterval(interval);
-  }, [API_URL]);
+  }, [API_URL, authToken]);
 
   useEffect(() => {
     if (gameState?.dailyBonus?.isAvailable) {
@@ -223,13 +244,15 @@ function App() {
     }
   }, [gameState?.dailyBonus?.isAvailable, gameState?.dailyBonus?.rewards]);
   
-  // Generic action handler to send commands to the server
   const performAction = async (type: string, payload: any) => {
-      if (!API_URL) return;
+      if (!API_URL || !authToken) return;
       try {
           const response = await fetch(`${API_URL}/api/action`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': authToken
+              },
               body: JSON.stringify({ type, payload }),
           });
           const result = await response.json();
@@ -239,9 +262,9 @@ function App() {
           if (result.message) {
               showNotification(result.message);
           }
-          // Optimistically update or just wait for next poll
-          const freshState = await (await fetch(`${API_URL}/api/state`)).json();
-          setGameState(freshState);
+          if (result.gameState) {
+              setGameState(result.gameState);
+          }
       } catch (error) {
           console.error(`Error performing action ${type}:`, error);
           showNotification((error as Error).message);
@@ -342,6 +365,10 @@ function App() {
     }
   }, []);
 
+  if (!authToken || !username) {
+      return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
   if (!gameState) {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
@@ -394,6 +421,8 @@ function App() {
             onInfoClick={() => setIsInfoModalOpen(true)}
             onEncyclopediaClick={() => setIsEncyclopediaOpen(true)}
             onInventoryClick={() => setIsInventoryOpen(true)}
+            username={username}
+            onLogout={handleLogout}
         />
         <main className="container mx-auto p-4 flex flex-col xl:flex-row gap-4">
            <Navigation

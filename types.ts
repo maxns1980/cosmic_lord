@@ -758,3 +758,13 @@ export interface GameState {
     lastEventCheckTime: number;
     lastBonusClaimTime: number;
 }
+
+export interface SleeperNpcState {
+    points: number;
+    name: string;
+    image: string;
+    personality: NPCPersonality;
+    developmentSpeed?: number;
+    lastUpdate: number;
+    resources?: Partial<Resources>;
+}

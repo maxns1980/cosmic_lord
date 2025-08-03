@@ -30,6 +30,8 @@ interface HeaderProps {
     onInfoClick: () => void;
     onEncyclopediaClick: () => void;
     onInventoryClick: () => void;
+    username: string;
+    onLogout: () => void;
 }
 
 const formatNumber = (num: number): string => {
@@ -278,7 +280,7 @@ const CreditsDisplay: React.FC<{ value: number; hourlyIncome: number }> = ({ val
     )
 }
 
-const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, credits, blackMarketHourlyIncome, resourceVeinBonus, inventory, activeBoosts, solarFlare, stellarAuroraState, npcFleetMissions, colonies, moons, activeLocationId, onLocationChange, onInfoClick, onEncyclopediaClick, onInventoryClick }) => {
+const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, credits, blackMarketHourlyIncome, resourceVeinBonus, inventory, activeBoosts, solarFlare, stellarAuroraState, npcFleetMissions, colonies, moons, activeLocationId, onLocationChange, onInfoClick, onEncyclopediaClick, onInventoryClick, username, onLogout }) => {
     const isProdBoosted = !!activeBoosts[BoostType.RESOURCE_PRODUCTION_BOOST];
 
     return (
@@ -295,12 +297,20 @@ const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, c
                             activeLocationId={activeLocationId}
                             onLocationChange={onLocationChange}
                         />
-                        <button onClick={onInfoClick} className="text-2xl text-gray-400 hover:text-cyan-300 transition-colors duration-200" aria-label="Informacje o grze">
+                         <button onClick={onInfoClick} className="text-2xl text-gray-400 hover:text-cyan-300 transition-colors duration-200" aria-label="Informacje o grze">
                             ℹ️
                         </button>
                          <button onClick={onEncyclopediaClick} className="text-2xl text-gray-400 hover:text-cyan-300 transition-colors duration-200" aria-label="Encyklopedia gry">
                             📖
                         </button>
+                    </div>
+                     <div className="flex items-center gap-3 self-start xl:self-center">
+                         <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-lg">
+                            <span className="text-gray-300 font-semibold">{username}</span>
+                            <button onClick={onLogout} className="text-sm bg-red-800 hover:bg-red-700 text-white font-bold py-1 px-2 rounded-md transition-colors" title="Wyloguj">
+                                ⏻
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex w-full xl:w-auto flex-wrap justify-center xl:justify-end items-center gap-2">

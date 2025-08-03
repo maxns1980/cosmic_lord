@@ -11,16 +11,31 @@ export interface Database {
     Tables: {
       game_state: {
         Row: {
-          id: number
+          user_id: string
           state: Json
         }
         Insert: {
-          id?: number
+          user_id: string
           state: Json
         }
         Update: {
-          id?: number
+          user_id?: string
           state?: Json
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          username: string
+          password: string
+        }
+        Insert: {
+          username: string
+          password: string
+        }
+        Update: {
+          username?: string
+          password?: string
         }
         Relationships: []
       }
