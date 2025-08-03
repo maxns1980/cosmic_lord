@@ -1,5 +1,5 @@
 import {
-    GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, DebrisField, InfoMessage, BattleReport, SpyReport, MerchantStatus, MerchantInfoMessage, NPCFleetMission, BattleMessage, SpyMessage, EspionageEventMessage, OfflineSummaryMessage, ExpeditionMessage, ColonizationMessage, MoonCreationMessage, ExplorationMessage, NPCState, Message, GameObject, QueueItemType, Loot, Resources, Fleet, ShipOffer, AncientArtifactStatus, PirateMercenaryStatus, SpacePlagueState, ContrabandStatus, ContrabandOfferType, ActiveBoosts, BoostType, TestableEventType, GhostShipStatus, AncientArtifactChoice, GhostShipChoice, PlanetSpecialization,
+    GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, DebrisField, InfoMessage, BattleReport, SpyReport, MerchantStatus, MerchantInfoMessage, NPCFleetMission, BattleMessage, SpyMessage, EspionageEventMessage, OfflineSummaryMessage, ExpeditionMessage, ColonizationMessage, MoonCreationMessage, ExplorationMessage, NPCState, Message, GameObject, QueueItemType, Loot, Resources, Fleet, ShipOffer, AncientArtifactStatus, PirateMercenaryStatus, SpacePlagueState, ContrabandStatus, ContrabandOfferType, ActiveBoosts, BoostType, TestableEventType, GhostShipStatus, AncientArtifactChoice, GhostShipChoice, PlanetSpecialization, AncientArtifactMessage,
     Alliance
 } from './types.js';
 import { ALL_GAME_OBJECTS, TICK_INTERVAL, getInitialState, PLAYER_HOME_COORDS, ALL_SHIP_DATA, PHALANX_SCAN_COST } from './constants.js';
@@ -233,7 +233,71 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
         case 'CLAIM_BONUS':
         case 'DISMISS_BONUS':
         case 'GHOST_SHIP_CHOICE':
-        case 'ANCIENT_ARTIFACT_CHOICE':
+        case 'ANCIENT_ARTIFACT_CHOICE': {
+            if (gameState.ancientArtifactState.status !== AncientArtifactStatus.AWAITING_CHOICE) {
+                return { error: 'No artifact choice to be made.' };
+            }
+            const { choice } = payload;
+            const STUDY_COST = { credits: 5000, crystal: 2000 };
+            const SELL_GAIN = 10000;
+
+            let message: Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'> = {
+                type: 'ancient_artifact',
+                subject: 'Decyzja ws. Artefaktu',
+                choice: choice,
+                outcome: {}
+            };
+
+            switch (choice as AncientArtifactChoice) {
+                case AncientArtifactChoice.STUDY:
+                    if (gameState.credits < STUDY_COST.credits || gameState.resources.crystal < STUDY_COST.crystal) {
+                        return { error: 'Niewystarczające surowce do zbadania artefaktu.' };
+                    }
+                    gameState.credits -= STUDY_COST.credits;
+                    gameState.resources.crystal -= STUDY_COST.crystal;
+
+                    const successChance = 0.4; // 40% chance of success
+                    if (Math.random() < successChance) {
+                        // Find a random technology to level up
+                        const availableTechs = (Object.keys(gameState.research) as ResearchType[]).filter(
+                            t => t !== ResearchType.GRAVITON_TECHNOLOGY // Exclude special techs
+                        );
+                        const randomTech = availableTechs[Math.floor(Math.random() * availableTechs.length)];
+                        
+                        gameState.research[randomTech]++;
+                        const newLevel = gameState.research[randomTech];
+
+                        message.subject = 'Sukces Badawczy!';
+                        message.outcome = {
+                            success: true,
+                            technology: randomTech,
+                            newLevel: newLevel
+                        };
+                    } else {
+                        message.subject = 'Porażka Badawcza';
+                        message.outcome = { success: false };
+                    }
+                    break;
+
+                case AncientArtifactChoice.SELL:
+                    gameState.credits += SELL_GAIN;
+                    message.subject = 'Sprzedano Artefakt';
+                    message.outcome = { creditsGained: SELL_GAIN };
+                    break;
+                    
+                case AncientArtifactChoice.IGNORE:
+                    message.subject = 'Zignorowano Artefakt';
+                    break;
+
+                default:
+                    return { error: 'Nieprawidłowy wybór.' };
+            }
+            
+            gameState.ancientArtifactState.status = AncientArtifactStatus.INACTIVE;
+            addMessage(gameState, message);
+            
+            return { message: 'Decyzja została podjęta.' };
+        }
         case 'CONTRABAND_DEAL':
         case 'ACTIVATE_BOOST':
             // Placeholder logic
