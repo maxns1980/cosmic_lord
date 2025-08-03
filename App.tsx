@@ -171,7 +171,7 @@ function App() {
   const [isBonusModalOpen, setIsBonusModalOpen] = useState(false);
   const [bonusRewards, setBonusRewards] = useState<Partial<Resources & { credits: number }>>({});
 
-  const API_URL = 'https://cosmic-lord-backend.onrender.com';
+  const API_URL = 'https://cosmic-lord-1s6k.onrender.com';
 
   const showNotification = useCallback((message: string) => {
     setNotification(message);

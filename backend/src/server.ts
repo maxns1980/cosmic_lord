@@ -3,7 +3,6 @@ import cors, { CorsOptions } from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exit } from 'node:process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
@@ -39,7 +38,7 @@ const corsOptions: CorsOptions = {
     optionsSuccessStatus: 200
 };
 
-app.use(cors(corsOptions) as RequestHandler);
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -104,6 +103,6 @@ loadGameState().then(() => {
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
-        exit(1);
+        process.exit(1);
     }
 });
