@@ -74,81 +74,99 @@ const calculateMaxResources = (buildings: BuildingLevels): Resources => {
     };
 };
 
-const calculateProductions = (buildings: BuildingLevels, resourceVeinBonus: ResourceVeinBonus, colonies: Colony[], activeBoosts: ActiveBoosts, solarFlare: SolarFlareState, fleet: Fleet, stellarAurora: StellarAuroraState, research: ResearchLevels) => {
-    const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
-    const energyTechBonus = 1 + (energyTechLevel * 0.02);
-
-    let solarPlantProduction = (BUILDING_DATA[BuildingType.SOLAR_PLANT].production?.(buildings[BuildingType.SOLAR_PLANT]) ?? 0) * energyTechBonus;
+const calculateProductions = (gameState: GameState) => {
+    const { buildings, colonies, resourceVeinBonus, activeBoosts, solarFlare, fleet, stellarAuroraState, research } = gameState;
     
-    if (stellarAurora.active) {
-        solarPlantProduction *= 1.30;
-    }
+    let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
+    let totalEnergy = { produced: 0, consumed: 0 };
 
-    let energyProduction = solarPlantProduction;
+    const allPlanets = [
+        { id: PLAYER_HOME_COORDS, buildings: buildings, fleet: fleet, isHomeworld: true, specialization: PlanetSpecialization.NONE },
+        ...Object.values(colonies),
+    ];
 
-    // Add Fusion Reactor production
-    if (buildings[BuildingType.FUSION_REACTOR] > 0) {
-        energyProduction += (BUILDING_DATA[BuildingType.FUSION_REACTOR].production?.(buildings[BuildingType.FUSION_REACTOR]) ?? 0) * energyTechBonus;
-    }
+    for (const planet of allPlanets) {
+        const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
+        const energyTechBonus = 1 + (energyTechLevel * 0.02);
 
-    // Add Solar Satellite production
-    const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
-    energyProduction += (fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
-
-    if (solarFlare.status === SolarFlareStatus.POWER_BOOST) {
-        energyProduction *= 1.5;
-    }
-    
-    const energyConsumption = (Object.keys(buildings) as BuildingType[]).reduce((total, type) => {
-        const buildingInfo = BUILDING_DATA[type as BuildingType];
-        if (type !== BuildingType.FUSION_REACTOR && buildings[type as BuildingType] > 0) {
-           return total + (buildingInfo.energyConsumption?.(buildings[type as BuildingType]) ?? 0);
+        let solarPlantProduction = (BUILDING_DATA[BuildingType.SOLAR_PLANT].production?.(planet.buildings[BuildingType.SOLAR_PLANT]) ?? 0) * energyTechBonus;
+        if (stellarAuroraState.active) {
+            solarPlantProduction *= 1.30;
         }
-        return total;
-    }, 0);
-    
-    const efficiency = energyProduction >= energyConsumption ? 1 : (energyConsumption > 0 ? Math.max(0, energyProduction / energyConsumption) : 1);
-    
-    let metalProd = (BUILDING_DATA[BuildingType.METAL_MINE].production?.(buildings[BuildingType.METAL_MINE]) ?? 0);
-    let crystalProd = (BUILDING_DATA[BuildingType.CRYSTAL_MINE].production?.(buildings[BuildingType.CRYSTAL_MINE]) ?? 0);
-    let deuteriumProd = (BUILDING_DATA[BuildingType.DEUTERIUM_SYNTHESIZER].production?.(buildings[BuildingType.DEUTERIUM_SYNTHESIZER]) ?? 0);
+
+        let planetEnergyProduction = solarPlantProduction;
+
+        if (planet.buildings[BuildingType.FUSION_REACTOR] > 0) {
+            planetEnergyProduction += (BUILDING_DATA[BuildingType.FUSION_REACTOR].production?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0) * energyTechBonus;
+        }
+
+        if (planet.id === PLAYER_HOME_COORDS) {
+             const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
+             planetEnergyProduction += (fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
+        }
+       
+        if (solarFlare.status === SolarFlareStatus.POWER_BOOST) {
+            planetEnergyProduction *= 1.5;
+        }
+
+        const planetEnergyConsumption = (Object.keys(planet.buildings) as BuildingType[]).reduce((total, type) => {
+            const buildingInfo = BUILDING_DATA[type as BuildingType];
+            if (type !== BuildingType.FUSION_REACTOR && planet.buildings[type as BuildingType] > 0) {
+               return total + (buildingInfo.energyConsumption?.(planet.buildings[type as BuildingType]) ?? 0);
+            }
+            return total;
+        }, 0);
+        
+        const efficiency = planetEnergyProduction >= planetEnergyConsumption ? 1 : (planetEnergyConsumption > 0 ? Math.max(0, planetEnergyProduction / planetEnergyConsumption) : 1);
+
+        let metalProd = (BUILDING_DATA[BuildingType.METAL_MINE].production?.(planet.buildings[BuildingType.METAL_MINE]) ?? 0) * efficiency;
+        let crystalProd = (BUILDING_DATA[BuildingType.CRYSTAL_MINE].production?.(planet.buildings[BuildingType.CRYSTAL_MINE]) ?? 0) * efficiency;
+        let deuteriumProd = (BUILDING_DATA[BuildingType.DEUTERIUM_SYNTHESIZER].production?.(planet.buildings[BuildingType.DEUTERIUM_SYNTHESIZER]) ?? 0) * efficiency;
+        
+        if (planet.buildings[BuildingType.FUSION_REACTOR] > 0) {
+            deuteriumProd -= BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0;
+        }
+
+        if (!planet.isHomeworld) {
+            metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
+            crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
+            let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
+            if (planet.specialization === PlanetSpecialization.DEUTERIUM_BOOST) {
+                colonyDeuterium *= 1.10; // 10% bonus
+            }
+            deuteriumProd += colonyDeuterium;
+        }
+        
+        totalProductions.metal += metalProd;
+        totalProductions.crystal += crystalProd;
+        totalProductions.deuterium += deuteriumProd;
+        totalEnergy.produced += planetEnergyProduction;
+        totalEnergy.consumed += planetEnergyConsumption;
+    }
+
 
     if (resourceVeinBonus?.active && resourceVeinBonus.resourceType) {
-        if (resourceVeinBonus.resourceType === 'metal') metalProd *= resourceVeinBonus.bonusMultiplier;
-        else if (resourceVeinBonus.resourceType === 'crystal') crystalProd *= resourceVeinBonus.bonusMultiplier;
-        else if (resourceVeinBonus.resourceType === 'deuterium') deuteriumProd *= resourceVeinBonus.bonusMultiplier;
+        if (resourceVeinBonus.resourceType === 'metal') totalProductions.metal *= resourceVeinBonus.bonusMultiplier;
+        else if (resourceVeinBonus.resourceType === 'crystal') totalProductions.crystal *= resourceVeinBonus.bonusMultiplier;
+        else if (resourceVeinBonus.resourceType === 'deuterium') totalProductions.deuterium *= resourceVeinBonus.bonusMultiplier;
     }
 
     if (activeBoosts?.[BoostType.RESOURCE_PRODUCTION_BOOST]) {
         const boostPercent = activeBoosts[BoostType.RESOURCE_PRODUCTION_BOOST]!.level / 100;
-        metalProd *= (1 + boostPercent);
-        crystalProd *= (1 + boostPercent);
-        deuteriumProd *= (1 + boostPercent);
-    }
-
-    // Colony and specialization bonuses
-    colonies.forEach(colony => {
-        metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
-        crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
-
-        let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
-        if(colony.specialization === PlanetSpecialization.DEUTERIUM_BOOST) {
-            colonyDeuterium *= 1.10; // 10% bonus
-        }
-        deuteriumProd += colonyDeuterium;
-    });
-
-    // Subtract Fusion Reactor consumption
-    if (buildings[BuildingType.FUSION_REACTOR] > 0) {
-        const fusionReactorDeuteriumConsumption = BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(buildings[BuildingType.FUSION_REACTOR]) ?? 0;
-        deuteriumProd -= fusionReactorDeuteriumConsumption;
+        totalProductions.metal *= (1 + boostPercent);
+        totalProductions.crystal *= (1 + boostPercent);
+        totalProductions.deuterium *= (1 + boostPercent);
     }
      
     return {
-        metal: metalProd,
-        crystal: crystalProd,
-        deuterium: deuteriumProd,
-        energy: { produced: energyProduction, consumed: energyConsumption, efficiency: efficiency, techBonus: energyTechLevel * 2 }
+        metal: totalProductions.metal,
+        crystal: totalProductions.crystal,
+        deuterium: totalProductions.deuterium,
+        energy: { 
+            produced: totalEnergy.produced, 
+            consumed: totalEnergy.consumed, 
+            efficiency: totalEnergy.produced >= totalEnergy.consumed ? 1 : (totalEnergy.consumed > 0 ? totalEnergy.produced / totalEnergy.consumed : 1)
+        }
     };
 };
 
@@ -313,23 +331,32 @@ function App() {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
-  const { resources, buildings, research, shipLevels, fleet, defenses, fleetMissions, npcFleetMissions, messages, buildingQueue, shipyardQueue, credits, merchantState, pirateMercenaryState, resourceVeinBonus, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, galacticGoldRushState, stellarAuroraState, npcStates, sleeperNpcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
+  const { resources, buildings, research, shipLevels, fleet, defenses, fleetMissions, npcFleetMissions, messages, buildingQueue, shipyardQueue, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, sleeperNpcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets, homeworldMaxFields } = gameState;
 
   const isMoon = activeLocationId.endsWith('_moon');
-  const locationId = isMoon ? activeLocationId.replace('_moon', '') : activeLocationId;
+  const planetId = isMoon ? activeLocationId.replace('_moon', '') : activeLocationId;
   
-  const activeFleet = (isMoon ? moons[locationId]?.fleet : fleet) || fleet;
-  const activeBuildings = (isMoon ? moons[locationId]?.buildings : buildings) || buildings;
-  const activeDefenses = (isMoon ? moons[locationId]?.defenses : defenses) || defenses;
-  const activeBuildingQueue = (isMoon ? moons[locationId]?.buildingQueue : buildingQueue) || [];
-  const activeShipyardQueue = (isMoon ? moons[locationId]?.shipyardQueue : shipyardQueue) || [];
+  let activeEntity: any;
+    if (isMoon) {
+        activeEntity = moons[planetId];
+    } else if (planetId === PLAYER_HOME_COORDS) {
+        activeEntity = { buildings, fleet, defenses, buildingQueue, shipyardQueue, maxFields: homeworldMaxFields };
+    } else {
+        activeEntity = colonies[planetId];
+    }
+  
+  const activeFleet = activeEntity?.fleet || {};
+  const activeBuildings = activeEntity?.buildings || {};
+  const activeDefenses = activeEntity?.defenses || {};
+  const activeBuildingQueue = activeEntity?.buildingQueue || [];
+  const activeShipyardQueue = activeEntity?.shipyardQueue || [];
+  const maxFields = activeEntity?.maxFields || 0;
 
-  const productions = calculateProductions(buildings, resourceVeinBonus, colonies, activeBoosts, solarFlare, fleet, stellarAuroraState, research);
+  const productions = calculateProductions(gameState);
   const maxResources = calculateMaxResources(buildings);
   const unreadMessagesCount = messages.filter(m => !m.isRead).length;
   
   const usedFields = Object.values(activeBuildings).reduce((sum, level) => sum + level, 0);
-  let maxFields = isMoon ? (moons[locationId]?.maxFields || 0) : gameState.homeworldMaxFields;
   const maxFleetSlots = 1 + (research[ResearchType.COMPUTER_TECHNOLOGY] || 0) + (buildings[BuildingType.COMMAND_CENTER] || 0);
 
   const availableProbesOnActiveLocation = activeFleet[ShipType.SPY_PROBE] || 0;
@@ -346,11 +373,11 @@ function App() {
             productions={productions}
             credits={credits}
             blackMarketHourlyIncome={nextBlackMarketIncome}
-            resourceVeinBonus={resourceVeinBonus}
+            resourceVeinBonus={gameState.resourceVeinBonus}
             inventory={inventory}
             activeBoosts={activeBoosts}
             solarFlare={solarFlare}
-            stellarAuroraState={stellarAuroraState}
+            stellarAuroraState={gameState.stellarAuroraState}
             npcFleetMissions={npcFleetMissions}
             colonies={colonies}
             moons={moons}

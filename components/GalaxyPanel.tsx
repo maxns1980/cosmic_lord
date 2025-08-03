@@ -11,7 +11,7 @@ interface GalaxyPanelProps {
     npcStates: NPCStates;
     sleeperNpcStates: SleeperNpcStates;
     debrisFields: Record<string, DebrisField>;
-    colonies: Colony[];
+    colonies: Record<string, Colony>;
     playerState: GameState;
     favoritePlanets: string[];
     onToggleFavorite: (coords: string) => void;
@@ -187,7 +187,7 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
         const position = i + 1;
         const coords = `${galaxy}:${system}:${position}`;
         const isPlayerHome = coords === PLAYER_HOME_COORDS;
-        const playerColony = colonies.find(c => c.id === coords);
+        const playerColony = colonies[coords];
         const npc = npcStates[coords];
         const sleeperNpc = sleeperNpcStates[coords];
         const debris = debrisFields[coords];
@@ -202,7 +202,7 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
             planetData = { name: 'Planeta Matka', player: 'Ty', image: '🌍', isPlayer: true, isHome: true };
             borderColorClass = 'border-cyan-400';
         } else if (playerColony) {
-            planetData = { name: playerColony.name, player: 'Ty (Kolonia)', image: '🌍', isPlayer: true };
+            planetData = { name: playerColony.name, player: 'Ty (Kolonia)', image: '🪐', isPlayer: true };
             borderColorClass = 'border-cyan-400';
         } else if (npc) {
             planetData = { name: `Planeta ${npc.name}`, player: `${npc.name} (NPC)`, image: npc.image, isPlayer: false, developmentSpeed: npc.developmentSpeed };
@@ -228,6 +228,7 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
     const hasRecyclers = (playerState.fleet[ShipType.RECYCLER] || 0) > 0;
     const canDoExpedition = hasAstrophysics && hasResearchVessel;
     const expeditionDisabledReason = !hasAstrophysics ? 'Wymagana Astrofizyka' : !hasResearchVessel ? 'Wymagany Okręt Badawczy' : 'Wyślij flotę na wyprawę';
+    const isTargetOccupied = (targetCoords: string) => !!(npcStates[targetCoords] || colonies[targetCoords] || targetCoords === PLAYER_HOME_COORDS);
 
     return (
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
@@ -247,7 +248,13 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
                     <PlanetRow 
                         key={planet.coords} 
                         planet={planet} 
-                        onAction={onAction}
+                        onAction={(coords, mission) => {
+                            if (mission === MissionType.COLONIZE && isTargetOccupied(coords)) {
+                                alert("Ta pozycja jest już zajęta!");
+                                return;
+                            }
+                            onAction(coords, mission)
+                        }}
                         onSpy={onSpy}
                         onExplore={onExplore}
                         onHarvest={onHarvest}

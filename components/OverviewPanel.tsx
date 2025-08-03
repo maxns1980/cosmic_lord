@@ -178,8 +178,8 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, o
     const { colonies, moons, fleetMissions, npcFleetMissions, buildingQueue } = gameState;
 
     const allPlanets = [
-        { id: PLAYER_HOME_COORDS, name: 'Planeta Matka' },
-        ...colonies
+        { id: PLAYER_HOME_COORDS, name: 'Planeta Matka', queue: buildingQueue, isHome: true },
+        ...Object.values(colonies).map(c => ({ id: c.id, name: c.name, queue: c.buildingQueue, isHome: false }))
     ];
 
     const allMissions = [...fleetMissions, ...npcFleetMissions].sort((a, b) => a.arrivalTime - b.arrivalTime);
@@ -197,8 +197,8 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, o
                             key={planet.id}
                             planet={planet}
                             moon={moons[planet.id]}
-                            queue={planet.id === PLAYER_HOME_COORDS ? buildingQueue : []} // Note: simplified queue view
-                            isHome={planet.id === PLAYER_HOME_COORDS}
+                            queue={planet.queue}
+                            isHome={planet.isHome}
                         />
                     ))}
                  </div>

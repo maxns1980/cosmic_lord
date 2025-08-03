@@ -13,7 +13,6 @@ interface HeaderProps {
             produced: number;
             consumed: number;
             efficiency: number;
-            techBonus: number;
         }
     };
     credits: number;
@@ -24,7 +23,7 @@ interface HeaderProps {
     solarFlare: SolarFlareState;
     stellarAuroraState: StellarAuroraState;
     npcFleetMissions: NPCFleetMission[];
-    colonies: Colony[];
+    colonies: Record<string, Colony>;
     moons: Record<string, Moon>;
     activeLocationId: string;
     onLocationChange: (id: string) => void;
@@ -64,7 +63,7 @@ const Countdown: React.FC<{ targetTime: number, onEnd?: () => void }> = ({ targe
 }
 
 const LocationSwitcher: React.FC<{
-    colonies: Colony[];
+    colonies: Record<string, Colony>;
     moons: Record<string, Moon>;
     activeLocationId: string;
     onLocationChange: (id: string) => void;
@@ -77,7 +76,7 @@ const LocationSwitcher: React.FC<{
         locations.push({ id: `${PLAYER_HOME_COORDS}_moon`, name: `  -> Księżyc [${PLAYER_HOME_COORDS}]` });
     }
 
-    colonies.forEach(colony => {
+    Object.values(colonies).forEach(colony => {
         locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });
         if (moons[colony.id]) {
             locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${colony.id}]` });
