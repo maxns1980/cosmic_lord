@@ -1,5 +1,24 @@
+
 import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
-import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
+import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS, NPC_NAMES, NPC_IMAGES } from '../constants.js';
+
+export const generateNewNpc = (): NPCState => {
+    const personalityValues = Object.values(NPCPersonality);
+    const personality = personalityValues[Math.floor(Math.random() * personalityValues.length)];
+    const name = NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)];
+    const image = NPC_IMAGES[Math.floor(Math.random() * NPC_IMAGES.length)];
+    // Development speed between 0.8 (slower) and 1.5 (faster)
+    const developmentSpeed = 0.8 + Math.random() * 0.7;
+
+    return {
+        ...INITIAL_NPC_STATE,
+        personality,
+        name,
+        image,
+        developmentSpeed,
+        lastUpdateTime: Date.now(),
+    };
+};
 
 const calculateNpcProductions = (npc: NPCState) => {
     const { buildings, fleet, developmentSpeed = 1.0 } = npc;
@@ -316,7 +335,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
     return updatedNpc;
 }
 
-const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission | null => {
+const missionDecisionAI = (npc: NPCState, sourceCoords: string): { mission: NPCFleetMission | null, updatedFleet: Fleet } => {
      const militaryPower = Object.entries(npc.fleet).reduce((power, [shipId, count]) => {
         const shipData = ALL_SHIP_DATA[shipId as ShipType];
         if (shipData && count) {
@@ -327,43 +346,37 @@ const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission
         }
         return power;
     }, 0);
+    
+    const updatedFleet = { ...npc.fleet };
 
     // Aggressive NPCs are more likely to act
     if (npc.personality === NPCPersonality.AGGRESSIVE && militaryPower > 15000) {
         // 5% chance to attack
         if (Math.random() < 0.05) {
-            const attackingFleet: Partial<Fleet> = {};
+            const attackingFleet: Fleet = {};
 
-            const bcToSend = Math.floor((npc.fleet[ShipType.BATTLECRUISER] || 0) * 0.5);
-            if (bcToSend > 0) attackingFleet[ShipType.BATTLECRUISER] = bcToSend;
-
-            const destToSend = Math.floor((npc.fleet[ShipType.DESTROYER] || 0) * 0.5);
-            if (destToSend > 0) attackingFleet[ShipType.DESTROYER] = destToSend;
-
-            const bsToSend = Math.floor((npc.fleet[ShipType.BATTLESHIP] || 0) * 0.5);
-            if (bsToSend > 0) attackingFleet[ShipType.BATTLESHIP] = bsToSend;
-
-            const crToSend = Math.floor((npc.fleet[ShipType.CRUISER] || 0) * 0.5);
-            if (crToSend > 0) attackingFleet[ShipType.CRUISER] = crToSend;
+            const createAttackWave = (shipType: ShipType, ratio: number) => {
+                const toSend = Math.floor((updatedFleet[shipType] || 0) * ratio);
+                if (toSend > 0) {
+                    attackingFleet[shipType] = toSend;
+                    updatedFleet[shipType] = (updatedFleet[shipType] || 0) - toSend;
+                }
+            };
             
-            const hfToSend = Math.floor((npc.fleet[ShipType.HEAVY_FIGHTER] || 0) * 0.5);
-            if (hfToSend > 0) attackingFleet[ShipType.HEAVY_FIGHTER] = hfToSend;
-            
-            const mfToSend = Math.floor((npc.fleet[ShipType.MEDIUM_FIGHTER] || 0) * 0.5);
-            if (mfToSend > 0) attackingFleet[ShipType.MEDIUM_FIGHTER] = mfToSend;
-            
-            const lfToSend = Math.floor((npc.fleet[ShipType.LIGHT_FIGHTER] || 0) * 0.5);
-            if (lfToSend > 0) attackingFleet[ShipType.LIGHT_FIGHTER] = lfToSend;
-            
-            const cargoToSend = Math.floor((npc.fleet[ShipType.CARGO_SHIP] || 0) * 0.5);
-            if (cargoToSend > 0) attackingFleet[ShipType.CARGO_SHIP] = cargoToSend;
-
+            createAttackWave(ShipType.BATTLECRUISER, 0.5);
+            createAttackWave(ShipType.DESTROYER, 0.5);
+            createAttackWave(ShipType.BATTLESHIP, 0.5);
+            createAttackWave(ShipType.CRUISER, 0.5);
+            createAttackWave(ShipType.HEAVY_FIGHTER, 0.5);
+            createAttackWave(ShipType.MEDIUM_FIGHTER, 0.5);
+            createAttackWave(ShipType.LIGHT_FIGHTER, 0.5);
+            createAttackWave(ShipType.CARGO_SHIP, 0.5);
 
             if (Object.values(attackingFleet).some(count => count && count > 0)) {
                 const now = Date.now();
                 const missionDuration = 30 * 60 * 1000; // 30 minutes for simplicity
 
-                return {
+                const mission = {
                     id: `npc-m-${now}-${Math.random()}`,
                     sourceCoords,
                     fleet: attackingFleet,
@@ -371,15 +384,18 @@ const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission
                     startTime: now,
                     arrivalTime: now + missionDuration
                 };
+                return { mission, updatedFleet };
             }
         } 
         // 10% chance to spy
         else if (Math.random() < 0.1) {
-             const hasProbes = (npc.research[ResearchType.SPY_TECHNOLOGY] || 0) > 0 && (npc.fleet[ShipType.SPY_PROBE] || 0) > 0;
+             const hasProbes = (npc.research[ResearchType.SPY_TECHNOLOGY] || 0) > 0 && (updatedFleet[ShipType.SPY_PROBE] || 0) > 0;
              if (hasProbes) {
                 const now = Date.now();
                 const missionDuration = 5 * 60 * 1000; // 5 minutes for spy
-                 return {
+                updatedFleet[ShipType.SPY_PROBE] = (updatedFleet[ShipType.SPY_PROBE] || 0) - 1;
+
+                const mission = {
                     id: `npc-m-${now}-${Math.random()}`,
                     sourceCoords,
                     fleet: { [ShipType.SPY_PROBE]: 1 },
@@ -387,10 +403,11 @@ const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission
                     startTime: now,
                     arrivalTime: now + missionDuration
                 };
+                return { mission, updatedFleet };
              }
         }
     }
-    return null;
+    return { mission: null, updatedFleet };
 }
 
 
@@ -415,8 +432,9 @@ export const evolveNpc = (npc: NPCState, offlineSeconds: number, coords: string,
     // 2. AI spending resources
     evolvedNpc = spendResourcesAI(evolvedNpc, isThreatened);
 
-    // 3. AI deciding to launch a mission
-    const mission = missionDecisionAI(evolvedNpc, coords);
+    // 3. AI deciding to launch a mission and update fleet
+    const { mission, updatedFleet } = missionDecisionAI(evolvedNpc, coords);
+    evolvedNpc.fleet = updatedFleet;
 
     // 4. Update timestamp
     evolvedNpc.lastUpdateTime = Date.now();

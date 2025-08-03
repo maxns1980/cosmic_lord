@@ -19,6 +19,8 @@ export const MERCHANT_CHECK_INTERVAL = (6 * 60 + 15) * 60 * 1000; // 6 hours 15 
 export const MERCHANT_SPAWN_CHANCE = 0.2; // 20%
 
 // --- NPC Management ---
+export const NPC_NAMES = [ "Xylar", "Vortex", "Cygnus", "Orion", "Draconis", "Vega", "Sirius", "Rigel", "Altair", "Pulsar", "Wraith", "Nomad", "Spectre", "Juggernaut", "Reaper" ];
+export const NPC_IMAGES = [ "👽", "👾", "🤖", "👹", "👺", "👻", "💀", "🤡", "🎃", "😈", "👹", "👺", "👻", "💀", "🤡" ];
 export const NPC_PURGE_INTERVAL = 10 * 60 * 1000; // 10 minutes
 export const NPC_PURGE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
 export const ACTIVE_NPC_LIMIT = 700; // Max number of fully simulated NPCs

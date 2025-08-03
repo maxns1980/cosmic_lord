@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import { GameState } from './types.js';
@@ -20,7 +21,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }) as any);
 
-let gameState: GameState | null = null;
+let gameState: any = null;
 
 async function loadGameState() {
     const { data, error } = await supabase
@@ -35,14 +36,14 @@ async function loadGameState() {
     }
 
     if (data) {
-        gameState = data.state as GameState;
+        gameState = data.state;
         console.log(`Game state loaded from Supabase.`);
     } else {
         console.log(`No saved game state found in Supabase. Creating new game state.`);
         gameState = getInitialState();
         const { error: insertError } = await supabase
             .from('game_state')
-            .insert({ id: 1, state: gameState as any });
+            .insert([{ id: 1, state: gameState }] as any);
         
         if (insertError) {
             console.error("Error creating initial game state in Supabase:", insertError);
@@ -56,7 +57,7 @@ async function saveGameState() {
         try {
             const { error } = await supabase
                 .from('game_state')
-                .update({ state: gameState as any })
+                .update({ state: gameState } as any)
                 .eq('id', 1);
 
             if (error) {

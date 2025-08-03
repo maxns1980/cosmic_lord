@@ -1,8 +1,9 @@
+
 import { GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, DebrisField, InfoMessage, BattleReport, SpyReport, MerchantStatus, MerchantInfoMessage, NPCFleetMission, BattleMessage, SpyMessage, EspionageEventMessage, OfflineSummaryMessage, ExpeditionMessage, ColonizationMessage, MoonCreationMessage, ExplorationMessage, NPCState, Message, GameObject, QueueItemType, Loot, Resources, Fleet, ShipOffer, AncientArtifactStatus, PirateMercenaryStatus, SpacePlagueState, SolarFlareState, ContrabandState, GhostShipState, GalacticGoldRushState, StellarAuroraState, PlanetSpecialization, Boost, BoostType, TestableEventType, SolarFlareStatus, ContrabandStatus, GhostShipStatus, AncientArtifactChoice, PirateMercenaryStatus as PirateStatus, ContrabandStatus as ContraStatus, MerchantStatus as MerchStatus, GhostShipStatus as GhostStatus, AncientArtifactStatus as ArtifactStatus, Moon, Colony } from './types.js';
-import { TICK_INTERVAL, ALL_GAME_OBJECTS, PLAYER_HOME_COORDS, TERRAFORMER_FIELDS_BONUS, HOMEWORLD_MAX_FIELDS_BASE, MERCHANT_CHECK_INTERVAL, MERCHANT_SPAWN_CHANCE, RANDOM_EVENT_CHECK_INTERVAL, NPC_PURGE_INTERVAL, NPC_HIBERNATION_THRESHOLD, ACTIVE_NPC_LIMIT, SLEEPER_NPC_UPDATE_INTERVAL, getInitialState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE } from './constants.js';
+import { TICK_INTERVAL, ALL_GAME_OBJECTS, PLAYER_HOME_COORDS, TERRAFORMER_FIELDS_BONUS, HOMEWORLD_MAX_FIELDS_BASE, MERCHANT_CHECK_INTERVAL, MERCHANT_SPAWN_CHANCE, RANDOM_EVENT_CHECK_INTERVAL, NPC_PURGE_INTERVAL, NPC_HIBERNATION_THRESHOLD, ACTIVE_NPC_LIMIT, SLEEPER_NPC_UPDATE_INTERVAL, getInitialState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE, NPC_PURGE_THRESHOLD } from './constants.js';
 import { calculateCombat } from './utils/combatLogic.js';
 import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
-import { evolveNpc, regenerateNpcFromSleeper, calculatePointsForNpc } from './utils/npcLogic.js';
+import { evolveNpc, regenerateNpcFromSleeper, calculatePointsForNpc, generateNewNpc } from './utils/npcLogic.js';
 
 let gameLoop: NodeJS.Timeout | null = null;
 let saveLoop: NodeJS.Timeout | null = null;
@@ -53,14 +54,95 @@ function gameTick(gameState: GameState) {
         return now < mission.returnTime;
     });
 
-    // NPC Evolution (Simplified)
-    if (now - gameState.lastGlobalNpcCheck > 5000) {
+    // --- Full NPC Lifecycle Management ---
+
+    // 1. Wake up sleeper NPCs targeted by player fleets
+    gameState.fleetMissions.forEach(mission => {
+        if ((mission.missionType === MissionType.ATTACK || mission.missionType === MissionType.SPY) && !mission.processedArrival) {
+            if (gameState.sleeperNpcStates[mission.targetCoords]) {
+                const sleeper = gameState.sleeperNpcStates[mission.targetCoords];
+                console.log(`Waking up sleeper NPC at ${mission.targetCoords} due to player fleet.`);
+                const regeneratedNpc = regenerateNpcFromSleeper(sleeper);
+                gameState.npcStates[mission.targetCoords] = regeneratedNpc;
+                delete gameState.sleeperNpcStates[mission.targetCoords];
+            }
+        }
+    });
+
+    // 2. Evolve active NPCs (less frequently to save CPU)
+    if (now - gameState.lastGlobalNpcCheck > 5000) { // Every 5 seconds
         Object.keys(gameState.npcStates).forEach(coords => {
-            const isThreatened = gameState.npcFleetMissions.some(m => m.id.startsWith('player-') && m.arrivalTime > now);
-            const { updatedNpc } = evolveNpc(gameState.npcStates[coords], 5, coords, isThreatened);
+            const npc = gameState.npcStates[coords];
+            const timeSinceLastUpdate = (now - npc.lastUpdateTime) / 1000;
+            const isThreatened = gameState.fleetMissions.some(m => m.targetCoords === coords && m.missionType === MissionType.ATTACK && !m.processedArrival);
+            const { updatedNpc, mission } = evolveNpc(npc, timeSinceLastUpdate, coords, isThreatened);
             gameState.npcStates[coords] = updatedNpc;
+            if (mission) {
+                gameState.npcFleetMissions.push(mission);
+            }
         });
         gameState.lastGlobalNpcCheck = now;
+    }
+
+    // 3. Hibernate inactive NPCs
+    if (Object.keys(gameState.npcStates).length > ACTIVE_NPC_LIMIT) {
+        Object.keys(gameState.npcStates).forEach(coords => {
+            const npc = gameState.npcStates[coords];
+            if (now - npc.lastUpdateTime > NPC_HIBERNATION_THRESHOLD) {
+                const points = calculatePointsForNpc(npc);
+                gameState.sleeperNpcStates[coords] = {
+                    name: npc.name,
+                    image: npc.image,
+                    personality: npc.personality,
+                    developmentSpeed: npc.developmentSpeed || 1.0,
+                    points: points,
+                    lastUpdate: now,
+                    resources: npc.resources
+                };
+                delete gameState.npcStates[coords];
+            }
+        });
+    }
+    
+    // 4. Update sleeper NPCs' points periodically
+    if (now - gameState.lastSleeperNpcCheck > SLEEPER_NPC_UPDATE_INTERVAL) {
+        Object.values(gameState.sleeperNpcStates).forEach(sleeper => {
+            const timeDiffSeconds = (now - sleeper.lastUpdate) / 1000;
+            const pointsIncrease = (sleeper.developmentSpeed * 10) * (timeDiffSeconds / 3600);
+            sleeper.points += pointsIncrease;
+            sleeper.lastUpdate = now;
+        });
+        gameState.lastSleeperNpcCheck = now;
+    }
+
+    // 5. Purge very old NPCs and spawn new ones
+    if (now - gameState.lastNpcPurgeTime > NPC_PURGE_INTERVAL) {
+        // Purge
+        Object.keys(gameState.sleeperNpcStates).forEach(coords => {
+            if (now - gameState.sleeperNpcStates[coords].lastUpdate > NPC_PURGE_THRESHOLD) {
+                delete gameState.sleeperNpcStates[coords];
+            }
+        });
+
+        // Spawn
+        const totalNpcs = Object.keys(gameState.npcStates).length + Object.keys(gameState.sleeperNpcStates).length;
+        if (totalNpcs < ACTIVE_NPC_LIMIT) {
+            const newNpcCount = Math.min(10, ACTIVE_NPC_LIMIT - totalNpcs); // Spawn up to 10 new NPCs at a time
+            for (let i = 0; i < newNpcCount; i++) {
+                // Find an empty slot (simple random for now, could be more complex)
+                const galaxy = Math.floor(Math.random() * 3) + 1;
+                const system = Math.floor(Math.random() * 499) + 1;
+                const position = Math.floor(Math.random() * 15) + 1;
+                const coords = `${galaxy}:${system}:${position}`;
+
+                const isOccupied = gameState.npcStates[coords] || gameState.sleeperNpcStates[coords] || gameState.colonies[coords];
+                if (!isOccupied) {
+                    const newNpc = generateNewNpc();
+                    gameState.npcStates[coords] = newNpc;
+                }
+            }
+        }
+        gameState.lastNpcPurgeTime = now;
     }
 }
 
