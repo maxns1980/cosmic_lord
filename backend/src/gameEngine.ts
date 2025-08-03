@@ -3,7 +3,7 @@ import {
     Alliance
 } from './types.js';
 import { ALL_GAME_OBJECTS, TICK_INTERVAL, getInitialState, PLAYER_HOME_COORDS, ALL_SHIP_DATA, PHALANX_SCAN_COST } from './constants.js';
-import { calculateProductions } from './utils/gameLogic.js';
+import { calculateProductions, calculateMaxResources } from './utils/gameLogic.js';
 import { calculateCombat } from './utils/combatLogic.js';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
 
@@ -104,9 +104,13 @@ export function startGameEngine(gameState: GameState, saveGameState: () => Promi
 
         // 1. Resource production
         const productions = calculateProductions(gameState);
-        gameState.resources.metal = Math.min(calculateProductions(gameState).energy.efficiency, gameState.resources.metal + (productions.metal / 3600) * delta);
-        gameState.resources.crystal = Math.min(calculateProductions(gameState).energy.efficiency, gameState.resources.crystal + (productions.crystal / 3600) * delta);
-        gameState.resources.deuterium += (productions.deuterium / 3600) * delta; // can be negative
+        const maxResources = calculateMaxResources(gameState.colonies);
+
+        gameState.resources.metal = Math.min(maxResources.metal, gameState.resources.metal + (productions.metal / 3600) * delta);
+        gameState.resources.crystal = Math.min(maxResources.crystal, gameState.resources.crystal + (productions.crystal / 3600) * delta);
+        
+        const newDeuterium = gameState.resources.deuterium + (productions.deuterium / 3600) * delta;
+        gameState.resources.deuterium = Math.max(0, Math.min(maxResources.deuterium, newDeuterium));
 
         // 2. Process queues
         processQueues(gameState);
