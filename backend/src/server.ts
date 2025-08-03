@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
-import process from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

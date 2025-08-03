@@ -1,26 +1,22 @@
 {
-  "name": "kosmiczny-władca-(client-server)",
+  "name": "cosmic-lord-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.1.1",
-    "fs": "^0.0.1-security",
-    "path": "^0.12.7",
-    "url": "^0.11.4",
-    "react-dom": "^19.1.1",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "process": "^0.11.10"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5"
   }
 }
