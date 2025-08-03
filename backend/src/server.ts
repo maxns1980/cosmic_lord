@@ -3,10 +3,10 @@ import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { exit } from 'process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
-import { process } from 'process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,8 +41,9 @@ const corsOptions = {
     optionsSuccessStatus: 200
 };
 
-app.use(cors(corsOptions));
+// Reordered to potentially fix a type inference issue with app.use
 app.use(express.json({ limit: '10mb' }));
+app.use(cors(corsOptions));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 const GAME_STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
@@ -110,6 +111,6 @@ loadGameState().then(() => {
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
-        process.exit(1);
+        exit(1);
     }
 });

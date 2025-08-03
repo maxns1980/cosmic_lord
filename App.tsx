@@ -170,7 +170,7 @@ function App() {
   const [isBonusModalOpen, setIsBonusModalOpen] = useState(false);
   const [bonusRewards, setBonusRewards] = useState<Partial<Resources & { credits: number }>>({});
 
-  const API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = (import.meta.env as any).VITE_API_URL;
 
   const showNotification = useCallback((message: string) => {
     setNotification(message);
