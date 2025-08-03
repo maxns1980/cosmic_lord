@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MissionType, NPCStates, NPCPersonality, NPCState, NPCFleetMission, DebrisField, Colony, BuildingType, ResearchType, GameState, ShipType, DefenseType, SleeperNpcStates, SleeperNpcState } from '../types';
 import { INITIAL_NPC_STATE, PLAYER_HOME_COORDS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, ACTIVE_NPC_LIMIT } from '../constants';
-import { regenerateNpcFromSleeper } from '../utils/npcLogic';
 
 interface GalaxyPanelProps {
     onAction: (targetCoords: string, missionType: MissionType) => void;
@@ -215,87 +214,6 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
     const [galaxy, setGalaxy] = useState(1);
     const [system, setSystem] = useState(42);
 
-    useEffect(() => {
-        const now = Date.now();
-        const activeNpcUpdates: Partial<NPCStates> = {};
-        const sleeperNpcUpdates: Partial<SleeperNpcStates> = {};
-        let hasChanges = false;
-        
-        for (let i = 1; i <= 15; i++) {
-            const position = i;
-            const coords = `${galaxy}:${system}:${position}`;
-            const planetSeed = galaxy * 1000000 + system * 1000 + position;
-            const isPlayerPlanet = coords === PLAYER_HOME_COORDS;
-            const isPlayerColony = colonies.some(c => c.id === coords);
-
-            if (isPlayerPlanet || isPlayerColony) continue;
-            
-            const existingNpc = npcStates[coords];
-            if (existingNpc) {
-                // It's an interaction, so update the timestamp if it's been a while, to prevent loops
-                if (now - existingNpc.lastUpdateTime > 10000) {
-                    activeNpcUpdates[coords] = { ...existingNpc, lastUpdateTime: now };
-                    hasChanges = true;
-                }
-                continue;
-            }
-
-            const isOccupiedByNpc = seededRandom(planetSeed) > 0.6;
-            if (!isOccupiedByNpc) continue;
-            
-            const existingSleeperNpc = sleeperNpcStates[coords];
-
-            if (existingSleeperNpc) {
-                // If a sleeper NPC exists, try to awaken it if there's space
-                if (Object.keys(npcStates).length < ACTIVE_NPC_LIMIT) {
-                    console.log(`Waking up NPC at ${coords}`);
-                    const awakenedNpc = regenerateNpcFromSleeper(existingSleeperNpc);
-                    activeNpcUpdates[coords] = awakenedNpc;
-                    sleeperNpcUpdates[coords] = undefined; 
-                    hasChanges = true;
-                }
-            } else {
-                // If no NPC (active or sleeper) exists, create one
-                const nameIndex = Math.floor(seededRandom(planetSeed * 2) * FAKE_PLAYER_NAMES.length);
-                const personalitySeed = seededRandom(planetSeed * 3);
-                let personality = NPCPersonality.BALANCED;
-                if (personalitySeed > 0.66) personality = NPCPersonality.AGGRESSIVE;
-                else if (personalitySeed < 0.33) personality = NPCPersonality.ECONOMIC;
-                
-                const speedSeed = seededRandom(planetSeed * 5);
-                let developmentSpeed = 1.0;
-                if (speedSeed > 0.95) developmentSpeed = 2.0; // Elite
-                else if (speedSeed > 0.80) developmentSpeed = 1.5; // Veteran
-
-                if (Object.keys(npcStates).length < ACTIVE_NPC_LIMIT) {
-                    activeNpcUpdates[coords] = {
-                        ...INITIAL_NPC_STATE,
-                        lastUpdateTime: now,
-                        name: FAKE_PLAYER_NAMES[nameIndex],
-                        image: getPlanetImage(planetSeed * 4),
-                        personality: personality,
-                        developmentSpeed: developmentSpeed,
-                    };
-                } else {
-                    sleeperNpcUpdates[coords] = {
-                        name: FAKE_PLAYER_NAMES[nameIndex],
-                        image: getPlanetImage(planetSeed * 4),
-                        personality: personality,
-                        developmentSpeed: developmentSpeed,
-                        points: 50,
-                        lastUpdate: now,
-                        resources: INITIAL_NPC_STATE.resources,
-                    };
-                }
-                hasChanges = true;
-            }
-        }
-
-        if (hasChanges) {
-            onNpcUpdate(activeNpcUpdates, sleeperNpcUpdates);
-        }
-    }, [galaxy, system, npcStates, sleeperNpcStates, onNpcUpdate, colonies]);
-
     const handleSystemChange = (delta: number) => {
         let newSystem = system + delta;
         let newGalaxy = galaxy;
@@ -363,6 +281,21 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
             points = sleeperNpc.points;
             activity = { text: 'Uśpiony', color: 'text-gray-500' };
             borderColorClass = getStrengthColor(playerPoints, points, activity);
+        } else {
+            const planetSeed = galaxy * 1000000 + system * 1000 + position;
+            const isOccupiedByNpc = seededRandom(planetSeed) > 0.6;
+            if (isOccupiedByNpc) {
+                const nameIndex = Math.floor(seededRandom(planetSeed * 2) * FAKE_PLAYER_NAMES.length);
+                 planetData = { 
+                    name: `Planeta ${FAKE_PLAYER_NAMES[nameIndex]}`, 
+                    player: `${FAKE_PLAYER_NAMES[nameIndex]} (NPC)`, 
+                    image: getPlanetImage(planetSeed * 4), 
+                    isPlayer: false 
+                };
+                 points = 50; // Placeholder for unawakened sleepers
+                 activity = { text: 'Uśpiony', color: 'text-gray-500' };
+                 borderColorClass = getStrengthColor(playerPoints, points, activity);
+            }
         }
 
         if (isBeingExplored) {

@@ -40,11 +40,13 @@ const ShipyardPanel: React.FC<ShipyardPanelProps> = ({ research, buildings, reso
       )
   }
 
+  const buildableShips = Object.keys(SHIPYARD_DATA) as (keyof typeof SHIPYARD_DATA)[];
+
   return (
     <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
       <h2 className="text-2xl font-bold text-cyan-300 mb-6 border-b-2 border-cyan-800 pb-3">Dostępne Jednostki (Stocznia poz. {shipyardLevel})</h2>
       <div className="space-y-6">
-        {(Object.keys(SHIPYARD_DATA) as ShipType[]).map((type) => {
+        {buildableShips.map((type) => {
           const data = SHIPYARD_DATA[type];
           const requirementsMet = checkRequirements(data.requirements, buildings, research);
 

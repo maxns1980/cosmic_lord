@@ -1,8 +1,9 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import process from 'process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
@@ -64,7 +65,7 @@ async function saveGameState() {
     }
 }
 
-app.get('/api/state', (req, res) => {
+app.get('/api/state', (req: Request, res: Response) => {
     if (gameState) {
         res.json(gameState);
     } else {
@@ -72,7 +73,7 @@ app.get('/api/state', (req, res) => {
     }
 });
 
-app.post('/api/action', express.json({ limit: '10mb' }), (req, res) => {
+app.post('/api/action', express.json({ limit: '10mb' }), (req: Request, res: Response) => {
     if (!gameState) {
         return res.status(503).json({ message: 'Game state not initialized yet.' });
     }
