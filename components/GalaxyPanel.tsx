@@ -1,0 +1,466 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { MissionType, NPCStates, NPCPersonality, NPCState, NPCFleetMission, DebrisField, Colony, BuildingType, ResearchType, GameState, ShipType, DefenseType, SleeperNpcStates, SleeperNpcState } from '../types';
+import { INITIAL_NPC_STATE, PLAYER_HOME_COORDS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, ACTIVE_NPC_LIMIT } from '../constants';
+import { regenerateNpcFromSleeper } from '../utils/npcLogic';
+
+interface GalaxyPanelProps {
+    onAction: (targetCoords: string, missionType: MissionType) => void;
+    onSpy: (targetCoords: string) => void;
+    onExpedition: (targetCoords: string) => void;
+    onExplore: (targetCoords: string) => void;
+    onHarvest: (targetCoords: string, debris: DebrisField) => void;
+    npcStates: NPCStates;
+    sleeperNpcStates: SleeperNpcStates;
+    onNpcUpdate: (updates: Partial<NPCStates>, sleeperUpdates?: Partial<SleeperNpcStates>) => void;
+    debrisFields: Record<string, DebrisField>;
+    colonies: Colony[];
+    playerState: GameState;
+    favoritePlanets: string[];
+    onToggleFavorite: (coords: string) => void;
+}
+
+// Simple seeded random function for consistent galaxy generation
+const seededRandom = (seed: number) => {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+};
+
+const formatNumber = (num: number) => Math.floor(num).toLocaleString('pl-PL');
+
+const FAKE_PLAYER_NAMES = ['Zenith', 'Nova', 'Orion', 'Cygnus', 'Draco', 'Lyra', 'Aquila', 'Centurion', 'Void', 'Stalker', 'Pulsar', 'Goliath'];
+
+const getPlanetImage = (seed: number) => {
+    const planetTypeSeed = seededRandom(seed);
+    if (planetTypeSeed > 0.8) return '🌋'; // Volcanic
+    if (planetTypeSeed > 0.6) return '🧊'; // Ice
+    if (planetTypeSeed > 0.4) return '🏜️'; // Desert
+    return '🪐'; // Temperate
+}
+
+const calculatePoints = (target: { fleet: any, defenses: any, buildings: any, research: any, shipLevels?: any }): number => {
+    let points = 0;
+
+    // Simplified points: 1 point per 1000 resource cost
+    const costToPoints = (cost: { metal: number, crystal: number, deuterium: number }) => {
+        return (cost.metal + cost.crystal + cost.deuterium) / 1000;
+    }
+
+    // Buildings
+    for (const id in target.buildings) {
+        const level = target.buildings[id as BuildingType];
+        if (level > 0) {
+            for (let i = 1; i <= level; i++) {
+                points += costToPoints(BUILDING_DATA[id as BuildingType].cost(i));
+            }
+        }
+    }
+    // Research
+    for (const id in target.research) {
+        const level = target.research[id as ResearchType];
+        if (level > 0) {
+            for (let i = 1; i <= level; i++) {
+                points += costToPoints(RESEARCH_DATA[id as ResearchType].cost(i));
+            }
+        }
+    }
+    // Fleet
+    for (const id in target.fleet) {
+        const count = target.fleet[id as ShipType];
+        if (count > 0) {
+            points += costToPoints(ALL_SHIP_DATA[id as ShipType].cost(1)) * count;
+        }
+    }
+    // Defense
+    for (const id in target.defenses) {
+        const count = target.defenses[id as DefenseType];
+        if (count > 0) {
+            points += costToPoints(DEFENSE_DATA[id as DefenseType].cost(1)) * count;
+        }
+    }
+
+    return Math.floor(points);
+}
+
+const getActivityStatus = (lastUpdateTime: number): { text: string, color: string } => {
+    const diffMinutes = (Date.now() - lastUpdateTime) / (1000 * 60);
+    if (diffMinutes < 5) return { text: 'Aktywny', color: 'text-green-400' };
+    if (diffMinutes < 60) return { text: `Aktywny (${Math.floor(diffMinutes)}m temu)`, color: 'text-yellow-400' };
+    return { text: 'Nieaktywny', color: 'text-red-500' };
+};
+
+const getStrengthColor = (playerPoints: number, npcPoints: number | undefined, activity: { text: string, color: string }): string => {
+    if (activity.text === 'Nieaktywny') return 'border-purple-600';
+    if (npcPoints === undefined) return 'border-gray-700';
+    if (npcPoints > playerPoints * 2) return 'border-red-600';
+    if (npcPoints < playerPoints * 0.5) return 'border-green-600';
+    return 'border-yellow-600';
+};
+
+
+const PlanetRow: React.FC<{
+    planet: any;
+    onAction: (targetCoords: string, missionType: MissionType) => void;
+    onSpy: (targetCoords: string) => void;
+    onExplore: (targetCoords: string) => void;
+    onHarvest: (targetCoords: string, debris: DebrisField) => void;
+    onToggleFavorite: (coords: string) => void;
+    isFavorite: boolean;
+    hasSpyProbes: boolean;
+    hasResearchVessel: boolean;
+    hasRecyclers: boolean;
+}> = ({ planet, onAction, onSpy, onExplore, onHarvest, onToggleFavorite, isFavorite, hasSpyProbes, hasResearchVessel, hasRecyclers }) => {
+    const { coords, planetData, debris, points, activity, borderColorClass } = planet;
+
+    return (
+        <div className={`group relative p-3 rounded-lg flex flex-col md:flex-row items-center justify-between bg-gray-900 bg-opacity-60 border-l-4 ${borderColorClass}`}>
+            {/* Tooltip */}
+            {planetData && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-gray-900 border border-gray-600 rounded-lg shadow-xl text-sm text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                    <h4 className="font-bold text-lg text-cyan-300">{planetData.name} [{coords}]</h4>
+                    <div className="mt-2 space-y-1">
+                        <p><span className="text-gray-400">Gracz:</span> {planetData.player}
+                            {planetData.developmentSpeed && planetData.developmentSpeed > 1.4 && (
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold text-yellow-900 bg-yellow-400 rounded-full">Elita</span>
+                            )}
+                            {planetData.developmentSpeed && planetData.developmentSpeed > 1.0 && planetData.developmentSpeed <= 1.4 && (
+                                <span className="ml-2 px-2 py-0.5 text-xs font-bold text-orange-900 bg-orange-400 rounded-full">Weteran</span>
+                            )}
+                        </p>
+                        <p><span className="text-gray-400">Status:</span> <span className={activity.color}>{activity.text}</span></p>
+                        <p><span className="text-gray-400">Punkty:</span> {formatNumber(points)}</p>
+                        <p><span className="text-gray-400">Sojusz:</span> [Brak Sojuszu]</p>
+                        {debris && (debris.metal || 0) > 1 && (debris.crystal || 0) > 1 && (
+                             <p><span className="text-gray-400">Pole zniszczeń:</span> ♻️{formatNumber(debris.metal || 0)} 🔩, {formatNumber(debris.crystal || 0)} 💎</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-center font-semibold w-full md:w-2/5">
+                <span className="text-4xl mr-4 w-10 text-center">{planet.planetData?.image || '⚫'}</span>
+                <div className="flex-1">
+                    <p className="text-lg text-white">Pozycja {planet.position} [{planet.coords}]</p>
+                    {planet.planetData ? (
+                        <p className="text-sm text-gray-400">Gracz: {planet.planetData.player}</p>
+                    ) : (
+                        <p className="text-sm text-gray-500">[Pusta Przestrzeń]</p>
+                    )}
+                </div>
+            </div>
+            {debris && ((debris.metal || 0) > 1 || (debris.crystal || 0) > 1) && (
+                <div className="flex items-center text-sm text-yellow-300 mx-4">
+                   <span className="text-xl mr-2">♻️</span>
+                   <div>
+                     <p>Metal: {formatNumber(debris.metal || 0)}</p>
+                     <p>Kryształ: {formatNumber(debris.crystal || 0)}</p>
+                   </div>
+                </div>
+            )}
+            <div className="flex items-center space-x-2 mt-3 md:mt-0">
+                {planetData && !planetData.isPlayer && (
+                     <button
+                        onClick={() => onToggleFavorite(coords)}
+                        className={`px-3 py-2 text-xl rounded-md transition-all duration-200 transform hover:scale-125 ${isFavorite ? 'text-red-500' : 'text-gray-500 hover:text-red-400'}`}
+                        title={isFavorite ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
+                    >
+                        {isFavorite ? '♥' : '♡'}
+                    </button>
+                )}
+                {debris && ((debris.metal || 0) > 1 || (debris.crystal || 0) > 1) && (
+                    <button 
+                        onClick={() => onHarvest(coords, debris)} 
+                        className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded-md text-sm font-bold transition-transform transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                        disabled={!hasRecyclers}
+                        title={!hasRecyclers ? 'Brak recyklerów' : 'Wyślij recyklery'}
+                    >
+                        Zbieraj
+                    </button>
+                )}
+                {planetData && !planetData.isPlayer && (
+                    <>
+                        <button 
+                            onClick={() => onSpy(coords)} 
+                            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-md text-sm font-bold transition-transform transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                            disabled={!hasSpyProbes}
+                            title={!hasSpyProbes ? 'Brak sond szpiegowskich' : 'Wyślij sondy szpiegowskie'}
+                        >
+                            Szpieguj
+                        </button>
+                        <button onClick={() => onAction(coords, MissionType.ATTACK)} className="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-md text-sm font-bold transition-transform transform hover:scale-105">Atakuj</button>
+                    </>
+                )}
+                 {planetData && planetData.isPlayer && (
+                    <span className="px-4 py-2 text-cyan-400 font-bold">{planetData.isHome ? 'Twoja Planeta' : 'Twoja Kolonia'}</span>
+                )}
+                 {!planetData && (
+                    <>
+                        <button 
+                            onClick={() => onExplore(coords)} 
+                            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 rounded-md text-sm font-bold transition-transform transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                            disabled={!hasResearchVessel}
+                            title={!hasResearchVessel ? "Wymagany Okręt Badawczy" : "Rozpocznij eksplorację"}
+                        >
+                            Eksploruj
+                        </button>
+                        <button onClick={() => onAction(coords, MissionType.COLONIZE)} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md text-sm font-bold transition-transform transform hover:scale-105">Kolonizuj</button>
+                    </>
+                )}
+            </div>
+        </div>
+    )
+}
+
+
+const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, sleeperNpcStates, onNpcUpdate, debrisFields, colonies, playerState, favoritePlanets, onToggleFavorite }) => {
+    const [galaxy, setGalaxy] = useState(1);
+    const [system, setSystem] = useState(42);
+
+    useEffect(() => {
+        const now = Date.now();
+        const activeNpcUpdates: Partial<NPCStates> = {};
+        const sleeperNpcUpdates: Partial<SleeperNpcStates> = {};
+        let hasChanges = false;
+        
+        for (let i = 1; i <= 15; i++) {
+            const position = i;
+            const coords = `${galaxy}:${system}:${position}`;
+            const planetSeed = galaxy * 1000000 + system * 1000 + position;
+            const isPlayerPlanet = coords === PLAYER_HOME_COORDS;
+            const isPlayerColony = colonies.some(c => c.id === coords);
+
+            if (isPlayerPlanet || isPlayerColony) continue;
+            
+            const existingNpc = npcStates[coords];
+            if (existingNpc) {
+                // It's an interaction, so update the timestamp if it's been a while, to prevent loops
+                if (now - existingNpc.lastUpdateTime > 10000) {
+                    activeNpcUpdates[coords] = { ...existingNpc, lastUpdateTime: now };
+                    hasChanges = true;
+                }
+                continue;
+            }
+
+            const isOccupiedByNpc = seededRandom(planetSeed) > 0.6;
+            if (!isOccupiedByNpc) continue;
+            
+            const existingSleeperNpc = sleeperNpcStates[coords];
+
+            if (existingSleeperNpc) {
+                // If a sleeper NPC exists, try to awaken it if there's space
+                if (Object.keys(npcStates).length < ACTIVE_NPC_LIMIT) {
+                    console.log(`Waking up NPC at ${coords}`);
+                    const awakenedNpc = regenerateNpcFromSleeper(existingSleeperNpc);
+                    activeNpcUpdates[coords] = awakenedNpc;
+                    sleeperNpcUpdates[coords] = undefined; 
+                    hasChanges = true;
+                }
+            } else {
+                // If no NPC (active or sleeper) exists, create one
+                const nameIndex = Math.floor(seededRandom(planetSeed * 2) * FAKE_PLAYER_NAMES.length);
+                const personalitySeed = seededRandom(planetSeed * 3);
+                let personality = NPCPersonality.BALANCED;
+                if (personalitySeed > 0.66) personality = NPCPersonality.AGGRESSIVE;
+                else if (personalitySeed < 0.33) personality = NPCPersonality.ECONOMIC;
+                
+                const speedSeed = seededRandom(planetSeed * 5);
+                let developmentSpeed = 1.0;
+                if (speedSeed > 0.95) developmentSpeed = 2.0; // Elite
+                else if (speedSeed > 0.80) developmentSpeed = 1.5; // Veteran
+
+                if (Object.keys(npcStates).length < ACTIVE_NPC_LIMIT) {
+                    activeNpcUpdates[coords] = {
+                        ...INITIAL_NPC_STATE,
+                        lastUpdateTime: now,
+                        name: FAKE_PLAYER_NAMES[nameIndex],
+                        image: getPlanetImage(planetSeed * 4),
+                        personality: personality,
+                        developmentSpeed: developmentSpeed,
+                    };
+                } else {
+                    sleeperNpcUpdates[coords] = {
+                        name: FAKE_PLAYER_NAMES[nameIndex],
+                        image: getPlanetImage(planetSeed * 4),
+                        personality: personality,
+                        developmentSpeed: developmentSpeed,
+                        points: 50,
+                        lastUpdate: now,
+                        resources: INITIAL_NPC_STATE.resources,
+                    };
+                }
+                hasChanges = true;
+            }
+        }
+
+        if (hasChanges) {
+            onNpcUpdate(activeNpcUpdates, sleeperNpcUpdates);
+        }
+    }, [galaxy, system, npcStates, sleeperNpcStates, onNpcUpdate, colonies]);
+
+    const handleSystemChange = (delta: number) => {
+        let newSystem = system + delta;
+        let newGalaxy = galaxy;
+        if (newSystem > 499) {
+            newSystem = 1;
+            newGalaxy++;
+        }
+        if (newSystem < 1) {
+            newSystem = 499;
+            newGalaxy = Math.max(1, newGalaxy - 1);
+        }
+        setSystem(newSystem);
+        setGalaxy(newGalaxy);
+    };
+    
+    const handleFavoriteSelect = (coords: string) => {
+        if (coords) {
+            onAction(coords, MissionType.ATTACK);
+        }
+    };
+
+    const playerPoints = calculatePoints(playerState);
+    const now = Date.now();
+    const explorationTargets = playerState.fleetMissions
+        .filter(m => 
+            m.missionType === MissionType.EXPLORE &&
+            now > m.arrivalTime &&
+            m.explorationEndTime && now < m.explorationEndTime
+        )
+        .map(m => m.targetCoords);
+
+    const planets = Array.from({ length: 15 }, (_, i) => {
+        const position = i + 1;
+        const coords = `${galaxy}:${system}:${position}`;
+        const isPlayerHome = coords === PLAYER_HOME_COORDS;
+        const playerColony = colonies.find(c => c.id === coords);
+        const isPlayerColony = !!playerColony;
+        const npc = npcStates[coords];
+        const sleeperNpc = sleeperNpcStates[coords];
+        const debris = debrisFields[coords];
+        const isBeingExplored = explorationTargets.includes(coords);
+        
+        let planetData: any = null;
+        let points = 0;
+        let activity = { text: '-', color: 'text-gray-400' };
+        let borderColorClass = 'border-gray-800';
+
+        if (isPlayerHome) {
+            planetData = { name: 'Planeta Matka', player: 'Ty', image: '🌍', isPlayer: true, isHome: true };
+            points = playerPoints;
+            activity = { text: 'Online', color: 'text-green-400' };
+            borderColorClass = 'border-cyan-400';
+        } else if (isPlayerColony) {
+            planetData = { name: playerColony.name, player: 'Ty (Kolonia)', image: '🌍', isPlayer: true, isHome: false };
+            points = playerPoints;
+            activity = { text: 'Online', color: 'text-green-400' };
+            borderColorClass = 'border-cyan-400';
+        } else if (npc) {
+            planetData = { name: `Planeta ${npc.name}`, player: `${npc.name} (NPC)`, image: npc.image, isPlayer: false, developmentSpeed: npc.developmentSpeed };
+            points = calculatePoints(npc);
+            activity = getActivityStatus(npc.lastUpdateTime);
+            borderColorClass = getStrengthColor(playerPoints, points, activity);
+        } else if (sleeperNpc) {
+             planetData = { name: `Planeta ${sleeperNpc.name}`, player: `${sleeperNpc.name} (NPC)`, image: sleeperNpc.image, isPlayer: false, developmentSpeed: sleeperNpc.developmentSpeed };
+            points = sleeperNpc.points;
+            activity = { text: 'Uśpiony', color: 'text-gray-500' };
+            borderColorClass = getStrengthColor(playerPoints, points, activity);
+        }
+
+        if (isBeingExplored) {
+            borderColorClass = 'border-teal-400 animate-pulse';
+        }
+
+        return { coords, planetData, position, debris, points, activity, borderColorClass };
+    });
+
+    const expeditionCoords = `${galaxy}:${system}:16`;
+    const hasSpyProbes = (playerState.fleet[ShipType.SPY_PROBE] || 0) > 0;
+    const hasAstrophysics = (playerState.research[ResearchType.ASTROPHYSICS] || 0) > 0;
+    const hasResearchVessel = (playerState.fleet[ShipType.RESEARCH_VESSEL] || 0) > 0;
+    const hasRecyclers = (playerState.fleet[ShipType.RECYCLER] || 0) > 0;
+    const canDoExpedition = hasAstrophysics && hasResearchVessel;
+    const expeditionDisabledReason = !hasAstrophysics ? 'Wymagana Astrofizyka' : !hasResearchVessel ? 'Wymagany Okręt Badawczy' : 'Wyślij flotę na wyprawę';
+
+    return (
+        <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
+            <h2 className="text-2xl font-bold text-cyan-300 mb-4 border-b-2 border-cyan-800 pb-3">Galaktyka</h2>
+            
+            <div className="flex flex-col md:flex-row justify-between items-center bg-gray-900 p-3 rounded-lg mb-6 gap-4">
+                 <div className="flex items-center space-x-2">
+                    <button onClick={() => handleSystemChange(-1)} className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded-md font-bold">Poprzedni</button>
+                    <input type="number" value={galaxy} onChange={e => setGalaxy(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 bg-gray-800 border border-gray-600 text-white rounded-md px-2 py-1 text-center"/>
+                    <span className="font-bold">:</span>
+                    <input type="number" value={system} onChange={e => setSystem(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 bg-gray-800 border border-gray-600 text-white rounded-md px-2 py-1 text-center"/>
+                    <button onClick={() => handleSystemChange(1)} className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded-md font-bold">Następny</button>
+                </div>
+
+                <div className="flex items-center gap-4">
+                     {favoritePlanets.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-lg text-red-400" title="Ulubione">♥</span>
+                            <select 
+                                id="favorites-select"
+                                value=""
+                                onChange={(e) => handleFavoriteSelect(e.target.value)}
+                                className="bg-gray-800 border border-gray-600 text-white rounded-md pl-2 pr-7 py-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm appearance-none"
+                                 style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                                    backgroundPosition: 'right 0.5rem center',
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundSize: '1.5em 1.5em',
+                                }}
+                            >
+                                <option value="">Ulubione...</option>
+                                {favoritePlanets.map(fav => (
+                                    <option key={fav} value={fav}>{fav}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <h3 className="text-xl font-bold text-white">Układ: [{galaxy}:{system}]</h3>
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                {planets.map((planet) => {
+                    const isFavorite = favoritePlanets.includes(planet.coords);
+                    return (
+                        <PlanetRow 
+                            key={planet.coords} 
+                            planet={planet} 
+                            onAction={onAction}
+                            onSpy={onSpy}
+                            onExplore={onExplore}
+                            onHarvest={onHarvest}
+                            onToggleFavorite={onToggleFavorite}
+                            isFavorite={isFavorite}
+                            hasSpyProbes={hasSpyProbes}
+                            hasResearchVessel={hasResearchVessel}
+                            hasRecyclers={hasRecyclers}
+                        />
+                    );
+                })}
+                 <div key={expeditionCoords} className="p-3 rounded-lg flex flex-col md:flex-row items-center justify-between bg-purple-900 bg-opacity-40 border-l-4 border-purple-500">
+                    <div className="flex items-center font-semibold w-full md:w-2/5">
+                        <span className="text-4xl mr-4 w-10 text-center">🌌</span>
+                        <div className="flex-1">
+                            <p className="text-lg text-white">Pozycja 16 [{expeditionCoords}]</p>
+                            <p className="text-sm text-purple-300">[Nieznana Przestrzeń]</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center space-x-2 mt-3 md:mt-0">
+                        <button 
+                            onClick={() => onExpedition(expeditionCoords)} 
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-md text-sm font-bold transition-transform transform hover:scale-105 disabled:bg-gray-600 disabled:cursor-not-allowed"
+                            disabled={!canDoExpedition}
+                            title={expeditionDisabledReason}
+                        >
+                            Wyprawa
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default GalaxyPanel;
