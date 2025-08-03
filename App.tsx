@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, Fleet, QueueItem, QueueItemType, GameObject, 
@@ -171,7 +170,7 @@ function App() {
   const [isBonusModalOpen, setIsBonusModalOpen] = useState(false);
   const [bonusRewards, setBonusRewards] = useState<Partial<Resources & { credits: number }>>({});
 
-  const API_URL = 'https://cosmic-lord-1s6k.onrender.com';
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const showNotification = useCallback((message: string) => {
     setNotification(message);
@@ -180,6 +179,11 @@ function App() {
 
   // Fetch game state periodically from the server
   useEffect(() => {
+    if (!API_URL) {
+        console.error("VITE_API_URL is not set. The application cannot connect to the backend.");
+        setNotification("Błąd krytyczny: Brak konfiguracji serwera!");
+        return;
+    }
     const fetchState = async () => {
         try {
             const response = await fetch(`${API_URL}/api/state`);
@@ -198,10 +202,11 @@ function App() {
     const interval = setInterval(fetchState, 2000); // Poll every 2 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [API_URL]);
   
   // Generic action handler to send commands to the server
   const performAction = async (type: string, payload: any) => {
+      if (!API_URL) return;
       try {
           const response = await fetch(`${API_URL}/api/action`, {
               method: 'POST',
