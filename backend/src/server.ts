@@ -1,9 +1,9 @@
-
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import cors, { CorsOptions } from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { exit } from 'node:process';
 import { GameState } from './types.js';
 import { startGameEngine, handleAction } from './gameEngine.js';
 import { getInitialState } from './constants.js';
@@ -14,30 +14,32 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Robust CORS Configuration
-const whitelist = ['http://localhost:5173'];
-if (process.env.FRONTEND_URL) {
-    const frontendUrl = process.env.FRONTEND_URL.trim().replace(/\/$/, ''); // Trim whitespace and remove trailing slash
+// Robust CORS Configuration to handle common mistakes
+const whitelist = ['http://localhost:5173']; // For local development
+const frontendUrl = process.env.FRONTEND_URL?.trim();
+if (frontendUrl) {
+    // Add the URL as is from the env variable
     whitelist.push(frontendUrl);
+    // Also add a corrected version with https:// if the protocol is missing
     if (!frontendUrl.startsWith('http')) {
-        // Also add the https version if protocol is missing, which is a common mistake
         whitelist.push(`https://${frontendUrl}`);
     }
 }
 
 const corsOptions: CorsOptions = {
     origin: function (origin, callback) {
+        // Allow if origin is in whitelist or if it's a server-to-server request (no origin)
         if (!origin || whitelist.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
-            console.error(`CORS Error: Origin ${origin} not in whitelist: ${whitelist.join(', ')}`);
+            console.error(`CORS Error: Origin ${origin} not allowed. Whitelist: ${whitelist.join(', ')}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
     optionsSuccessStatus: 200
 };
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions) as RequestHandler);
 app.use(express.json({ limit: '10mb' }));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
@@ -67,7 +69,7 @@ async function saveGameState() {
     }
 }
 
-app.get('/api/state', (req: express.Request, res: express.Response) => {
+app.get('/api/state', (req, res) => {
     if (gameState) {
         res.json(gameState);
     } else {
@@ -75,7 +77,7 @@ app.get('/api/state', (req: express.Request, res: express.Response) => {
     }
 });
 
-app.post('/api/action', (req: express.Request, res: express.Response) => {
+app.post('/api/action', (req, res) => {
     if (!gameState) {
         return res.status(503).json({ message: 'Game state not initialized yet.' });
     }
@@ -102,6 +104,6 @@ loadGameState().then(() => {
         });
     } else {
         console.error("FATAL: Game state could not be initialized.");
-        process.exit(1);
+        exit(1);
     }
 });
