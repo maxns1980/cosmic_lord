@@ -49,7 +49,6 @@ import ExpeditionModal from './components/ExpeditionModal';
 import ExploreModal from './components/ExploreModal';
 import HarvestModal from './components/HarvestModal';
 import AlliancePanel from './components/AlliancePanel';
-import DailyBonusModal from './components/DailyBonusModal';
 import Login from './components/Login';
 
 
@@ -191,8 +190,6 @@ function App() {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [isEncyclopediaOpen, setIsEncyclopediaOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
-  const [isBonusModalOpen, setIsBonusModalOpen] = useState(false);
-  const [bonusRewards, setBonusRewards] = useState<Partial<Resources & { credits: number }>>({});
 
   const API_URL = 'https://cosmic-lord-1skk.onrender.com';
 
@@ -260,13 +257,6 @@ function App() {
       }
     }
   }, [gameState, activeLocationId]);
-
-  useEffect(() => {
-    if (gameState?.dailyBonus?.isAvailable) {
-        setBonusRewards(gameState.dailyBonus.rewards);
-        setIsBonusModalOpen(true);
-    }
-  }, [gameState?.dailyBonus?.isAvailable, gameState?.dailyBonus?.rewards]);
   
   const performAction = async (type: string, payload: any) => {
       if (!API_URL || !authToken) return;
@@ -367,16 +357,6 @@ function App() {
       if (window.confirm('Czy na pewno chcesz zresetować grę? Cały postęp zostanie utracony!')) {
           performAction('RESET_GAME', {});
       }
-  }, []);
-  
-  const handleClaimBonus = useCallback(() => {
-    performAction('CLAIM_BONUS', {});
-    setIsBonusModalOpen(false);
-  }, []);
-
-  const handleBonusModalClose = useCallback(() => {
-    performAction('DISMISS_BONUS', {});
-    setIsBonusModalOpen(false);
   }, []);
 
   const handleCreateAlliance = useCallback((name: string, tag: string) => {
@@ -619,13 +599,6 @@ function App() {
                 )}
             </div>
         </main>
-        {isBonusModalOpen && (
-            <DailyBonusModal 
-                onClose={handleBonusModalClose}
-                onClaim={handleClaimBonus}
-                rewards={bonusRewards}
-            />
-        )}
         {spyModalTarget && (
             <SpyModal
                 targetCoords={spyModalTarget}

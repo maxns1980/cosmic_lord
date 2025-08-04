@@ -576,6 +576,7 @@ export enum BoostType {
     STORAGE_PROTECTION_BOOST = 'STORAGE_PROTECTION_BOOST',
     SECTOR_ACTIVITY_SCAN = 'SECTOR_ACTIVITY_SCAN',
     ABANDONED_COLONY_LOOT = 'ABANDONED_COLONY_LOOT',
+    DAILY_BONUS_CRATE = 'DAILY_BONUS_CRATE',
 }
 
 export interface Boost {
@@ -583,6 +584,7 @@ export interface Boost {
     type: BoostType;
     level: number; // For queue: 2 or 3. For production: 20 or 30. For tech: 1 or 2. For drive: 20. For cost reduction: 25. For time reduction: 1 or 2. For storage: 50. For scan/loot: 1.
     duration: number; // in seconds
+    rewards?: Partial<Resources & { credits: number }>;
 }
 
 export interface Inventory {
@@ -691,16 +693,6 @@ export enum TestableEventType {
     STELLAR_AURORA = 'STELLAR_AURORA',
 }
 
-// --- Daily Bonus ---
-export interface DailyBonusState {
-    isAvailable: boolean;
-    rewards: {
-        metal?: number;
-        crystal?: number;
-        credits?: number;
-    };
-}
-
 // --- Alliance ---
 export interface Alliance {
     id: string;
@@ -755,7 +747,6 @@ export interface PlayerState {
     moons: Record<string, Moon>;
     fleetMissions: FleetMission[];
     messages: Message[];
-    dailyBonus: DailyBonusState;
     lastSaveTime: number;
     nextBlackMarketIncome: number;
     lastBlackMarketIncomeCheck: number;

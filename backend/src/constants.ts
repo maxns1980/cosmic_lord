@@ -1,4 +1,4 @@
-import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState, PlayerState, WorldState, InfoMessage, NPCStates } from './types.js';
+import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, PlayerState, WorldState, InfoMessage, NPCStates } from './types';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -942,12 +942,6 @@ export const INITIAL_STELLAR_AURORA_STATE: StellarAuroraState = {
     endTime: 0,
 };
 
-export const INITIAL_DAILY_BONUS_STATE: DailyBonusState = {
-    isAvailable: false,
-    rewards: {},
-};
-
-
 export const INITIAL_NPC_STATE: Omit<NPCState, 'lastUpdateTime' | 'personality' | 'name' | 'image'> = {
     resources: { metal: 1000, crystal: 500, deuterium: 100, energy: 0 },
     buildings: { ...INITIAL_BUILDING_LEVELS, METAL_MINE: 2, CRYSTAL_MINE: 1, SOLAR_PLANT: 2 },
@@ -978,6 +972,8 @@ export const getBoostName = (boost: Boost): string => {
             return 'Dane o Aktywności w Sektorze';
         case BoostType.ABANDONED_COLONY_LOOT:
             return 'Mapa Porzuconej Kolonii';
+        case BoostType.DAILY_BONUS_CRATE:
+            return 'Codzienna Skrzynia Lojalnościowa';
         default:
             return 'Nieznany bonus';
     }
@@ -1006,6 +1002,15 @@ export const getBoostDescription = (boost: Boost): string => {
             return `Jednorazowy skan, który po aktywacji ujawnia ruchy wrogich flot w Twoim sektorze na ${durationHours} godziny.`;
         case BoostType.ABANDONED_COLONY_LOOT:
             return 'Ujawnia lokację opuszczonej placówki. Aktywacja wyśle tam ekspedycję, która natychmiast powróci z cennymi surowcami i kredytami.';
+        case BoostType.DAILY_BONUS_CRATE: {
+            const rewards = boost.rewards;
+            if (!rewards) return 'Zawiera losowe surowce i kredyty. Aktywuj, aby odebrać nagrodę!';
+            const rewardParts = [];
+            if (rewards.metal) rewardParts.push(`${rewards.metal.toLocaleString('pl-PL')} Metalu`);
+            if (rewards.crystal) rewardParts.push(`${rewards.crystal.toLocaleString('pl-PL')} Kryształu`);
+            if (rewards.credits) rewardParts.push(`${rewards.credits.toLocaleString('pl-PL')} Kredytów`);
+            return `Zawiera: ${rewardParts.join(', ')}. Aktywuj, aby odebrać nagrodę!`;
+        }
         default:
             return '';
     }
@@ -1045,7 +1050,6 @@ export const getInitialPlayerState = (username: string, homeCoords: string): Pla
       subject: `Witaj w Kosmicznym Władcy, ${username}!`,
       text: 'Twoje imperium czeka na rozkazy. Zacznij od rozbudowy kopalni, aby zwiększyć produkcję surowców. Powodzenia!'
   } as InfoMessage],
-  dailyBonus: INITIAL_DAILY_BONUS_STATE,
   lastSaveTime: Date.now(),
   nextBlackMarketIncome: 0,
   lastBlackMarketIncomeCheck: Date.now(),
