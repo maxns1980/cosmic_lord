@@ -1,5 +1,5 @@
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage } from '../types';
-import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants';
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage } from '../types.js';
+import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
 const addMessage = (gameState: GameState, message: any) => {
     gameState.messages.unshift({
@@ -55,7 +55,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
     if (isBonus) {
         const resourceType = Math.random() < 0.6 ? 'metal' : 'crystal';
         const amount = Math.floor(Math.random() * 5000) + 2500;
-        gameState.resources[resourceType] += amount;
+        gameState.resources[resourceType as 'metal' | 'crystal'] += amount;
         addMessage(gameState, {
             type: 'asteroid_impact',
             subject: 'Deszcz Meteorytów!',
@@ -87,7 +87,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
 export const triggerResourceVein = (gameState: GameState) => {
     if (gameState.resourceVeinBonus.active) return;
 
-    const resourceType = ['metal', 'crystal', 'deuterium'][Math.floor(Math.random() * 3)] as keyof Resources;
+    const resourceType = ['metal', 'crystal', 'deuterium'][Math.floor(Math.random() * 3)] as keyof Omit<Resources, 'energy'>;
     gameState.resourceVeinBonus.active = true;
     gameState.resourceVeinBonus.resourceType = resourceType;
     gameState.resourceVeinBonus.endTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours

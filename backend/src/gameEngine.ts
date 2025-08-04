@@ -1,13 +1,13 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
     Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus
-} from './types';
-import { ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST } from './constants';
-import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic';
-import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic';
-import { TestableEventType } from './types';
-import { calculateCombat } from './utils/combatLogic';
-import { evolveNpc, regenerateNpcFromSleeper } from './utils/npcLogic';
+} from './types.js';
+import { ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST } from './constants.js';
+import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
+import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
+import { TestableEventType } from './types.js';
+import { calculateCombat } from './utils/combatLogic.js';
+import { evolveNpc, regenerateNpcFromSleeper } from './utils/npcLogic.js';
 
 const addMessage = (playerState: PlayerState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     playerState.messages.unshift({
@@ -22,7 +22,8 @@ const addMessage = (playerState: PlayerState, message: Omit<Message, 'id' | 'tim
 };
 
 const processQueues = (playerState: PlayerState, now: number) => {
-    for (const location of [...Object.values(playerState.colonies), ...Object.values(playerState.moons)]) {
+    const locations: (Colony | Moon)[] = [...Object.values(playerState.colonies), ...Object.values(playerState.moons)];
+    for (const location of locations) {
         let hasChanged = true;
         while(hasChanged) {
             hasChanged = false;
@@ -74,7 +75,7 @@ const processFleetMissions = (playerState: PlayerState, now: number) => {
             missionsToRemove.push(mission.id);
         }
     }
-    playerState.fleetMissions = playerState.fleetMissions.filter(m => !missionsToRemove.includes(m.id));
+    playerState.fleetMissions = playerState.fleetMissions.filter((m: FleetMission) => !missionsToRemove.includes(m.id));
 };
 
 export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): PlayerState => {
@@ -120,7 +121,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
     const productions = calculateProductions(tempGameState);
     
     const perColonyMaxRes = calculateMaxResources(playerState.colonies);
-    const totalMaxResources: Resources = Object.values(perColonyMaxRes).reduce((acc, res) => {
+    const totalMaxResources: Resources = Object.values(perColonyMaxRes).reduce((acc: Resources, res: Resources) => {
         acc.metal += res.metal;
         acc.crystal += res.crystal;
         acc.deuterium += res.deuterium;
@@ -149,7 +150,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any): 
     switch (type) {
         case 'ACTIVATE_BOOST': {
             const { boostId } = payload;
-            const boostIndex = gameState.inventory.boosts.findIndex(b => b.id === boostId);
+            const boostIndex = gameState.inventory.boosts.findIndex((b: Boost) => b.id === boostId);
             if (boostIndex === -1) {
                 return { error: "Bonus nie został znaleziony." };
             }
