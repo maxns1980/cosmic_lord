@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './types.js';
@@ -40,7 +41,7 @@ const initializeWorld = async () => {
         console.log("No world state found. Initializing new world...");
         const initialWorldState = getInitialWorldState();
         
-        const { data: users } = await supabase.from('users').select('username');
+        const { data: users, error: usersError } = await supabase.from('users').select('username');
         if (users) {
             for (const user of users) {
                 const { data: playerStateData } = await supabase.from('game_state').select('state').eq('user_id', user.username).single();
@@ -51,6 +52,8 @@ const initializeWorld = async () => {
                     }
                 }
             }
+        } else if (usersError) {
+            console.error("Could not fetch users for world init:", usersError);
         }
 
         const { error: insertError } = await supabase.from('game_state').insert({
@@ -96,7 +99,7 @@ app.post('/api/signup', async (req, res) => {
 
         // Fetch world state to find a spot
         const { data: worldData, error: worldError } = await supabase.from('game_state').select('state').eq('user_id', WORLD_STATE_USER_ID).single();
-        if (worldError || !worldData) {
+        if (worldError || !worldData?.state) {
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
         const worldState = worldData.state as unknown as WorldState;
@@ -117,7 +120,7 @@ app.post('/api/signup', async (req, res) => {
 
         const { error: insertStateError } = await supabase
             .from('game_state')
-            .insert({ user_id: username, state: newPlayerState as unknown as Json });
+            .insert({ user_id: username, state: newPlayerState });
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -127,7 +130,7 @@ app.post('/api/signup', async (req, res) => {
         }
         
         // Save the updated world state
-        const { error: worldSaveError } = await supabase.from('game_state').update({ state: worldState as unknown as Json }).eq('user_id', WORLD_STATE_USER_ID);
+        const { error: worldSaveError } = await supabase.from('game_state').update({ state: worldState }).eq('user_id', WORLD_STATE_USER_ID);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // Non-fatal, but should be logged
@@ -183,11 +186,11 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     const { data: playerData, error: playerError } = await supabase.from('game_state').select('state').eq('user_id', userId).single();
     const { data: worldData, error: worldError } = await supabase.from('game_state').select('state').eq('user_id', WORLD_STATE_USER_ID).single();
     
-    if (playerError || !playerData) {
+    if (playerError || !playerData?.state) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
         return null;
     }
-    if (worldError || !worldData) {
+    if (worldError || !worldData?.state) {
         console.error(`Error loading world state:`, worldError);
         return null;
     }
@@ -221,8 +224,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('game_state').update({ state: playerState as unknown as Json }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('game_state').update({ state: worldState as unknown as Json }).eq('user_id', WORLD_STATE_USER_ID);
+    const playerSavePromise = supabase.from('game_state').update({ state: playerState as Json }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('game_state').update({ state: worldState as Json }).eq('user_id', WORLD_STATE_USER_ID);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 

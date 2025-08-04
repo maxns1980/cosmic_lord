@@ -6,7 +6,6 @@ import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } f
 import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID } from './constants.js';
 import { supabase } from './config/db.js';
 import { Json } from './database.types.js';
-import { exit } from 'process';
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -37,15 +36,50 @@ const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => 
 };
 
 const initializeWorld = async () => {
-    const { data } = await supabase.from('game_state').select('user_id').eq('user_id', WORLD_STATE_USER_ID).single();
+    // Step 1: Ensure the special world state user exists to satisfy FK constraint.
+    const { data: worldUser, error: worldUserError } = await supabase.from('users').select('username').eq('username', WORLD_STATE_USER_ID).single();
+    if (worldUserError && worldUserError.code !== 'PGRST116') {
+        console.error("FATAL: Could not query for world state user.", worldUserError);
+        process.exit(1);
+    }
+
+    if (!worldUser) {
+        console.log("World state user not found. Creating...");
+        const { error: userInsertError } = await supabase.from('users').insert({
+            username: WORLD_STATE_USER_ID,
+            password: `__WORLD_STATE_PASSWORD_${Date.now()}__` // A dummy, random password
+        });
+        if (userInsertError) {
+            console.error("FATAL: Could not create world state user.", userInsertError);
+            process.exit(1);
+        }
+    }
+
+    // Step 2: Proceed with world state initialization.
+    const { data, error: dataError } = await supabase.from('game_state').select('user_id').eq('user_id', WORLD_STATE_USER_ID).single();
+
+    if (dataError && dataError.code !== 'PGRST116') {
+        console.error("FATAL: Could not query for world state.", dataError);
+        process.exit(1);
+    }
+
     if (!data) {
         console.log("No world state found. Initializing new world...");
         const initialWorldState = getInitialWorldState();
         
-        const { data: users } = await supabase.from('users').select('username');
-        if (users) {
+        const { data: users, error: usersError } = await supabase.from('users').select('username');
+        if (usersError) {
+            console.error("Failed to fetch users during world initialization", usersError);
+        } else if (users) {
             for (const user of users) {
-                const { data: playerStateData } = await supabase.from('game_state').select('state').eq('user_id', user.username).single();
+                if (user.username === WORLD_STATE_USER_ID) continue;
+                
+                const { data: playerStateData, error: playerStateError } = await supabase.from('game_state').select('state').eq('user_id', user.username).single();
+                if (playerStateError && playerStateError.code !== 'PGRST116') {
+                    console.warn(`Could not fetch player state for ${user.username} during init.`, playerStateError);
+                    continue;
+                }
+
                 if (playerStateData?.state) {
                     const homeCoords = Object.keys((playerStateData.state as any).colonies)[0];
                     if (homeCoords) {
@@ -62,7 +96,7 @@ const initializeWorld = async () => {
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
-            exit(1);
+            process.exit(1);
         } else {
             console.log("World state initialized successfully.");
         }
@@ -98,7 +132,7 @@ app.post('/api/signup', async (req, res) => {
 
         // Fetch world state to find a spot
         const { data: worldData, error: worldError } = await supabase.from('game_state').select('state').eq('user_id', WORLD_STATE_USER_ID).single();
-        if (worldError || !worldData) {
+        if (worldError || !worldData?.state) {
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
         const worldState = worldData.state as unknown as WorldState;
@@ -110,7 +144,7 @@ app.post('/api/signup', async (req, res) => {
 
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert([{ username, password }]);
+            .insert({ username, password });
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -119,7 +153,7 @@ app.post('/api/signup', async (req, res) => {
 
         const { error: insertStateError } = await supabase
             .from('game_state')
-            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
+            .insert({ user_id: username, state: newPlayerState as unknown as Json });
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -185,11 +219,11 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     const { data: playerData, error: playerError } = await supabase.from('game_state').select('*').eq('user_id', userId).single();
     const { data: worldData, error: worldError } = await supabase.from('game_state').select('*').eq('user_id', WORLD_STATE_USER_ID).single();
     
-    if (playerError || !playerData) {
+    if (playerError || !playerData?.state) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
         return null;
     }
-    if (worldError || !worldData) {
+    if (worldError || !worldData?.state) {
         console.error(`Error loading world state:`, worldError);
         return null;
     }
