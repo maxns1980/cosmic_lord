@@ -318,7 +318,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
 
 const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission | null => {
      const militaryPower = Object.entries(npc.fleet).reduce((power, [shipId, count]) => {
-        const shipData = SHIPYARD_DATA[shipId as ShipType];
+        const shipData = ALL_SHIP_DATA[shipId as ShipType];
         if (shipData && count) {
             const finalAttack = shipData.attack * (1 + (npc.research[ResearchType.WEAPON_TECHNOLOGY] || 0) * 0.1);
             const finalShield = shipData.shield * (1 + (npc.research[ResearchType.SHIELDING_TECHNOLOGY] || 0) * 0.1);
