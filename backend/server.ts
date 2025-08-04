@@ -5,6 +5,7 @@ import { Json } from './src/database.types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
 import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants.js';
 import { supabase } from './src/config/db.js';
+import { calculatePlayerPoints } from './src/utils/pointsLogic.js';
 
 declare global {
     namespace Express {
@@ -77,6 +78,34 @@ const initializeWorld = async () => {
     } else {
         console.log("World state loaded.");
         const worldState = data.state as unknown as WorldState;
+        
+        // MIGRATION: Add publicPlayerData if it doesn't exist
+        if (!worldState.publicPlayerData) {
+            console.log("Migrating world state: adding publicPlayerData.");
+            worldState.publicPlayerData = {};
+            
+            const { data: allPlayers, error: allPlayersError } = await supabase.from('player_states').select('user_id, state');
+
+            if (allPlayersError) {
+                console.error("MIGRATION FAILED: could not fetch players to build public data.", allPlayersError);
+            } else if (allPlayers) {
+                for (const player of allPlayers) {
+                    const playerState = player.state as unknown as PlayerState;
+                    const points = calculatePlayerPoints(playerState);
+                    worldState.publicPlayerData[player.user_id] = {
+                        points: points,
+                        lastActivity: playerState.lastSaveTime || Date.now()
+                    };
+                }
+                console.log(`Migration successful. Populated public data for ${allPlayers.length} players.`);
+            }
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+            if (updateError) {
+                console.error("MIGRATION FAILED: Could not save migrated world state.", updateError);
+            }
+        }
+
+
         if (!worldState.npcStates || Object.keys(worldState.npcStates).length < TOTAL_NPC_COUNT) {
              console.log(`World state has insufficient NPCs (${Object.keys(worldState.npcStates || {}).length}). Populating to ${TOTAL_NPC_COUNT}...`);
 
@@ -162,6 +191,9 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
+        const initialPoints = calculatePlayerPoints(newPlayerState);
+        worldState.publicPlayerData[username] = { points: initialPoints, lastActivity: Date.now() };
+
         const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
@@ -270,6 +302,16 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
+    // Calculate and update public player data in the world state
+    const points = calculatePlayerPoints(playerState as PlayerState);
+    if (!(worldState as WorldState).publicPlayerData) {
+        (worldState as WorldState).publicPlayerData = {};
+    }
+    (worldState as WorldState).publicPlayerData[userId] = {
+        points: points,
+        lastActivity: Date.now(),
+    };
+
     const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json }).eq('user_id', userId);
     const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
 

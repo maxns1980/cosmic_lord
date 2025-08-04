@@ -721,6 +721,12 @@ export interface SleeperNpcState {
 
 // --- NEW STATE STRUCTURE ---
 
+export interface PublicPlayerData {
+    points: number;
+    lastActivity: number;
+    allianceTag?: string;
+}
+
 export interface WorldState {
     npcStates: NPCStates;
     npcFleetMissions: NPCFleetMission[];
@@ -736,6 +742,7 @@ export interface WorldState {
     galacticGoldRushState: GalacticGoldRushState;
     stellarAuroraState: StellarAuroraState;
     occupiedCoordinates: Record<string, string>; // coord -> username
+    publicPlayerData: Record<string, PublicPlayerData>;
     nextMerchantCheckTime: number;
     lastGlobalNpcCheck: number;
     lastEventCheckTime: number;

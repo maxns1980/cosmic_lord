@@ -19,27 +19,6 @@ interface GalaxyPanelProps {
 
 const formatNumber = (num: number) => Math.floor(num).toLocaleString('pl-PL');
 
-const FAKE_PLAYER_NAMES = ['Zenith', 'Nova', 'Orion', 'Cygnus', 'Draco', 'Lyra', 'Aquila', 'Centurion', 'Void', 'Stalker', 'Pulsar', 'Goliath'];
-
-const calculatePoints = (target: { fleet: any, defenses: any, buildings: any, research: any, shipLevels?: any }): number => {
-    let points = 0;
-    const costToPoints = (cost: { metal: number, crystal: number, deuterium: number }) => (cost.metal + cost.crystal + cost.deuterium) / 1000;
-
-    for (const id in target.buildings) {
-        for (let i = 1; i <= target.buildings[id as BuildingType]; i++) points += costToPoints(BUILDING_DATA[id as BuildingType].cost(i));
-    }
-    for (const id in target.research) {
-        for (let i = 1; i <= target.research[id as ResearchType]; i++) points += costToPoints(RESEARCH_DATA[id as ResearchType].cost(i));
-    }
-    for (const id in target.fleet) {
-        points += costToPoints(ALL_SHIP_DATA[id as ShipType].cost(1)) * (target.fleet[id as ShipType] || 0);
-    }
-    for (const id in target.defenses) {
-        points += costToPoints(DEFENSE_DATA[id as DefenseType].cost(1)) * (target.defenses[id as DefenseType] || 0);
-    }
-    return Math.floor(points);
-}
-
 const getActivityStatus = (lastUpdateTime: number): { text: string, color: string } => {
     const diffMinutes = (Date.now() - lastUpdateTime) / (1000 * 60);
     if (diffMinutes < 5) return { text: 'Aktywny', color: 'text-green-400' };
@@ -49,7 +28,7 @@ const getActivityStatus = (lastUpdateTime: number): { text: string, color: strin
 
 const getStrengthColor = (playerPoints: number, targetPoints: number | undefined, activity: { text: string, color: string }): string => {
     if (activity.text === 'Nieaktywny') return 'border-purple-600';
-    if (targetPoints === undefined) return 'border-yellow-600'; // For other players where we don't have points
+    if (targetPoints === undefined || targetPoints === 0) return 'border-yellow-600'; // For other players where we don't have points
     if (targetPoints > playerPoints * 2) return 'border-red-600';
     if (targetPoints < playerPoints * 0.5) return 'border-green-600';
     return 'border-yellow-600';
@@ -177,19 +156,9 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
         setGalaxy(newGalaxy);
     };
 
-    const { colonies, occupiedCoordinates } = gameState;
+    const { colonies, occupiedCoordinates, publicPlayerData } = gameState;
 
-    const playerPoints = calculatePoints({ 
-        fleet: Object.values(colonies).reduce((acc, c) => ({...acc, ...c.fleet}), {}),
-        defenses: Object.values(colonies).reduce((acc, c) => ({...acc, ...c.defenses}), {}),
-        buildings: Object.values(colonies).reduce((acc, c) => {
-            for(const building in c.buildings){
-                (acc as any)[building as BuildingType] = Math.max((acc as any)[building as BuildingType] || 0, c.buildings[building as BuildingType]);
-            }
-            return acc;
-        }, {}),
-        research: gameState.research,
-    });
+    const playerPoints = publicPlayerData?.[username]?.points || 0;
     
     const now = Date.now();
     const explorationTargets = gameState.fleetMissions
@@ -215,18 +184,21 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
             if(playerColony) {
                 const isHome = playerColony.id === homeworld?.id;
                 planetData = { name: playerColony.name, player: 'Ty', image: isHome ? '🌍' : '🪐', isPlayer: true, isHome };
+                points = playerPoints;
+                activity = { text: 'Aktywny', color: 'text-green-400' };
                 borderColorClass = 'border-cyan-400';
             }
         } else if (npc) {
             planetData = { name: `Planeta ${npc.name}`, player: `${npc.name} (NPC)`, image: npc.image, isPlayer: false, developmentSpeed: npc.developmentSpeed };
-            points = calculatePoints(npc);
+            points = publicPlayerData?.[npc.name]?.points || 0; // Assuming NPC points are also stored here
             activity = getActivityStatus(npc.lastUpdateTime);
             borderColorClass = getStrengthColor(playerPoints, points, activity);
         } else if (ownerUsername) { // Another player
+             const playerData = publicPlayerData?.[ownerUsername];
              planetData = { name: `Planeta Gracza`, player: ownerUsername, image: '🪐', isPlayer: false };
-             points = 0; // Don't have this data yet for other players
-             activity = { text: 'Aktywny (?)', color: 'text-gray-400' }; // Don't have this data yet
-             borderColorClass = getStrengthColor(playerPoints, undefined, activity);
+             points = playerData?.points || 0;
+             activity = playerData ? getActivityStatus(playerData.lastActivity) : { text: 'Brak danych', color: 'text-gray-500' };
+             borderColorClass = getStrengthColor(playerPoints, points, activity);
         }
 
         if (isBeingExplored) borderColorClass = 'border-teal-400 animate-pulse';

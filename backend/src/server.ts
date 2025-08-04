@@ -1,10 +1,11 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './types.js';
 import { Json } from './database.types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
 import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants.js';
 import { supabase } from './config/db.js';
+import { calculatePlayerPoints } from './utils/pointsLogic.js';
 
 declare global {
     namespace Express {
@@ -28,7 +29,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
@@ -61,12 +61,12 @@ const initializeWorld = async () => {
         throw new Error("FATAL: Could not query for world state.");
     }
 
-    if (!data || !data.state) {
+    if (!data) {
         console.log("No world state found. Creating new world...");
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as unknown as Json }]);
+            .insert([{ id: 1, state: initialWorldState as unknown as Json }] as any);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -77,6 +77,34 @@ const initializeWorld = async () => {
     } else {
         console.log("World state loaded.");
         const worldState = data.state as unknown as WorldState;
+        
+        // MIGRATION: Add publicPlayerData if it doesn't exist
+        if (!worldState.publicPlayerData) {
+            console.log("Migrating world state: adding publicPlayerData.");
+            worldState.publicPlayerData = {};
+            
+            const { data: allPlayers, error: allPlayersError } = await supabase.from('player_states').select('user_id, state');
+
+            if (allPlayersError) {
+                console.error("MIGRATION FAILED: could not fetch players to build public data.", allPlayersError);
+            } else if (allPlayers) {
+                for (const player of allPlayers) {
+                    const playerState = player.state as unknown as PlayerState;
+                    const points = calculatePlayerPoints(playerState);
+                    worldState.publicPlayerData[player.user_id] = {
+                        points: points,
+                        lastActivity: playerState.lastSaveTime || Date.now()
+                    };
+                }
+                console.log(`Migration successful. Populated public data for ${allPlayers.length} players.`);
+            }
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
+            if (updateError) {
+                console.error("MIGRATION FAILED: Could not save migrated world state.", updateError);
+            }
+        }
+
+
         if (!worldState.npcStates || Object.keys(worldState.npcStates).length < TOTAL_NPC_COUNT) {
              console.log(`World state has insufficient NPCs (${Object.keys(worldState.npcStates || {}).length}). Populating to ${TOTAL_NPC_COUNT}...`);
 
@@ -87,7 +115,7 @@ const initializeWorld = async () => {
              // Merge coordinates, preserving existing player locations
              worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
             if (updateError) {
                 console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
                 throw new Error("FATAL: Could not migrate world state.");
@@ -100,7 +128,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req, res) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -138,7 +166,7 @@ app.post('/api/signup', async (req, res) => {
         // 4. Create the new user
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert([{ username, password }]);
+            .insert([{ username, password }] as any);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -148,7 +176,7 @@ app.post('/api/signup', async (req, res) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
+            .insert([{ user_id: username, state: newPlayerState as unknown as Json }] as any);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -162,7 +190,10 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+        const initialPoints = calculatePlayerPoints(newPlayerState);
+        worldState.publicPlayerData[username] = { points: initialPoints, lastActivity: Date.now() };
+
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -175,7 +206,7 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -203,7 +234,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -216,11 +247,11 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     const { data: playerData, error: playerError } = await supabase.from('player_states').select('state').eq('user_id', userId).single();
     const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
     
-    if (playerError || !playerData || !playerData.state) {
+    if (playerError || !playerData) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
         return null;
     }
-    if (worldError || !worldData || !worldData.state) {
+    if (worldError || !worldData) {
         console.error(`Error loading world state:`, worldError);
         return null;
     }
@@ -234,7 +265,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     // If the world state was updated (e.g., NPCs evolved), save it back to the database.
     // This is crucial to persist world evolution outside of specific player actions.
     if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
-        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as unknown as Json }).eq('id', 1);
+        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as unknown as Json } as any).eq('id', 1);
         if (error) {
             console.error("Error saving world state after background update:", error);
         }
@@ -270,8 +301,18 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+    // Calculate and update public player data in the world state
+    const points = calculatePlayerPoints(playerState as PlayerState);
+    if (!(worldState as WorldState).publicPlayerData) {
+        (worldState as WorldState).publicPlayerData = {};
+    }
+    (worldState as WorldState).publicPlayerData[userId] = {
+        points: points,
+        lastActivity: Date.now(),
+    };
+
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json } as any).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -283,9 +324,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req, res) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -297,7 +338,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req, res) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

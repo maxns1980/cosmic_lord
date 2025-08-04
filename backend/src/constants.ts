@@ -1120,6 +1120,7 @@ export const getInitialWorldState = (): WorldState => {
         galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
         stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
         occupiedCoordinates,
+        publicPlayerData: {},
         nextMerchantCheckTime: Date.now() + (15 * 60 * 1000), // First check in 15 minutes
         lastGlobalNpcCheck: Date.now(),
         lastEventCheckTime: Date.now(),
