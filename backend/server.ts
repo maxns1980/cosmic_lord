@@ -1,11 +1,11 @@
 
 import express from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState } from './types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID, PLAYER_HOME_COORDS } from './constants.js';
-import { supabase } from './config/db.js';
-import { Json } from './database.types.js';
+import { GameState, PlayerState, WorldState } from './src/types';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './src/gameEngine';
+import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID } from './src/constants';
+import { supabase } from './src/config/db';
+import { Json } from './src/database.types';
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -63,7 +63,7 @@ const initializeWorld = async () => {
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
-            process.exit(1);
+            throw new Error("FATAL: Could not initialize world state.");
         } else {
             console.log("World state initialized successfully.");
         }

@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
 import { Resources, ResourceVeinBonus, Inventory, ActiveBoosts, BoostType, NPCFleetMission, SolarFlareState, SolarFlareStatus, Colony, Moon, StellarAuroraState } from '../types';
-import { PLAYER_HOME_COORDS } from '../constants';
 
 interface HeaderProps {
     resources: Resources;
@@ -32,6 +32,7 @@ interface HeaderProps {
     onInventoryClick: () => void;
     username: string;
     onLogout: () => void;
+    homeworld: Colony | null;
 }
 
 const formatNumber = (num: number): string => {
@@ -69,23 +70,26 @@ const LocationSwitcher: React.FC<{
     moons: Record<string, Moon>;
     activeLocationId: string;
     onLocationChange: (id: string) => void;
-}> = ({ colonies, moons, activeLocationId, onLocationChange }) => {
+    homeworld: Colony | null;
+}> = ({ colonies, moons, activeLocationId, onLocationChange, homeworld }) => {
     const locations = [];
-    const homeworld = colonies[PLAYER_HOME_COORDS];
     if (homeworld) {
         locations.push({ id: homeworld.id, name: `${homeworld.name} [${homeworld.id}]` });
-        if (moons[PLAYER_HOME_COORDS]) {
-            locations.push({ id: `${PLAYER_HOME_COORDS}_moon`, name: `  -> Księżyc [${PLAYER_HOME_COORDS}]` });
+        if (moons[homeworld.id]) {
+            locations.push({ id: `${homeworld.id}_moon`, name: `  -> Księżyc [${homeworld.id}]` });
         }
     }
 
 
-    Object.values(colonies).filter(c => c.id !== PLAYER_HOME_COORDS).forEach(colony => {
-        locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });
-        if (moons[colony.id]) {
-            locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${colony.id}]` });
-        }
-    });
+    Object.values(colonies)
+        .filter(c => c.id !== homeworld?.id)
+        .sort((a,b) => a.creationTime - b.creationTime)
+        .forEach(colony => {
+            locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });
+            if (moons[colony.id]) {
+                locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${colony.id}]` });
+            }
+        });
     
     if (locations.length <= 1) return null;
 
@@ -280,7 +284,7 @@ const CreditsDisplay: React.FC<{ value: number; hourlyIncome: number }> = ({ val
     )
 }
 
-const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, credits, blackMarketHourlyIncome, resourceVeinBonus, inventory, activeBoosts, solarFlare, stellarAuroraState, npcFleetMissions, colonies, moons, activeLocationId, onLocationChange, onInfoClick, onEncyclopediaClick, onInventoryClick, username, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, credits, blackMarketHourlyIncome, resourceVeinBonus, inventory, activeBoosts, solarFlare, stellarAuroraState, npcFleetMissions, colonies, moons, activeLocationId, onLocationChange, onInfoClick, onEncyclopediaClick, onInventoryClick, username, onLogout, homeworld }) => {
     const isProdBoosted = !!activeBoosts[BoostType.RESOURCE_PRODUCTION_BOOST];
 
     return (
@@ -296,6 +300,7 @@ const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, c
                             moons={moons}
                             activeLocationId={activeLocationId}
                             onLocationChange={onLocationChange}
+                            homeworld={homeworld}
                         />
                          <button onClick={onInfoClick} className="text-2xl text-gray-400 hover:text-cyan-300 transition-colors duration-200" aria-label="Informacje o grze">
                             ℹ️

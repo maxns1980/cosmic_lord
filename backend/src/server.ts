@@ -1,11 +1,11 @@
 
 import express from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState } from './types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID } from './constants.js';
-import { supabase } from './config/db.js';
-import { Json } from './database.types.js';
+import { GameState, PlayerState, WorldState } from './types';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine';
+import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID } from './constants';
+import { supabase } from './config/db';
+import { Json } from './database.types';
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -40,7 +40,7 @@ const initializeWorld = async () => {
     const { data: worldUser, error: worldUserError } = await supabase.from('users').select('username').eq('username', WORLD_STATE_USER_ID).single();
     if (worldUserError && worldUserError.code !== 'PGRST116') {
         console.error("FATAL: Could not query for world state user.", worldUserError);
-        process.exit(1);
+        throw new Error("FATAL: Could not query for world state user.");
     }
 
     if (!worldUser) {
@@ -51,7 +51,7 @@ const initializeWorld = async () => {
         });
         if (userInsertError) {
             console.error("FATAL: Could not create world state user.", userInsertError);
-            process.exit(1);
+            throw new Error("FATAL: Could not create world state user.");
         }
     }
 
@@ -60,7 +60,7 @@ const initializeWorld = async () => {
 
     if (dataError && dataError.code !== 'PGRST116') {
         console.error("FATAL: Could not query for world state.", dataError);
-        process.exit(1);
+        throw new Error("FATAL: Could not query for world state.");
     }
 
     if (!data) {
@@ -96,7 +96,7 @@ const initializeWorld = async () => {
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
-            process.exit(1);
+            throw new Error("FATAL: Could not initialize world state.");
         } else {
             console.log("World state initialized successfully.");
         }

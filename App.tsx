@@ -21,7 +21,7 @@ import {
 } from './types';
 import { 
     BUILDING_DATA, ALL_GAME_OBJECTS,
-    PLAYER_HOME_COORDS, COLONY_INCOME_BONUS_PER_HOUR,
+    COLONY_INCOME_BONUS_PER_HOUR,
     ALL_SHIP_DATA
 } from './constants';
 import Header from './components/Header';
@@ -82,7 +82,16 @@ const calculateProductions = (gameState: GameState) => {
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 
-    for (const planet of Object.values(colonies)) {
+    const allColonies = Object.values(colonies);
+    if (allColonies.length === 0) {
+        return { metal: 0, crystal: 0, deuterium: 0, energy: { produced: 0, consumed: 0, efficiency: 1 }};
+    }
+      
+    const homeworld = allColonies.reduce((oldest, current) => 
+        current.creationTime < oldest.creationTime ? current : oldest
+    );
+
+    for (const planet of allColonies) {
         const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
         const energyTechBonus = 1 + (energyTechLevel * 0.02);
 
@@ -122,7 +131,7 @@ const calculateProductions = (gameState: GameState) => {
             deuteriumProd -= BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0;
         }
 
-        if (planet.id !== PLAYER_HOME_COORDS) {
+        if (planet.id !== homeworld.id) {
             metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
             crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
             let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
@@ -171,7 +180,7 @@ function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<View>('overview');
-  const [activeLocationId, setActiveLocationId] = useState(PLAYER_HOME_COORDS);
+  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
   
   // UI state
   const [fleetTarget, setFleetTarget] = useState<{coords: string, mission: MissionType} | null>(null);
@@ -198,6 +207,7 @@ function App() {
       setAuthToken(token);
       setUsername(loggedInUsername);
       setGameState(null);
+      setActiveLocationId(null);
   };
 
   const handleLogout = () => {
@@ -206,6 +216,7 @@ function App() {
       setAuthToken(null);
       setUsername(null);
       setGameState(null);
+      setActiveLocationId(null);
   };
 
   useEffect(() => {
@@ -236,6 +247,16 @@ function App() {
 
     return () => clearInterval(interval);
   }, [API_URL, authToken]);
+  
+  useEffect(() => {
+    if (gameState && !activeLocationId) {
+      const colonyIds = Object.keys(gameState.colonies);
+      if (colonyIds.length > 0) {
+        const firstColony = Object.values(gameState.colonies).sort((a, b) => a.creationTime - b.creationTime)[0];
+        setActiveLocationId(firstColony.id);
+      }
+    }
+  }, [gameState, activeLocationId]);
 
   useEffect(() => {
     if (gameState?.dailyBonus?.isAvailable) {
@@ -369,7 +390,7 @@ function App() {
       return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  if (!gameState) {
+  if (!gameState || !activeLocationId) {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
@@ -380,12 +401,20 @@ function App() {
   
   const activeEntity = isMoon ? moons[planetId] : colonies[planetId];
 
+  const homeworld = useMemo(() => {
+    if (!gameState) return null;
+    const allColonies = Object.values(gameState.colonies);
+    if (allColonies.length === 0) return null;
+    return allColonies.reduce((oldest, current) => 
+        current.creationTime < oldest.creationTime ? current : oldest
+    );
+  }, [gameState]);
+
   if (!activeEntity) {
       return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl">Ładowanie lokacji...</p></div>;
   }
   
   const { fleet: activeFleet, buildings: activeBuildings, defenses: activeDefenses, buildingQueue: activeBuildingQueue, shipyardQueue: activeShipyardQueue, maxFields } = activeEntity;
-  const homeworld = colonies[PLAYER_HOME_COORDS];
 
   const productions = calculateProductions(gameState);
   const maxResources = calculateMaxResources(activeBuildings);
@@ -423,6 +452,7 @@ function App() {
             onInventoryClick={() => setIsInventoryOpen(true)}
             username={username}
             onLogout={handleLogout}
+            homeworld={homeworld}
         />
         <main className="container mx-auto p-4 flex flex-col xl:flex-row gap-4">
            <Navigation
