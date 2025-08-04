@@ -5,6 +5,14 @@ import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } f
 import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants';
 import { supabase } from './config/db';
 
+declare global {
+    namespace Express {
+        interface Request {
+            userId?: string;
+        }
+    }
+}
+
 const app = express();
 const PORT = process.env.PORT || 10000;
 
@@ -195,11 +203,7 @@ app.post('/api/login', async (req: Request, res: Response) => {
     }
 });
 
-interface AppRequest extends Request {
-    userId?: string;
-}
-
-const authMiddleware = (req: AppRequest, res: Response, next: NextFunction) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -275,7 +279,7 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
 app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: AppRequest, res: Response) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     const gameState = await loadCombinedGameState(req.userId!);
     if (gameState) {
         res.json(gameState);
@@ -284,7 +288,7 @@ app.get('/api/state', authMiddleware, async (req: AppRequest, res: Response) => 
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: AppRequest, res: Response) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     let gameState = await loadCombinedGameState(req.userId!);
     if (!gameState) {
         return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });

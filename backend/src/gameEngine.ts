@@ -104,7 +104,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
             type: 'info',
             subject: 'Otrzymano Dzienną Skrzynię!',
             text: 'Twoja codzienna nagroda za lojalność została dodana do Twojego inwentarza. Aktywuj ją, kiedy zechcesz!'
-        } as InfoMessage));
+        } as InfoMessage);
     }
 
     const lastSave = playerState.lastSaveTime || now;
