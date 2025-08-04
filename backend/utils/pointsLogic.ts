@@ -7,7 +7,8 @@ export const calculatePlayerPoints = (playerState: PlayerState): number => {
     let points = 0;
 
     // Points from Buildings on all colonies
-    for (const colony of Object.values(playerState.colonies)) {
+    for (const colonyId in playerState.colonies) {
+        const colony = playerState.colonies[colonyId];
         for (const buildingId in colony.buildings) {
             const level = colony.buildings[buildingId as BuildingType];
             for (let i = 1; i <= level; i++) {
@@ -17,7 +18,8 @@ export const calculatePlayerPoints = (playerState: PlayerState): number => {
     }
     
     // Points from Buildings on all moons
-    for (const moon of Object.values(playerState.moons)) {
+    for (const moonId in playerState.moons) {
+        const moon = playerState.moons[moonId];
         for (const buildingId in moon.buildings) {
             const level = moon.buildings[buildingId as BuildingType];
             for (let i = 1; i <= level; i++) {
@@ -36,12 +38,14 @@ export const calculatePlayerPoints = (playerState: PlayerState): number => {
 
     // Aggregate fleet from all colonies and moons
     const totalFleet: { [key in ShipType]?: number } = {};
-    for (const colony of Object.values(playerState.colonies)) {
+    for (const colonyId in playerState.colonies) {
+        const colony = playerState.colonies[colonyId];
         for (const shipId in colony.fleet) {
             totalFleet[shipId as ShipType] = (totalFleet[shipId as ShipType] || 0) + (colony.fleet[shipId as ShipType] || 0);
         }
     }
-    for (const moon of Object.values(playerState.moons)) {
+    for (const moonId in playerState.moons) {
+        const moon = playerState.moons[moonId];
          for (const shipId in moon.fleet) {
             totalFleet[shipId as ShipType] = (totalFleet[shipId as ShipType] || 0) + (moon.fleet[shipId as ShipType] || 0);
         }
@@ -53,12 +57,14 @@ export const calculatePlayerPoints = (playerState: PlayerState): number => {
 
     // Aggregate defenses from all colonies and moons
     let totalDefenses: { [key in DefenseType]?: number } = {};
-     for (const colony of Object.values(playerState.colonies)) {
+     for (const colonyId in playerState.colonies) {
+        const colony = playerState.colonies[colonyId];
         for (const defenseId in colony.defenses) {
             totalDefenses[defenseId as DefenseType] = (totalDefenses[defenseId as DefenseType] || 0) + (colony.defenses[defenseId as DefenseType] || 0);
         }
     }
-    for (const moon of Object.values(playerState.moons)) {
+    for (const moonId in playerState.moons) {
+        const moon = playerState.moons[moonId];
          for (const defenseId in moon.defenses) {
             totalDefenses[defenseId as DefenseType] = (totalDefenses[defenseId as DefenseType] || 0) + (moon.defenses[defenseId as DefenseType] || 0);
         }

@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { ResearchType, Resources, QueueItem, BuildingLevels, ResearchLevels, BuildingType } from '../types';
 import { RESEARCH_DATA, ALL_GAME_OBJECTS } from '../constants';
@@ -10,6 +11,7 @@ interface ResearchRowProps {
   onUpgrade: (type: ResearchType) => void;
   canAfford: boolean;
   isQueued: boolean;
+  isQueueFull: boolean;
   requirementsMet: boolean;
   buildings: BuildingLevels;
   research: ResearchLevels;
@@ -93,10 +95,10 @@ const RequirementsDisplay: React.FC<{
 };
 
 
-const ResearchRow: React.FC<ResearchRowProps> = ({ type, level, onUpgrade, canAfford, isQueued, requirementsMet, buildings, research, resources }) => {
+const ResearchRow: React.FC<ResearchRowProps> = ({ type, level, onUpgrade, canAfford, isQueued, isQueueFull, requirementsMet, buildings, research, resources }) => {
   const data = RESEARCH_DATA[type];
   const cost = data.cost(level + 1);
-  const isDisabled = isQueued || !canAfford || !requirementsMet;
+  const isDisabled = isQueued || !canAfford || !requirementsMet || (isQueueFull && !isQueued);
   
   const researchLabLevel = buildings[BuildingType.RESEARCH_LAB];
   const timeFactor = (1 + researchLabLevel);
@@ -104,6 +106,7 @@ const ResearchRow: React.FC<ResearchRowProps> = ({ type, level, onUpgrade, canAf
   
   let buttonText = 'Badaj';
   if (isQueued) buttonText = 'W kolejce...';
+  else if (isQueueFull) buttonText = 'Kolejka pełna';
   else if (!requirementsMet) buttonText = 'Brak wymagań';
 
   return (

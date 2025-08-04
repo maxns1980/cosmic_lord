@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './src/types.js';
 import { Json } from './src/database.types.js';
@@ -62,7 +62,7 @@ const initializeWorld = async () => {
         throw new Error("FATAL: Could not query for world state.");
     }
 
-    if (!data || !data.state) {
+    if (!data) {
         console.log("No world state found. Creating new world...");
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
@@ -129,7 +129,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req, res) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -154,7 +154,7 @@ app.post('/api/signup', async (req, res) => {
 
         // 2. Get world state to find a free spot
         const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-        if (worldError || !worldData) {
+        if (worldError || !worldData || !worldData.state) {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
@@ -207,7 +207,7 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -235,7 +235,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -246,13 +246,13 @@ const authMiddleware = (req: express.Request, res: express.Response, next: expre
 
 const loadCombinedGameState = async (userId: string): Promise<GameState | null> => {
     const { data: playerData, error: playerError } = await supabase.from('player_states').select('state').eq('user_id', userId).single();
-    const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-    
-    if (playerError || !playerData || !playerData.state) {
+    if (playerError || !playerData) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
         return null;
     }
-    if (worldError || !worldData || !worldData.state) {
+    
+    const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
+    if (worldError || !worldData) {
         console.error(`Error loading world state:`, worldError);
         return null;
     }
@@ -325,9 +325,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req, res) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -339,7 +339,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req, res) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

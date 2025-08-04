@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { BuildingType, Resources, BuildingLevels, QueueItem, ResearchLevels, ResearchType, BuildingCategory } from '../types';
 import { BUILDING_DATA } from '../constants';
@@ -11,6 +12,7 @@ interface BuildingsPanelProps {
   onUpgrade: (type: BuildingType) => void;
   onDestroy: (type: BuildingType) => void;
   buildQueue: QueueItem[];
+  buildingQueueCapacity: number;
   energyEfficiency: number;
   isMoon: boolean;
   usedFields: number;
@@ -30,7 +32,7 @@ const checkRequirements = (requirements: any, buildings: BuildingLevels, researc
     });
 }
 
-const BuildingsPanel: React.FC<BuildingsPanelProps> = ({ buildings, research, resources, onUpgrade, onDestroy, buildQueue, energyEfficiency, isMoon, usedFields, maxFields }) => {
+const BuildingsPanel: React.FC<BuildingsPanelProps> = ({ buildings, research, resources, onUpgrade, onDestroy, buildQueue, buildingQueueCapacity, energyEfficiency, isMoon, usedFields, maxFields }) => {
   const [activeCategory, setActiveCategory] = useState<BuildingCategory>(isMoon ? BuildingCategory.INDUSTRIAL : BuildingCategory.RESOURCE);
   
   const buildingContext = isMoon ? 'MOON' : 'PLANET';
@@ -50,6 +52,8 @@ const BuildingsPanel: React.FC<BuildingsPanelProps> = ({ buildings, research, re
   } else if (fieldsUsage > 0.9) {
     fieldsColor = 'text-yellow-400';
   }
+
+  const isQueueFull = buildQueue.length >= buildingQueueCapacity;
 
   return (
     <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
@@ -101,6 +105,7 @@ const BuildingsPanel: React.FC<BuildingsPanelProps> = ({ buildings, research, re
               onDestroy={onDestroy}
               canAfford={canAfford}
               isQueued={isQueued}
+              isQueueFull={isQueueFull}
               requirementsMet={requirementsMet}
               allBuildings={buildings}
               allResearch={research}

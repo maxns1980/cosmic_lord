@@ -1,3 +1,5 @@
+
+
 import React from 'react';
 import { ShipType, Resources, BuildingLevels, ResearchLevels, BuildingType, ResearchType } from '../types';
 import { SHIP_UPGRADE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS } from '../constants';
@@ -8,6 +10,7 @@ interface FleetUpgradesRowProps {
   onUpgrade: (type: ShipType) => void;
   canAfford: boolean;
   isQueued: boolean;
+  isQueueFull: boolean;
   requirementsMet: boolean;
   buildings: BuildingLevels;
   research: ResearchLevels;
@@ -92,7 +95,7 @@ const RequirementsDisplay: React.FC<{
     );
 };
 
-const FleetUpgradesRow: React.FC<FleetUpgradesRowProps> = ({ type, level, onUpgrade, canAfford, isQueued, requirementsMet, buildings, research, resources }) => {
+const FleetUpgradesRow: React.FC<FleetUpgradesRowProps> = ({ type, level, onUpgrade, canAfford, isQueued, isQueueFull, requirementsMet, buildings, research, resources }) => {
   const upgradeData = SHIP_UPGRADE_DATA[type];
   const shipData = ALL_SHIP_DATA[type];
   const nextLevel = level + 1;
@@ -103,11 +106,12 @@ const FleetUpgradesRow: React.FC<FleetUpgradesRowProps> = ({ type, level, onUpgr
   const buildTimeSeconds = upgradeData.buildTime(nextLevel) / timeFactor;
   
   const isMaxLevel = level >= MAX_UPGRADE_LEVEL;
-  const isDisabled = isQueued || !canAfford || !requirementsMet || isMaxLevel;
+  const isDisabled = isQueued || !canAfford || !requirementsMet || isMaxLevel || (isQueueFull && !isQueued);
   
   let buttonText = 'Ulepsz';
   if (isMaxLevel) buttonText = 'Maks. Poziom';
   else if (isQueued) buttonText = 'W kolejce...';
+  else if (isQueueFull) buttonText = 'Kolejka pełna';
   else if (!requirementsMet) buttonText = 'Brak wymagań';
 
   const isTransport = [

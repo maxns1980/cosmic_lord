@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { ResearchType, Resources, ResearchLevels, QueueItem, BuildingLevels } from '../types';
 import { RESEARCH_DATA, BUILDING_DATA } from '../constants';
@@ -10,6 +11,7 @@ interface ResearchPanelProps {
   resources: Resources;
   onUpgrade: (type: ResearchType) => void;
   buildQueue: QueueItem[];
+  buildingQueueCapacity: number;
 }
 
 const checkRequirements = (requirements: any, buildings: BuildingLevels, research: ResearchLevels) => {
@@ -25,7 +27,7 @@ const checkRequirements = (requirements: any, buildings: BuildingLevels, researc
     });
 }
 
-const ResearchPanel: React.FC<ResearchPanelProps> = ({ research, buildings, resources, onUpgrade, buildQueue }) => {
+const ResearchPanel: React.FC<ResearchPanelProps> = ({ research, buildings, resources, onUpgrade, buildQueue, buildingQueueCapacity }) => {
   const labLevel = buildings['RESEARCH_LAB'];
 
   if (labLevel === 0) {
@@ -36,6 +38,8 @@ const ResearchPanel: React.FC<ResearchPanelProps> = ({ research, buildings, reso
           </div>
       )
   }
+
+  const isQueueFull = buildQueue.length >= buildingQueueCapacity;
 
   return (
     <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
@@ -57,6 +61,7 @@ const ResearchPanel: React.FC<ResearchPanelProps> = ({ research, buildings, reso
               onUpgrade={onUpgrade}
               canAfford={canAfford}
               isQueued={isQueued}
+              isQueueFull={isQueueFull}
               requirementsMet={requirementsMet}
               buildings={buildings}
               research={research}

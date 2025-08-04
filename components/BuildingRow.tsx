@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { BuildingType, Resources, QueueItem, BuildingLevels, ResearchLevels, ResearchType, BuildingCategory } from '../types';
 import { BUILDING_DATA, ALL_GAME_OBJECTS, PROTECTED_RESOURCES_FACTOR } from '../constants';
@@ -11,6 +12,7 @@ interface BuildingRowProps {
   onDestroy: (type: BuildingType) => void;
   canAfford: boolean;
   isQueued: boolean;
+  isQueueFull: boolean;
   requirementsMet: boolean;
   allBuildings: BuildingLevels;
   allResearch: ResearchLevels;
@@ -95,15 +97,16 @@ const RequirementsDisplay: React.FC<{
     );
 };
 
-const BuildingRow: React.FC<BuildingRowProps> = ({ type, level, onUpgrade, onDestroy, canAfford, isQueued, requirementsMet, allBuildings, allResearch, energyEfficiency, resources }) => {
+const BuildingRow: React.FC<BuildingRowProps> = ({ type, level, onUpgrade, onDestroy, canAfford, isQueued, isQueueFull, requirementsMet, allBuildings, allResearch, energyEfficiency, resources }) => {
   const data = BUILDING_DATA[type];
   const cost = data.cost(level + 1);
-  const isDisabled = isQueued || !canAfford || !requirementsMet;
+  const isDisabled = isQueued || !canAfford || !requirementsMet || (isQueueFull && !isQueued);
   
   const buildTimeSeconds = data.buildTime(level + 1);
 
   let buttonText = 'Rozbuduj';
   if (isQueued) buttonText = 'W kolejce...';
+  else if (isQueueFull) buttonText = 'Kolejka pełna';
   else if (!requirementsMet) buttonText = 'Brak wymagań';
   
   const isBlackMarket = type === BuildingType.BLACK_MARKET;

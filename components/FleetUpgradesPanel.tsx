@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import { ShipType, Resources, ResearchLevels, QueueItem, BuildingLevels, ShipLevels } from '../types';
 import { SHIP_UPGRADE_DATA, SHIPYARD_DATA } from '../constants';
@@ -12,6 +13,7 @@ interface FleetUpgradesPanelProps {
   resources: Resources;
   onUpgrade: (type: ShipType) => void;
   buildQueue: QueueItem[];
+  buildingQueueCapacity: number;
 }
 
 const checkRequirements = (requirements: any, buildings: BuildingLevels, research: ResearchLevels) => {
@@ -27,7 +29,7 @@ const checkRequirements = (requirements: any, buildings: BuildingLevels, researc
     });
 }
 
-const FleetUpgradesPanel: React.FC<FleetUpgradesPanelProps> = ({ research, buildings, shipLevels, resources, onUpgrade, buildQueue }) => {
+const FleetUpgradesPanel: React.FC<FleetUpgradesPanelProps> = ({ research, buildings, shipLevels, resources, onUpgrade, buildQueue, buildingQueueCapacity }) => {
   const labLevel = buildings['RESEARCH_LAB'];
 
   if (labLevel < 4) {
@@ -38,6 +40,8 @@ const FleetUpgradesPanel: React.FC<FleetUpgradesPanelProps> = ({ research, build
           </div>
       )
   }
+
+  const isQueueFull = buildQueue.length >= buildingQueueCapacity;
 
   return (
     <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">
@@ -50,7 +54,7 @@ const FleetUpgradesPanel: React.FC<FleetUpgradesPanelProps> = ({ research, build
           const data = SHIP_UPGRADE_DATA[type];
           const cost = data.cost(level + 1);
           const canAfford = resources.metal >= cost.metal && resources.crystal >= cost.crystal && resources.deuterium >= cost.deuterium;
-          const isQueued = buildQueue.some(item => ['building', 'research', 'ship_upgrade'].includes(item.type));
+          const isQueued = buildQueue.some(item => item.id === type);
           const requirementsMet = checkRequirements(data.requirements, buildings, research);
 
           return (
@@ -61,6 +65,7 @@ const FleetUpgradesPanel: React.FC<FleetUpgradesPanelProps> = ({ research, build
               onUpgrade={onUpgrade}
               canAfford={canAfford}
               isQueued={isQueued}
+              isQueueFull={isQueueFull}
               requirementsMet={requirementsMet}
               buildings={buildings}
               research={research}

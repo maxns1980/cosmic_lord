@@ -1,5 +1,4 @@
-import express from 'express';
-import type { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './types.js';
 import { Json } from './database.types.js';
@@ -62,7 +61,7 @@ const initializeWorld = async () => {
         throw new Error("FATAL: Could not query for world state.");
     }
 
-    if (!data || !data.state) {
+    if (!data) {
         console.log("No world state found. Creating new world...");
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
@@ -246,13 +245,13 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 
 const loadCombinedGameState = async (userId: string): Promise<GameState | null> => {
     const { data: playerData, error: playerError } = await supabase.from('player_states').select('state').eq('user_id', userId).single();
-    const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-    
-    if (playerError || !playerData || !playerData.state) {
+    if (playerError || !playerData) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
         return null;
     }
-    if (worldError || !worldData || !worldData.state) {
+    
+    const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
+    if (worldError || !worldData) {
         console.error(`Error loading world state:`, worldError);
         return null;
     }

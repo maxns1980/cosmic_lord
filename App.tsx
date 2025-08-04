@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, Fleet, QueueItem, QueueItemType, GameObject, 
@@ -470,6 +471,7 @@ function App() {
                         onUpgrade={(type) => handleAddToQueue(type, 'building')}
                         onDestroy={(type) => { /* logic */}}
                         buildQueue={activeBuildingQueue}
+                        buildingQueueCapacity={buildingQueueCapacity}
                         energyEfficiency={productions.energy.efficiency}
                         isMoon={isMoon}
                         usedFields={usedFields}
@@ -483,6 +485,7 @@ function App() {
                         resources={resources}
                         onUpgrade={(type) => handleAddToQueue(type, 'research')}
                         buildQueue={homeworld.buildingQueue}
+                        buildingQueueCapacity={buildingQueueCapacity}
                     />
                 )}
                  {activeView === 'fleet_upgrades' && homeworld && (
@@ -493,6 +496,7 @@ function App() {
                         resources={resources}
                         onUpgrade={(type) => handleAddToQueue(type, 'ship_upgrade')}
                         buildQueue={homeworld.buildingQueue}
+                        buildingQueueCapacity={buildingQueueCapacity}
                     />
                 )}
                 {activeView === 'shipyard' && (
