@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Message, InfoMessage, SpyReport, BattleReport, MerchantStatus, MerchantInfoMessage, EspionageEventMessage, Loot, PirateMessage, PirateMercenaryStatus, ShipType, AsteroidImpactMessage, AsteroidImpactType, BuildingType, ResourceVeinMessage, AncientArtifactMessage, AncientArtifactChoice, ResearchType, SpacePlagueMessage, OfflineSummaryMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, BattleMessage, SpyMessage, ExplorationMessage, ExplorationOutcomeType, BoostType, Boost, Resources, SolarFlareMessage, SolarFlareStatus, ContrabandMessage, MoonCreationMessage, PlanetSpecialization, GhostShipDiscoveryMessage, GhostShipOutcomeMessage, GhostShipChoice, GalacticGoldRushMessage, StellarAuroraMessage, MissionType, PhalanxReportMessage } from '../types';
+import { Message, InfoMessage, SpyReport, BattleReport, MerchantStatus, MerchantInfoMessage, EspionageEventMessage, Loot, PirateMessage, PirateMercenaryStatus, ShipType, AsteroidImpactMessage, AsteroidImpactType, BuildingType, ResourceVeinMessage, AncientArtifactMessage, AncientArtifactChoice, ResearchType, SpacePlagueMessage, OfflineSummaryMessage, ExpeditionMessage, ExpeditionOutcomeType, ColonizationMessage, BattleMessage, SpyMessage, ExplorationMessage, ExplorationOutcomeType, BoostType, Boost, Resources, SolarFlareMessage, SolarFlareStatus, ContrabandMessage, MoonCreationMessage, PlanetSpecialization, GhostShipDiscoveryMessage, GhostShipOutcomeMessage, GhostShipChoice, GalacticGoldRushMessage, StellarAuroraMessage, MissionType, PhalanxReportMessage, GameState } from '../types';
 import { ALL_GAME_OBJECTS, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA } from '../constants';
 
 interface MessagesPanelProps {
@@ -9,6 +9,7 @@ interface MessagesPanelProps {
     onDeleteAll: () => void;
     onGhostShipChoice: (choice: GhostShipChoice) => void;
     onAction: (targetCoords: string, missionType: MissionType) => void;
+    gameState: GameState; // Add gameState to props
 }
 
 type MessageCategory = 'all' | 'spy' | 'battle' | 'mission';
@@ -432,13 +433,22 @@ const ExplorationDisplay: React.FC<{ message: ExplorationMessage }> = ({ message
     );
 };
 
-const GhostShipDiscoveryDisplay: React.FC<{ message: GhostShipDiscoveryMessage, onGhostShipChoice: (choice: GhostShipChoice) => void }> = ({ message, onGhostShipChoice }) => {
+const GhostShipDiscoveryDisplay: React.FC<{ message: GhostShipDiscoveryMessage, onGhostShipChoice: (choice: GhostShipChoice) => void, gameState: GameState }> = ({ message, onGhostShipChoice, gameState }) => {
+    const hasAnyFleet = Object.values(gameState.colonies).some(c => Object.values(c.fleet).some(count => count > 0));
+
     return (
         <div>
             <p>Twoje czujniki dalekiego zasięgu wykryły potężną anomalię na koordynatach <span className="font-bold text-yellow-300">[{message.locationCoords}]</span>. Identyfikacja wskazuje na wrak <span className="font-bold text-cyan-400">{ALL_SHIP_DATA[message.shipType].name}</span>.</p>
             <p className="mt-2">Wysłanie ekipy badawczej jest ryzykowne, ale może przynieść korzyści. Co robisz?</p>
             <div className="flex gap-4 mt-4">
-                <button onClick={() => onGhostShipChoice(GhostShipChoice.INVESTIGATE)} className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-white font-bold">Zbadaj wrak</button>
+                <button 
+                    onClick={() => onGhostShipChoice(GhostShipChoice.INVESTIGATE)} 
+                    className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-white font-bold disabled:bg-gray-500 disabled:cursor-not-allowed"
+                    disabled={!hasAnyFleet}
+                    title={!hasAnyFleet ? "Musisz posiadać jakąkolwiek flotę, aby zbadać wrak." : "Zbadaj wrak"}
+                >
+                    Zbadaj wrak
+                </button>
                 <button onClick={() => onGhostShipChoice(GhostShipChoice.IGNORE)} className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white font-bold">Zignoruj</button>
             </div>
         </div>
@@ -502,7 +512,7 @@ const PhalanxReportDisplay: React.FC<{ report: PhalanxReportMessage }> = ({ repo
 };
 
 
-const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => void, onGhostShipChoice: (choice: GhostShipChoice) => void, onAction: (targetCoords: string, missionType: MissionType) => void }> = ({ message, onDelete, onGhostShipChoice, onAction }) => {
+const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => void, onGhostShipChoice: (choice: GhostShipChoice) => void, onAction: (targetCoords: string, missionType: MissionType) => void, gameState: GameState }> = ({ message, onDelete, onGhostShipChoice, onAction, gameState }) => {
     const renderContent = () => {
         switch (message.type) {
             case 'info': return <p>{message.text}</p>;
@@ -522,7 +532,7 @@ const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => voi
             case 'colonization': return <ColonizationDisplay message={message} />;
             case 'moon_creation': return <MoonCreationDisplay message={message} />;
             case 'exploration': return <ExplorationDisplay message={message} />;
-            case 'ghost_ship_discovery': return <GhostShipDiscoveryDisplay message={message} onGhostShipChoice={onGhostShipChoice} />;
+            case 'ghost_ship_discovery': return <GhostShipDiscoveryDisplay message={message} onGhostShipChoice={onGhostShipChoice} gameState={gameState} />;
             case 'ghost_ship_outcome': return <GhostShipOutcomeDisplay message={message} />;
             case 'galactic_gold_rush': return <GalacticGoldRushDisplay message={message} />;
             case 'stellar_aurora': return <StellarAuroraDisplay message={message} />;
@@ -601,7 +611,7 @@ const filterMessages = (messages: Message[], category: MessageCategory): Message
     }
 };
 
-const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelete, onDeleteAll, onGhostShipChoice, onAction }) => {
+const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelete, onDeleteAll, onGhostShipChoice, onAction, gameState }) => {
     const [activeCategory, setActiveCategory] = useState<MessageCategory>('all');
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
@@ -684,7 +694,7 @@ const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelet
                 </div>
                 <div className="w-full md:w-2/3">
                     {selectedMessage ? (
-                        <MessageContent message={selectedMessage} onDelete={onDelete} onGhostShipChoice={onGhostShipChoice} onAction={onAction} />
+                        <MessageContent message={selectedMessage} onDelete={onDelete} onGhostShipChoice={onGhostShipChoice} onAction={onAction} gameState={gameState} />
                     ) : (
                         <div className="flex items-center justify-center h-full text-gray-500">
                             <p>Wybierz wiadomość, aby ją przeczytać.</p>

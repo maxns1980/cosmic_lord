@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, Fleet, QueueItem, QueueItemType, GameObject, 
@@ -545,6 +546,7 @@ function App() {
                         onDelete={handleDeleteMessage}
                         onDeleteAll={handleDeleteAllMessages}
                         onGhostShipChoice={(choice) => performAction('GHOST_SHIP_CHOICE', { choice }) }
+                        gameState={gameState}
                         onAction={(coords, mission) => { 
                             if (mission === MissionType.SPY) {
                                 setSpyModalTarget(coords);

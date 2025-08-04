@@ -1,6 +1,6 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage
 } from './types.js';
 import { 
     ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
@@ -420,6 +420,43 @@ export const handleAction = (gameState: GameState, type: string, payload: any): 
                     gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE; // Revert
                     return { error: 'Nieznany wybór dotyczący artefaktu.' };
             }
+        }
+        case 'GHOST_SHIP_CHOICE': {
+            const { choice } = payload;
+             if (gameState.ghostShipState.status !== GhostShipStatus.AWAITING_CHOICE) {
+                return { error: 'Nie ma aktywnego Statku Widmo.' };
+            }
+
+            gameState.ghostShipState.status = GhostShipStatus.INACTIVE;
+            const outcome: GhostShipOutcomeMessage['outcome'] = { text: '' };
+            let subject: string = 'Statek Widmo';
+
+            if (choice === GhostShipChoice.IGNORE) {
+                outcome.text = 'Postanowiono zignorować sygnał. Tajemnica wraku pozostanie nieodkryta.';
+                subject = 'Zignorowano Statek Widmo';
+            } else if (choice === GhostShipChoice.INVESTIGATE) {
+                const rand = Math.random();
+                if (rand < 0.4) { // 40% chance for resources
+                    const resourcesGained = {
+                        metal: Math.floor(Math.random() * 10000) + 5000,
+                        crystal: Math.floor(Math.random() * 5000) + 2500,
+                    };
+                    gameState.resources.metal += resourcesGained.metal;
+                    gameState.resources.crystal += resourcesGained.crystal;
+                    outcome.resourcesGained = resourcesGained;
+                    outcome.text = 'Ekipa badawcza z sukcesem odzyskała cenne surowce z wraku!';
+                    subject = 'Odzyskano surowce z wraku';
+                } else if (rand < 0.7) { // 30% chance for an ambush
+                    outcome.text = 'To była pułapka! Wrak był przynętą dla starożytnych dronów obronnych. Twoja ekipa musi walczyć o przetrwanie!';
+                    subject = 'Zasadzka przy Wraku!';
+                    // Here you would trigger a simple battle against a predefined drone fleet
+                } else { // 30% chance for nothing
+                    outcome.text = 'Wysłana ekipa nie znalazła niczego wartościowego. Wrak był pusty.';
+                    subject = 'Pusty Wrak';
+                }
+            }
+             addMessage(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome } as Omit<GhostShipOutcomeMessage, 'id' | 'timestamp' | 'isRead'>);
+             return { message: outcome.text };
         }
 
         default:
