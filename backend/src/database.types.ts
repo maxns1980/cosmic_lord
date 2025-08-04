@@ -9,20 +9,27 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      game_state: {
+      player_states: {
         Row: {
           user_id: string
-          state: Json
+          state: any
         }
         Insert: {
           user_id: string
-          state: Json
+          state: any
         }
         Update: {
           user_id?: string
-          state?: Json
+          state?: any
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "player_states_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["username"]
+          }
+        ]
       }
       users: {
         Row: {
@@ -36,6 +43,21 @@ export interface Database {
         Update: {
           username?: string
           password?: string
+        }
+        Relationships: []
+      }
+      world_state: {
+        Row: {
+          id: number
+          state: any
+        }
+        Insert: {
+          id?: number
+          state: any
+        }
+        Update: {
+          id?: number
+          state?: any
         }
         Relationships: []
       }

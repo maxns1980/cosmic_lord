@@ -1,4 +1,3 @@
-
 import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState, PlayerState, WorldState, InfoMessage } from './types.js';
 
 export const TICK_INTERVAL = 1000; // ms
@@ -13,7 +12,6 @@ export const COLONY_INCOME_BONUS_PER_HOUR: Omit<Resources, 'energy'> = {
     crystal: 250,
     deuterium: 100,
 };
-export const WORLD_STATE_USER_ID = '__WORLD_STATE__';
 
 export const MERCHANT_CHECK_INTERVAL = (6 * 60 + 15) * 60 * 1000; // 6 hours 15 minutes
 export const MERCHANT_SPAWN_CHANCE = 0.2; // 20%
