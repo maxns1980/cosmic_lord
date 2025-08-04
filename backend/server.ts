@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './src/types.js';
 import { Json } from './src/database.types.js';
@@ -59,7 +59,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as unknown as Json }]);
+            .insert([{ id: 1, state: initialWorldState as any }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -75,8 +75,8 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req, res) => {
-    const { username, password } = req.body;
+app.post('/api/signup', async (req: Request, res: Response) => {
+    const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
     }
@@ -123,13 +123,13 @@ app.post('/api/signup', async (req, res) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
+            .insert([{ user_id: username, state: newPlayerState as any }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
             // Rollback user creation if state creation fails
             await supabase.from('users').delete().eq('username', username);
-            if (insertStateError.message.includes('relation "public.player_states" does not exist')) {
+             if (insertStateError.message.includes('relation "public.player_states" does not exist')) {
                 return res.status(500).json({ message: 'Błąd serwera: Tabela "player_states" nie istnieje w bazie danych. Uruchom poprawny skrypt SQL.' });
             }
             return res.status(500).json({ message: 'Nie udało się utworzyć stanu gry.' });
@@ -137,7 +137,7 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -150,7 +150,7 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -178,7 +178,11 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-const authMiddleware = (req: any, res: any, next: any) => {
+interface AppRequest extends Request {
+    userId?: string;
+}
+
+const authMiddleware = (req: AppRequest, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -229,8 +233,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -242,10 +246,10 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: any, res) => {
-    const gameState = await loadCombinedGameState(req.userId);
+app.get('/api/state', authMiddleware, async (req: AppRequest, res: Response) => {
+    const gameState = await loadCombinedGameState(req.userId!);
     if (gameState) {
         res.json(gameState);
     } else {
@@ -253,8 +257,8 @@ app.get('/api/state', authMiddleware, async (req: any, res) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: any, res) => {
-    let gameState = await loadCombinedGameState(req.userId);
+app.post('/api/action', authMiddleware, async (req: AppRequest, res: Response) => {
+    let gameState = await loadCombinedGameState(req.userId!);
     if (!gameState) {
         return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });
     }
@@ -266,11 +270,11 @@ app.post('/api/action', authMiddleware, async (req: any, res) => {
             return res.status(400).json({ message: result.error });
         }
 
-        await saveStates(req.userId, gameState);
+        await saveStates(req.userId!, gameState);
 
         res.status(200).json({ message: result?.message || 'Akcja przetworzona', gameState });
     } catch (e: any) {
-        console.error(`Error processing action ${type} for user ${req.userId}:`, e);
+        console.error(`Error processing action ${type} for user ${req.userId!}:`, e);
         res.status(500).json({ message: e.message || 'Wystąpił błąd podczas przetwarzania akcji.' });
     }
 });

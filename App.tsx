@@ -227,18 +227,18 @@ function App() {
             const response = await fetch(`${API_URL}/api/state`, {
                 headers: { 'Authorization': authToken }
             });
-            if (response.status === 401) {
+
+            if (!response.ok) {
+                console.error(`Failed to fetch state from server, status: ${response.status}`);
                 handleLogout();
                 return;
             }
-            if (!response.ok) {
-                console.error('Failed to fetch state from server');
-                return;
-            }
+
             const data: GameState = await response.json();
             setGameState(data);
         } catch (error) {
             console.error("Error fetching game state:", error);
+            handleLogout();
         }
     };
 
