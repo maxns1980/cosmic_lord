@@ -118,16 +118,19 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
     // We need a temporary GameState object for production calculations
     const tempGameState = { ...playerState, ...({} as WorldState) } as GameState;
     const productions = calculateProductions(tempGameState);
-    const maxRes = calculateMaxResources(playerState.colonies);
+    
+    const perColonyMaxRes = calculateMaxResources(playerState.colonies);
+    const totalMaxResources: Resources = Object.values(perColonyMaxRes).reduce((acc, res) => {
+        acc.metal += res.metal;
+        acc.crystal += res.crystal;
+        acc.deuterium += res.deuterium;
+        acc.energy += res.energy;
+        return acc;
+    }, { metal: 0, crystal: 0, deuterium: 0, energy: 0 });
 
-    Object.values(playerState.colonies).forEach(colony => {
-        const colonyMaxRes = maxRes[colony.id];
-        // For simplicity, we distribute the total production evenly for now. A more complex model could be used.
-        const numColonies = Object.keys(playerState.colonies).length;
-        playerState.resources.metal = Math.min(colonyMaxRes.metal, playerState.resources.metal + (productions.metal / numColonies / 3600) * deltaSeconds);
-        playerState.resources.crystal = Math.min(colonyMaxRes.crystal, playerState.resources.crystal + (productions.crystal / numColonies / 3600) * deltaSeconds);
-        playerState.resources.deuterium = Math.min(colonyMaxRes.deuterium, playerState.resources.deuterium + (productions.deuterium / numColonies / 3600) * deltaSeconds);
-    });
+    playerState.resources.metal = Math.min(totalMaxResources.metal, playerState.resources.metal + (productions.metal / 3600) * deltaSeconds);
+    playerState.resources.crystal = Math.min(totalMaxResources.crystal, playerState.resources.crystal + (productions.crystal / 3600) * deltaSeconds);
+    playerState.resources.deuterium = Math.min(totalMaxResources.deuterium, playerState.resources.deuterium + (productions.deuterium / 3600) * deltaSeconds);
 
     processQueues(playerState, now);
     processFleetMissions(playerState, now);
