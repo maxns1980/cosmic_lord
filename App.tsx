@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, Fleet, QueueItem, QueueItemType, GameObject, 
@@ -21,8 +22,7 @@ import {
 import { 
     BUILDING_DATA, ALL_GAME_OBJECTS,
     PLAYER_HOME_COORDS, COLONY_INCOME_BONUS_PER_HOUR,
-    ALL_SHIP_DATA,
-    getInitialState,
+    ALL_SHIP_DATA
 } from './constants';
 import Header from './components/Header';
 import OverviewPanel from './components/OverviewPanel';
