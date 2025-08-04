@@ -22,7 +22,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // enable pre-flight for all routes
 
-app.use(express.json({ limit: '10mb' }) as any);
+app.use(express.json({ limit: '10mb' }));
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
     for (let g = 1; g <= 9; g++) {
@@ -41,7 +41,7 @@ const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => 
 
 // Simplified and more robust world initialization
 const initializeWorld = async () => {
-    console.log("Initializing world state...");
+    console.log("SERVER CODE VERSION: 4.0 - Initializing world state...");
     const { data, error } = await supabase
         .from('world_state')
         .select('id')
@@ -59,7 +59,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as any }] as any);
+            .insert([{ id: 1, state: initialWorldState as Json }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -113,7 +113,7 @@ app.post('/api/signup', async (req, res) => {
         // 4. Create the new user
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert([{ username, password }] as any);
+            .insert([{ username, password }]);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -123,7 +123,7 @@ app.post('/api/signup', async (req, res) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as any }] as any);
+            .insert([{ user_id: username, state: newPlayerState as Json }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -137,7 +137,7 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any } as any).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -229,8 +229,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any } as any).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any } as any).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as Json }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -276,16 +276,16 @@ app.post('/api/action', authMiddleware, async (req: any, res) => {
 });
 
 const startServer = async () => {
-    console.log("Attempting to initialize world...");
+    console.log("SERVER CODE VERSION: 4.0 - Attempting to start server...");
     try {
         await initializeWorld();
         app.listen(PORT, () => {
             console.log(`Backend server running on port ${PORT}`);
             console.log(`Persistence provider: Supabase`);
-            console.log("✅ Your service is live!");
+            console.log("✅ SERVER V4.0 IS LIVE!");
         });
     } catch (error) {
-        console.error("❌ FATAL: Server failed to start due to world initialization failure.", error);
+        console.error("❌ FATAL V4.0: Server failed to start due to world initialization failure.", error);
         (process as any).exit(1);
     }
 };

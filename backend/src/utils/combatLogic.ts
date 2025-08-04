@@ -27,7 +27,7 @@ export type CombatParty = {
     research: ResearchLevels;
     name: string;
     shipLevels?: ShipLevels;
-    solarFlare: SolarFlareState;
+    solarFlare?: SolarFlareState;
 };
 
 export type CombatResult = {
@@ -65,7 +65,7 @@ const createCombatGroups = (party: CombatParty): CombatGroup[] => {
     const armorTech = party.research[ResearchType.ARMOR_TECHNOLOGY] || 0;
     const shieldTech = party.research[ResearchType.SHIELDING_TECHNOLOGY] || 0;
     const weaponTech = party.research[ResearchType.WEAPON_TECHNOLOGY] || 0;
-    const isDisruptionActive = party.solarFlare.status === SolarFlareStatus.DISRUPTION;
+    const isDisruptionActive = party.solarFlare?.status === SolarFlareStatus.DISRUPTION;
     
     for (const shipId in party.fleet) {
         const count = party.fleet[shipId as ShipType];
