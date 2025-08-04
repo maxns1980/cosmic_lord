@@ -89,7 +89,7 @@ const initializeWorld = async () => {
                 }
 
                 if (playerStateData?.state) {
-                    const homeCoords = Object.keys((playerStateData.state as PlayerState).colonies)[0];
+                    const homeCoords = Object.keys(((playerStateData.state as unknown) as PlayerState).colonies)[0];
                     if (homeCoords) {
                          initialWorldState.occupiedCoordinates[homeCoords] = user.username;
                     }
@@ -325,7 +325,7 @@ const startServer = async () => {
         });
     } catch (error) {
         console.error("❌ FATAL: Server failed to start due to world initialization failure.", error);
-        process.exit(1);
+        (process as any).exit(1);
     }
 };
 
