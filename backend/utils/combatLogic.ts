@@ -1,5 +1,5 @@
-import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types';
-import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants';
+import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels } from '../types.js';
+import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants.js';
 
 // The combat logic has been refactored to use a "health pool" (HP pool) model for each group of units.
 // This solves a critical flaw in the previous per-unit simulation where damage against a large number of weak units
@@ -19,6 +19,14 @@ type CombatGroup = {
     currentTotalShield: number;
     currentTotalHull: number;
     rapidFireAgainst?: Record<string, number>;
+};
+
+export type CombatParty = {
+    fleet: Fleet;
+    defenses?: Defenses;
+    research: ResearchLevels;
+    name: string;
+    shipLevels?: ShipLevels;
 };
 
 export type CombatResult = {
@@ -56,7 +64,6 @@ const createCombatGroups = (party: CombatParty): CombatGroup[] => {
     const armorTech = party.research[ResearchType.ARMOR_TECHNOLOGY] || 0;
     const shieldTech = party.research[ResearchType.SHIELDING_TECHNOLOGY] || 0;
     const weaponTech = party.research[ResearchType.WEAPON_TECHNOLOGY] || 0;
-    const isDisruptionActive = party.solarFlare?.status === SolarFlareStatus.DISRUPTION;
     
     for (const shipId in party.fleet) {
         const count = party.fleet[shipId as ShipType];
@@ -64,7 +71,7 @@ const createCombatGroups = (party: CombatParty): CombatGroup[] => {
         const data = ALL_SHIP_DATA[shipId as ShipType];
         const upgradeLevel = party.shipLevels?.[shipId as ShipType] || 0;
 
-        const shield = isDisruptionActive ? 0 : data.shield * (1 + shieldTech * 0.1) * (1 + upgradeLevel * 0.1);
+        const shield = data.shield * (1 + shieldTech * 0.1) * (1 + upgradeLevel * 0.1);
         const hull = data.structuralIntegrity * (1 + armorTech * 0.1) * (1 + upgradeLevel * 0.1);
         const attack = data.attack * (1 + weaponTech * 0.1) * (1 + upgradeLevel * 0.1);
 
@@ -87,7 +94,7 @@ const createCombatGroups = (party: CombatParty): CombatGroup[] => {
             const count = party.defenses[defenseId as DefenseType];
             if (!count || count <= 0) continue;
             const data = DEFENSE_DATA[defenseId as DefenseType];
-            const shield = isDisruptionActive ? 0 : data.shield * (1 + shieldTech * 0.1);
+            const shield = data.shield * (1 + shieldTech * 0.1);
             const hull = data.structuralIntegrity * (1 + armorTech * 0.1);
             groups.push({
                 id: defenseId as DefenseType,
@@ -305,8 +312,8 @@ export const calculateCombat = (
         const data = ALL_SHIP_DATA[id as ShipType];
         if (data && count) {
             const cost = data.cost(1);
-            debris.metal += cost.metal * count * DEBRIS_FIELD_RECOVERY_RATE;
-            debris.crystal += cost.crystal * count * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.metal += cost.metal * (count || 0) * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.crystal += cost.crystal * (count || 0) * DEBRIS_FIELD_RECOVERY_RATE;
         }
     });
     
@@ -354,7 +361,7 @@ export const calculateCombat = (
         const lootableCrystal = Math.max(0, (defenderResources.crystal || 0) - protectedCrystal);
         const lootableDeuterium = Math.max(0, (defenderResources.deuterium || 0) - protectedDeuterium);
         
-        const LOOT_FACTOR = 0.5; // Standard loot is 50% of unprotected resources
+        const LOOT_FACTOR = 1.0; // Standard loot is 100% of unprotected resources
         const metalToLoot = lootableMetal * LOOT_FACTOR;
         const crystalToLoot = lootableCrystal * LOOT_FACTOR;
         const deuteriumToLoot = lootableDeuterium * LOOT_FACTOR;

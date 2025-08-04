@@ -234,6 +234,47 @@ export const updateWorldState = (worldState: WorldState): { updatedWorldState: W
 
 export const handleAction = (gameState: GameState, type: string, payload: any): { message?: string, error?: string } => {
     switch (type) {
+        case 'TRIGGER_EVENT': {
+            const { eventType } = payload;
+            let message = 'Wydarzenie testowe uruchomione!';
+
+            switch (eventType as TestableEventType) {
+                case TestableEventType.SOLAR_FLARE:
+                    triggerSolarFlare(gameState);
+                    break;
+                case TestableEventType.PIRATE_MERCENARY:
+                    triggerPirateMercenary(gameState);
+                    break;
+                case TestableEventType.CONTRABAND:
+                    triggerContraband(gameState);
+                    break;
+                case TestableEventType.ANCIENT_ARTIFACT:
+                    triggerAncientArtifact(gameState);
+                    break;
+                case TestableEventType.ASTEROID_IMPACT:
+                    triggerAsteroidImpact(gameState);
+                    break;
+                case TestableEventType.RESOURCE_VEIN:
+                    triggerResourceVein(gameState);
+                    break;
+                case TestableEventType.SPACE_PLAGUE:
+                    triggerSpacePlague(gameState);
+                    break;
+                case TestableEventType.GHOST_SHIP:
+                    triggerGhostShip(gameState);
+                    break;
+                case TestableEventType.GALACTIC_GOLD_RUSH:
+                    triggerGalacticGoldRush(gameState);
+                    break;
+                case TestableEventType.STELLAR_AURORA:
+                    triggerStellarAurora(gameState);
+                    break;
+                default:
+                    return { error: 'Nieznany typ wydarzenia testowego.' };
+            }
+            
+            return { message };
+        }
         case 'ACTIVATE_BOOST': {
             const { boostId } = payload;
             const boostIndex = gameState.inventory.boosts.findIndex((b: Boost) => b.id === boostId);
