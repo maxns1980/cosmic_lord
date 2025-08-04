@@ -282,7 +282,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
                     data = ALL_SHIP_DATA[item.type as ShipType];
                     requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
                     currentCost = data.cost(1);
-                    const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                    const totalCost: Resources = { metal: currentCost!.metal * levelOrAmount, crystal: currentCost!.crystal * levelOrAmount, deuterium: currentCost!.deuterium * levelOrAmount, energy: 0 };
                     if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
                         updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
                         cost = totalCost;
@@ -294,7 +294,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
                     data = DEFENSE_DATA[item.type as DefenseType];
                     requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
                     currentCost = data.cost(1);
-                    const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                    const totalDefenseCost: Resources = { metal: currentCost!.metal * levelOrAmount, crystal: currentCost!.crystal * levelOrAmount, deuterium: currentCost!.deuterium * levelOrAmount, energy: 0 };
                      if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
                         updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
                         cost = totalDefenseCost;
@@ -433,8 +433,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         image: sleeper.image,
         personality: sleeper.personality,
         developmentSpeed: sleeper.developmentSpeed,
-        resources: sleeper.resources ? { ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
-        
+        resources: { ...INITIAL_NPC_STATE.resources, ...(sleeper.resources ?? {}) },
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
         fleet: {},

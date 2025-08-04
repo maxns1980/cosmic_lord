@@ -1,5 +1,5 @@
-import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types';
-import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants';
+import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
+import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
 
 const calculateNpcProductions = (npc: NPCState) => {
     const { buildings, fleet, developmentSpeed = 1.0 } = npc;
@@ -164,7 +164,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
             { type: BuildingType.METAL_STORAGE, kind: 'building' },
             { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
             { type: BuildingType.DEUTERIUM_TANK, kind: 'building' },
-        ],
+        ] as BuildItem[],
         [NPCPersonality.ECONOMIC]: [
             { kind: 'cheapest_mine' },
             { type: BuildingType.SOLAR_PLANT, kind: 'building' },
@@ -181,7 +181,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
             { type: ResearchType.ENERGY_TECHNOLOGY, kind: 'research' },
             { type: BuildingType.RESEARCH_LAB, kind: 'building' },
             { type: BuildingType.SHIPYARD, kind: 'building' },
-        ],
+        ] as BuildItem[],
         [NPCPersonality.BALANCED]: [
             { kind: 'cheapest_mine' },
             { type: BuildingType.SOLAR_PLANT, kind: 'building' },
@@ -203,7 +203,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
             { type: BuildingType.METAL_STORAGE, kind: 'building' },
             { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
             { type: BuildingType.DEUTERIUM_TANK, kind: 'building' },
-        ],
+        ] as BuildItem[],
     };
 
     let updatedNpc = { ...npc, resources: { ...npc.resources } };
@@ -282,11 +282,13 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
                     data = ALL_SHIP_DATA[item.type as ShipType];
                     requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
                     currentCost = data.cost(1);
-                    const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
-                    if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
-                        updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
-                        cost = totalCost;
-                        hasBuilt = true;
+                    if (currentCost) {
+                        const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                        if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
+                            updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
+                            cost = totalCost;
+                            hasBuilt = true;
+                        }
                     }
                     break;
                 case 'defense':
@@ -294,11 +296,13 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
                     data = DEFENSE_DATA[item.type as DefenseType];
                     requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
                     currentCost = data.cost(1);
-                    const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
-                     if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
-                        updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
-                        cost = totalDefenseCost;
-                        hasBuilt = true;
+                     if (currentCost) {
+                        const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                        if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
+                            updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
+                            cost = totalDefenseCost;
+                            hasBuilt = true;
+                        }
                     }
                     break;
             }
@@ -366,7 +370,7 @@ const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission
                 return {
                     id: `npc-m-${now}-${Math.random()}`,
                     sourceCoords,
-                    fleet: attackingFleet,
+                    fleet: attackingFleet as Fleet,
                     missionType: MissionType.ATTACK,
                     startTime: now,
                     arrivalTime: now + missionDuration
@@ -433,8 +437,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         image: sleeper.image,
         personality: sleeper.personality,
         developmentSpeed: sleeper.developmentSpeed,
-        resources: sleeper.resources ? { ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
-        
+        resources: { ...INITIAL_NPC_STATE.resources, ...(sleeper.resources ?? {}) },
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
         fleet: {},
@@ -528,9 +531,9 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         const productions = calculateNpcProductions(regeneratedNpc);
         const maxResources = calculateNpcMaxResources(regeneratedNpc.buildings);
 
-        regeneratedNpc.resources.metal = Math.min(maxResources.metal, regeneratedNpc.resources.metal + (productions.metal / 3600) * offlineSeconds);
-        regeneratedNpc.resources.crystal = Math.min(maxResources.crystal, regeneratedNpc.resources.crystal + (productions.crystal / 3600) * offlineSeconds);
-        regeneratedNpc.resources.deuterium = Math.min(maxResources.deuterium, regeneratedNpc.resources.deuterium + (productions.deuterium / 3600) * offlineSeconds);
+        regeneratedNpc.resources.metal = Math.min(maxResources.metal, (regeneratedNpc.resources.metal || 0) + (productions.metal / 3600) * offlineSeconds);
+        regeneratedNpc.resources.crystal = Math.min(maxResources.crystal, (regeneratedNpc.resources.crystal || 0) + (productions.crystal / 3600) * offlineSeconds);
+        regeneratedNpc.resources.deuterium = Math.min(maxResources.deuterium, (regeneratedNpc.resources.deuterium || 0) + (productions.deuterium / 3600) * offlineSeconds);
     }
 
     // Set final update time to now, as it's now active

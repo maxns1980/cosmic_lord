@@ -1,5 +1,5 @@
-import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types';
-import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants';
+import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types.js';
+import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants.js';
 
 // The combat logic has been refactored to use a "health pool" (HP pool) model for each group of units.
 // This solves a critical flaw in the previous per-unit simulation where damage against a large number of weak units
@@ -44,8 +44,8 @@ const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, numbe
         },
         [ShipType.BATTLESHIP]: { [ShipType.BATTLECRUISER]: 2 },
         [ShipType.DEATHSTAR]: {
-             ...(Object.fromEntries(Object.values(ShipType).map(v => [v, 250])) as Record<string, number>),
-             ...(Object.fromEntries(Object.values(DefenseType).map(v => [v, 250])) as Record<string, number>),
+             ...Object.fromEntries(Object.values(ShipType).map(v => [v, 250])),
+             ...Object.fromEntries(Object.values(DefenseType).map(v => [v, 250])),
         }
     };
     return rapidFireData[unitId as ShipType] || {};
@@ -354,7 +354,7 @@ export const calculateCombat = (
         const lootableCrystal = Math.max(0, (defenderResources.crystal || 0) - protectedCrystal);
         const lootableDeuterium = Math.max(0, (defenderResources.deuterium || 0) - protectedDeuterium);
         
-        const LOOT_FACTOR = 1.0; // Standard loot is 100% of unprotected resources
+        const LOOT_FACTOR = 0.5; // Standard loot is 50% of unprotected resources
         const metalToLoot = lootableMetal * LOOT_FACTOR;
         const crystalToLoot = lootableCrystal * LOOT_FACTOR;
         const deuteriumToLoot = lootableDeuterium * LOOT_FACTOR;

@@ -1,5 +1,5 @@
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage } from '../types';
-import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants';
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage } from '../types.js';
+import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
 const addMessage = (gameState: GameState, message: any) => {
     gameState.messages.unshift({
@@ -104,8 +104,8 @@ export const triggerSpacePlague = (gameState: GameState) => {
     if (gameState.spacePlague.active) return;
 
     const playerFleet = Object.entries(gameState.colonies)
-        .flatMap(([, colony]) => Object.entries(colony.fleet))
-        .filter(([, count]) => count > 0);
+        .flatMap(([, colony]) => Object.entries((colony as any).fleet))
+        .filter(([, count]) => (count as number) > 0);
         
     if (playerFleet.length > 0) {
         const [infectedShip] = playerFleet[Math.floor(Math.random() * playerFleet.length)];
