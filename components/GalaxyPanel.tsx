@@ -10,10 +10,11 @@ interface GalaxyPanelProps {
     onHarvest: (targetCoords: string, debris: DebrisField) => void;
     npcStates: NPCStates;
     debrisFields: Record<string, DebrisField>;
-    colonies: Record<string, Colony>;
-    playerState: GameState;
+    gameState: GameState;
     favoritePlanets: string[];
     onToggleFavorite: (coords: string) => void;
+    username: string;
+    homeworld: Colony | null;
 }
 
 const formatNumber = (num: number) => Math.floor(num).toLocaleString('pl-PL');
@@ -46,11 +47,11 @@ const getActivityStatus = (lastUpdateTime: number): { text: string, color: strin
     return { text: 'Nieaktywny', color: 'text-red-500' };
 };
 
-const getStrengthColor = (playerPoints: number, npcPoints: number | undefined, activity: { text: string, color: string }): string => {
+const getStrengthColor = (playerPoints: number, targetPoints: number | undefined, activity: { text: string, color: string }): string => {
     if (activity.text === 'Nieaktywny') return 'border-purple-600';
-    if (npcPoints === undefined) return 'border-gray-700';
-    if (npcPoints > playerPoints * 2) return 'border-red-600';
-    if (npcPoints < playerPoints * 0.5) return 'border-green-600';
+    if (targetPoints === undefined) return 'border-yellow-600'; // For other players where we don't have points
+    if (targetPoints > playerPoints * 2) return 'border-red-600';
+    if (targetPoints < playerPoints * 0.5) return 'border-green-600';
     return 'border-yellow-600';
 };
 
@@ -143,7 +144,7 @@ const PlanetRow: React.FC<{
                     </>
                 )}
                  {planetData && planetData.isPlayer && (
-                    <span className="px-4 py-2 text-cyan-400 font-bold">{planetData.isHome ? 'Twoja Planeta' : 'Twoja Kolonia'}</span>
+                    <span className="px-4 py-2 text-cyan-400 font-bold">{planetData.isHome ? 'Twoja Planeta Matka' : 'Twoja Kolonia'}</span>
                 )}
                  {!planetData && (
                     <>
@@ -163,7 +164,7 @@ const PlanetRow: React.FC<{
     )
 }
 
-const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, debrisFields, colonies, playerState, favoritePlanets, onToggleFavorite }) => {
+const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, debrisFields, gameState, favoritePlanets, onToggleFavorite, username, homeworld }) => {
     const [galaxy, setGalaxy] = useState(1);
     const [system, setSystem] = useState(42);
 
@@ -176,16 +177,30 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
         setGalaxy(newGalaxy);
     };
 
-    const playerPoints = calculatePoints({ ...playerState.colonies[PLAYER_HOME_COORDS], research: playerState.research });
+    const { colonies, occupiedCoordinates } = gameState;
+
+    const playerPoints = calculatePoints({ 
+        fleet: Object.values(colonies).reduce((acc, c) => ({...acc, ...c.fleet}), {}),
+        defenses: Object.values(colonies).reduce((acc, c) => ({...acc, ...c.defenses}), {}),
+        buildings: Object.values(colonies).reduce((acc, c) => {
+            for(const building in c.buildings){
+                (acc as any)[building as BuildingType] = Math.max((acc as any)[building as BuildingType] || 0, c.buildings[building as BuildingType]);
+            }
+            return acc;
+        }, {}),
+        research: gameState.research,
+    });
+    
     const now = Date.now();
-    const explorationTargets = playerState.fleetMissions
+    const explorationTargets = gameState.fleetMissions
         .filter(m => m.missionType === MissionType.EXPLORE && now > m.arrivalTime && m.explorationEndTime && now < m.explorationEndTime)
         .map(m => m.targetCoords);
 
     const planets = Array.from({ length: 15 }, (_, i) => {
         const position = i + 1;
         const coords = `${galaxy}:${system}:${position}`;
-        const playerColony = colonies[coords];
+        
+        const ownerUsername = occupiedCoordinates[coords];
         const npc = npcStates[coords];
         const debris = debrisFields[coords];
         const isBeingExplored = explorationTargets.includes(coords);
@@ -195,15 +210,23 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
         let activity = { text: '-', color: 'text-gray-400' };
         let borderColorClass = 'border-gray-800';
 
-        if (playerColony) {
-            const isHome = playerColony.id === PLAYER_HOME_COORDS;
-            planetData = { name: playerColony.name, player: isHome ? 'Ty' : 'Ty (Kolonia)', image: isHome ? '🌍' : '🪐', isPlayer: true, isHome };
-            borderColorClass = 'border-cyan-400';
+        if (ownerUsername === username) {
+            const playerColony = colonies[coords];
+            if(playerColony) {
+                const isHome = playerColony.id === homeworld?.id;
+                planetData = { name: playerColony.name, player: 'Ty', image: isHome ? '🌍' : '🪐', isPlayer: true, isHome };
+                borderColorClass = 'border-cyan-400';
+            }
         } else if (npc) {
             planetData = { name: `Planeta ${npc.name}`, player: `${npc.name} (NPC)`, image: npc.image, isPlayer: false, developmentSpeed: npc.developmentSpeed };
             points = calculatePoints(npc);
             activity = getActivityStatus(npc.lastUpdateTime);
             borderColorClass = getStrengthColor(playerPoints, points, activity);
+        } else if (ownerUsername) { // Another player
+             planetData = { name: `Planeta Gracza`, player: ownerUsername, image: '🪐', isPlayer: false };
+             points = 0; // Don't have this data yet for other players
+             activity = { text: 'Aktywny (?)', color: 'text-gray-400' }; // Don't have this data yet
+             borderColorClass = getStrengthColor(playerPoints, undefined, activity);
         }
 
         if (isBeingExplored) borderColorClass = 'border-teal-400 animate-pulse';
@@ -212,14 +235,13 @@ const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition
     });
 
     const expeditionCoords = `${galaxy}:${system}:16`;
-    const anyFleet = Object.values(playerState.colonies).reduce((acc, c) => ({...acc, ...c.fleet}), {});
-    const hasSpyProbes = Object.values(playerState.colonies).some(c => (c.fleet[ShipType.SPY_PROBE] || 0) > 0);
-    const hasAstrophysics = (playerState.research[ResearchType.ASTROPHYSICS] || 0) > 0;
-    const hasResearchVessel = Object.values(playerState.colonies).some(c => (c.fleet[ShipType.RESEARCH_VESSEL] || 0) > 0);
-    const hasRecyclers = Object.values(playerState.colonies).some(c => (c.fleet[ShipType.RECYCLER] || 0) > 0);
+    const hasSpyProbes = Object.values(gameState.colonies).some(c => (c.fleet[ShipType.SPY_PROBE] || 0) > 0);
+    const hasAstrophysics = (gameState.research[ResearchType.ASTROPHYSICS] || 0) > 0;
+    const hasResearchVessel = Object.values(gameState.colonies).some(c => (c.fleet[ShipType.RESEARCH_VESSEL] || 0) > 0);
+    const hasRecyclers = Object.values(gameState.colonies).some(c => (c.fleet[ShipType.RECYCLER] || 0) > 0);
     const canDoExpedition = hasAstrophysics && hasResearchVessel;
     const expeditionDisabledReason = !hasAstrophysics ? 'Wymagana Astrofizyka' : !hasResearchVessel ? 'Wymagany Okręt Badawczy' : 'Wyślij flotę na wyprawę';
-    const isTargetOccupied = (targetCoords: string) => !!(npcStates[targetCoords] || colonies[targetCoords]);
+    const isTargetOccupied = (targetCoords: string) => !!(npcStates[targetCoords] || occupiedCoordinates[targetCoords]);
 
     return (
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6">

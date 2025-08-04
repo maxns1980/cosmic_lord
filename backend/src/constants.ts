@@ -1,4 +1,4 @@
-import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState, PlayerState, WorldState, InfoMessage } from './types.js';
+import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, DailyBonusState, PlayerState, WorldState, InfoMessage, NPCStates } from './types.js';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -1052,22 +1052,72 @@ export const getInitialPlayerState = (username: string, homeCoords: string): Pla
   lastBonusClaimTime: 0,
 });
 
-export const getInitialWorldState = (): WorldState => ({
-    npcStates: {},
-    npcFleetMissions: [],
-    debrisFields: {},
-    merchantState: INITIAL_MERCHANT_STATE,
-    pirateMercenaryState: INITIAL_PIRATE_MERCENARY_STATE,
-    resourceVeinBonus: INITIAL_RESOURCE_VEIN_BONUS,
-    ancientArtifactState: INITIAL_ANCIENT_ARTIFACT_STATE,
-    spacePlague: INITIAL_SPACE_PLAGUE_STATE,
-    solarFlare: INITIAL_SOLAR_FLARE_STATE,
-    contrabandState: INITIAL_CONTRABAND_STATE,
-    ghostShipState: INITIAL_GHOST_SHIP_STATE,
-    galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
-    stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
-    occupiedCoordinates: {},
-    nextMerchantCheckTime: Date.now() + (15 * 60 * 1000), // First check in 15 minutes
-    lastGlobalNpcCheck: Date.now(),
-    lastEventCheckTime: Date.now(),
-});
+export const getInitialNpcPopulation = (existingPlayerCoords: string[] = []): { npcStates: NPCStates, occupiedCoordinates: Record<string, string> } => {
+    const npcStates: NPCStates = {};
+    const occupiedCoordinates: Record<string, string> = {};
+    let count = 0;
+
+    const playerCoordsSet = new Set(existingPlayerCoords);
+    playerCoordsSet.add(PLAYER_HOME_COORDS);
+
+    const coordsArray: string[] = [];
+    for (let g = 1; g <= 9; g++) {
+        for (let s = 1; s <= 499; s++) {
+            for (let p = 1; p <= 15; p++) {
+                const coord = `${g}:${s}:${p}`;
+                if (playerCoordsSet.has(coord)) continue;
+                coordsArray.push(coord);
+            }
+        }
+    }
+
+    for (let i = coordsArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [coordsArray[i], coordsArray[j]] = [coordsArray[j], coordsArray[i]];
+    }
+
+    while (count < TOTAL_NPC_COUNT && coordsArray.length > 0) {
+        const coords = coordsArray.pop()!;
+        
+        const personalityValues = Object.values(NPCPersonality);
+        const personality = personalityValues[Math.floor(Math.random() * personalityValues.length)];
+        const name = NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)];
+        const image = NPC_IMAGES[Math.floor(Math.random() * NPC_IMAGES.length)];
+        const developmentSpeed = 0.8 + Math.random() * 0.7;
+
+        const newNpc: NPCState = {
+            ...INITIAL_NPC_STATE,
+            personality, name, image, developmentSpeed,
+            lastUpdateTime: Date.now(),
+        };
+        
+        npcStates[coords] = newNpc;
+        occupiedCoordinates[coords] = name;
+        count++;
+    }
+
+    return { npcStates, occupiedCoordinates };
+};
+
+export const getInitialWorldState = (): WorldState => {
+    const { npcStates, occupiedCoordinates } = getInitialNpcPopulation();
+    return {
+        npcStates,
+        npcFleetMissions: [],
+        debrisFields: {},
+        merchantState: INITIAL_MERCHANT_STATE,
+        pirateMercenaryState: INITIAL_PIRATE_MERCENARY_STATE,
+        resourceVeinBonus: INITIAL_RESOURCE_VEIN_BONUS,
+        ancientArtifactState: INITIAL_ANCIENT_ARTIFACT_STATE,
+        spacePlague: INITIAL_SPACE_PLAGUE_STATE,
+        solarFlare: INITIAL_SOLAR_FLARE_STATE,
+        contrabandState: INITIAL_CONTRABAND_STATE,
+        ghostShipState: INITIAL_GHOST_SHIP_STATE,
+        galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
+        stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
+        occupiedCoordinates,
+        nextMerchantCheckTime: Date.now() + (15 * 60 * 1000), // First check in 15 minutes
+        lastGlobalNpcCheck: Date.now(),
+        lastEventCheckTime: Date.now(),
+    };
+};

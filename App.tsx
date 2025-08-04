@@ -597,10 +597,11 @@ function App() {
                          onHarvest={(coords, debris) => setHarvestModalTarget({ coords, debris })}
                          npcStates={npcStates}
                          debrisFields={debrisFields}
-                         colonies={colonies}
-                         playerState={gameState}
+                         gameState={gameState}
                          favoritePlanets={favoritePlanets}
                          onToggleFavorite={handleToggleFavoritePlanet}
+                         username={username}
+                         homeworld={homeworld}
                     />
                 )}
                 {activeView === 'phalanx' && (

@@ -1,9 +1,9 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './types.js';
 import { Json } from './database.types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState } from './constants.js';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants.js';
 import { supabase } from './config/db.js';
 
 const app = express();
@@ -44,7 +44,7 @@ const initializeWorld = async () => {
     console.log("SERVER CODE VERSION: 4.0 - Initializing world state...");
     const { data, error } = await supabase
         .from('world_state')
-        .select('id')
+        .select('*')
         .eq('id', 1)
         .single();
 
@@ -65,17 +65,35 @@ const initializeWorld = async () => {
             console.error("FATAL: Could not initialize world state.", insertError);
             throw new Error("FATAL: Could not initialize world state.");
         } else {
-            console.log("World state initialized successfully.");
+            console.log("World state initialized successfully with NPCs.");
         }
     } else {
         console.log("World state loaded.");
+        const worldState = (data as any).state as unknown as WorldState;
+        if (!worldState.npcStates || Object.keys(worldState.npcStates).length < TOTAL_NPC_COUNT) {
+             console.log(`World state has insufficient NPCs (${Object.keys(worldState.npcStates || {}).length}). Populating to ${TOTAL_NPC_COUNT}...`);
+
+             const playerCoords = Object.keys(worldState.occupiedCoordinates || {}).filter(coord => !(worldState.npcStates || {})[coord]);
+             const { npcStates, occupiedCoordinates: npcOccupiedCoordinates } = getInitialNpcPopulation(playerCoords);
+
+             worldState.npcStates = npcStates;
+             // Merge coordinates, preserving existing player locations
+             worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
+
+             const { error: updateError } = await (supabase.from('world_state') as any).update({ state: worldState as any }).eq('id', 1);
+            if (updateError) {
+                console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
+                throw new Error("FATAL: Could not migrate world state.");
+            }
+            console.log("NPC migration successful.");
+        }
     }
 };
 
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: Request, res: Response) => {
+app.post('/api/signup', async (req: express.Request, res: express.Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -150,7 +168,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/login', async (req: Request, res: Response) => {
+app.post('/api/login', async (req: express.Request, res: express.Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -178,16 +196,16 @@ app.post('/api/login', async (req: Request, res: Response) => {
     }
 });
 
-interface AppRequest extends Request {
+interface AppRequest extends express.Request {
     userId?: string;
 }
 
-const authMiddleware = (req: AppRequest, res: Response, next: NextFunction) => {
+const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
-    req.userId = token;
+    (req as AppRequest).userId = token;
     next();
 };
 
@@ -246,9 +264,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
+app.get('/health', (req: express.Request, res: express.Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/state', authMiddleware, async (req: express.Request, res: express.Response) => {
     const gameState = await loadCombinedGameState((req as AppRequest).userId!);
     if (gameState) {
         res.json(gameState);
@@ -257,7 +275,7 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/action', authMiddleware, async (req: express.Request, res: express.Response) => {
     let gameState = await loadCombinedGameState((req as AppRequest).userId!);
     if (!gameState) {
         return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });
