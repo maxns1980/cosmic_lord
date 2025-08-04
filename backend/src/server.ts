@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState } from './types';
-import { Json } from './database.types';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine';
-import { getInitialPlayerState, getInitialWorldState } from './constants';
-import { supabase } from './config/db';
+import { GameState, PlayerState, WorldState } from './types.js';
+import { Json } from './database.types.js';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine.js';
+import { getInitialPlayerState, getInitialWorldState } from './constants.js';
+import { supabase } from './config/db.js';
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -22,7 +22,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // enable pre-flight for all routes
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json());
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
     for (let g = 1; g <= 9; g++) {
@@ -59,7 +59,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as Json }]);
+            .insert([{ id: 1, state: initialWorldState as unknown as Json }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -123,7 +123,7 @@ app.post('/api/signup', async (req, res) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as Json }]);
+            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -137,7 +137,7 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -229,8 +229,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as Json }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 

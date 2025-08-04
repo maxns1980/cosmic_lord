@@ -1,6 +1,5 @@
-
-import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types';
-import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS, NPC_NAMES, NPC_IMAGES } from '../constants';
+import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
+import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS, NPC_NAMES, NPC_IMAGES } from '../constants.js';
 
 export const generateNewNpc = (): NPCState => {
     const personalityValues = Object.values(NPCPersonality);
@@ -116,61 +115,219 @@ export const calculatePointsForNpc = (npc: NPCState): number => {
 }
 
 
+// Simplified AI logic for spending resources
 const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
     type BuildItem = { type?: BuildingType | ResearchType | ShipType | DefenseType; kind: 'building' | 'research' | 'ship' | 'defense' | 'cheapest_mine'; amount?: number };
 
     const DEFENSIVE_PRIORITIES: BuildItem[] = [
+        // Top-tier defenses first
         { type: DefenseType.PLASMA_TURRET, kind: 'defense', amount: 2 },
         { type: DefenseType.ION_CANNON, kind: 'defense', amount: 5 },
+        { type: DefenseType.HEAVY_LASER_CANNON, kind: 'defense', amount: 5 },
+        // Then ships
         { type: ShipType.DESTROYER, kind: 'ship', amount: 1 },
+        { type: ShipType.BATTLESHIP, kind: 'ship', amount: 1 },
+        { type: ShipType.CRUISER, kind: 'ship', amount: 2 },
+        { type: ShipType.HEAVY_FIGHTER, kind: 'ship', amount: 5 },
+        // Basic defenses
+        { type: DefenseType.LIGHT_LASER_CANNON, kind: 'defense', amount: 10 },
+        { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', amount: 10 },
+        // Supporting infrastructure
         { type: BuildingType.SHIPYARD, kind: 'building' },
+        { type: ResearchType.WEAPON_TECHNOLOGY, kind: 'research' },
+        { type: ResearchType.SHIELDING_TECHNOLOGY, kind: 'research' },
+        { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+        // Fallback to econ if nothing else can be built
         { kind: 'cheapest_mine' },
+        { type: BuildingType.SOLAR_PLANT, kind: 'building' },
+        { type: BuildingType.METAL_STORAGE, kind: 'building' },
+        { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
     ];
 
     const buildPriorities: Record<NPCPersonality, BuildItem[]> = {
         [NPCPersonality.AGGRESSIVE]: [
+            // End-Game Units
             { type: ShipType.BATTLECRUISER, kind: 'ship', amount: 1 },
+             // Capital Ships
+            { type: ShipType.DESTROYER, kind: 'ship', amount: 1 },
+            { type: ShipType.BATTLESHIP, kind: 'ship', amount: 1 },
+            { type: ShipType.CRUISER, kind: 'ship', amount: 2 },
+             // Research
             { type: ResearchType.WEAPON_TECHNOLOGY, kind: 'research' },
+            { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+            { type: ResearchType.SHIELDING_TECHNOLOGY, kind: 'research' },
+            { type: ResearchType.COMBUSTION_DRIVE, kind: 'research' },
+            { type: ResearchType.IMPULSE_DRIVE, kind: 'research' },
+            { type: ResearchType.HYPERSPACE_DRIVE, kind: 'research' },
+            // Ships and High-Tier Defense
+            { type: ShipType.HEAVY_FIGHTER, kind: 'ship', amount: 2 },
+            { type: DefenseType.PLASMA_TURRET, kind: 'defense', amount: 2 },
+            { type: ShipType.MEDIUM_FIGHTER, kind: 'ship', amount: 5 },
+            { type: ShipType.LIGHT_FIGHTER, kind: 'ship', amount: 10 },
+            { type: ShipType.CARGO_SHIP, kind: 'ship', amount: 2 },
+            // Defenses
+            { type: DefenseType.HEAVY_LASER_CANNON, kind: 'defense', amount: 5 },
+            { type: DefenseType.LIGHT_LASER_CANNON, kind: 'defense', amount: 10 },
+            // Research
+            { type: ResearchType.SPY_TECHNOLOGY, kind: 'research' },
+            { type: ResearchType.LASER_TECHNOLOGY, kind: 'research' },
+            // Buildings
             { type: BuildingType.SHIPYARD, kind: 'building' },
-            { kind: 'cheapest_mine' },
+            { type: BuildingType.RESEARCH_LAB, kind: 'building' },
+            { type: BuildingType.FUSION_REACTOR, kind: 'building' },
+            { type: BuildingType.SOLAR_PLANT, kind: 'building' },
+            { kind: 'cheapest_mine' }, // Dynamic mine building
+            // Storage as fallback to prevent stagnation
+            { type: BuildingType.METAL_STORAGE, kind: 'building' },
+            { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
+            { type: BuildingType.DEUTERIUM_TANK, kind: 'building' },
         ],
         [NPCPersonality.ECONOMIC]: [
             { kind: 'cheapest_mine' },
             { type: BuildingType.SOLAR_PLANT, kind: 'building' },
-            { type: ShipType.CARGO_SHIP, kind: 'ship', amount: 2 },
+            { type: BuildingType.METAL_STORAGE, kind: 'building' },
+            { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
+            // Ships for transport
+            { type: ShipType.SOLAR_SATELLITE, kind: 'ship', amount: 5 },
+            { type: ShipType.HEAVY_CARGO_SHIP, kind: 'ship', amount: 1 },
+            { type: ShipType.MEDIUM_CARGO_SHIP, kind: 'ship', amount: 2 },
+            // Defense
+            { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', amount: 20 },
+            { type: DefenseType.LIGHT_LASER_CANNON, kind: 'defense', amount: 10 },
+            // Research
+            { type: ResearchType.ENERGY_TECHNOLOGY, kind: 'research' },
+            { type: BuildingType.RESEARCH_LAB, kind: 'building' },
+            { type: BuildingType.SHIPYARD, kind: 'building' },
         ],
         [NPCPersonality.BALANCED]: [
             { kind: 'cheapest_mine' },
+            { type: BuildingType.SOLAR_PLANT, kind: 'building' },
+            // Ships
+            { type: ShipType.SOLAR_SATELLITE, kind: 'ship', amount: 3 },
+            { type: ShipType.MEDIUM_FIGHTER, kind: 'ship', amount: 3 },
             { type: ShipType.LIGHT_FIGHTER, kind: 'ship', amount: 5 },
+            { type: ShipType.CARGO_SHIP, kind: 'ship', amount: 3 },
+            // Defense
             { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', amount: 10 },
+            { type: DefenseType.LIGHT_LASER_CANNON, kind: 'defense', amount: 5 },
+            // Research & supporting buildings
+            { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+            { type: ResearchType.COMBUSTION_DRIVE, kind: 'research' },
+            { type: ResearchType.WEAPON_TECHNOLOGY, kind: 'research' },
+            { type: BuildingType.SHIPYARD, kind: 'building' },
+            { type: BuildingType.RESEARCH_LAB, kind: 'building' },
+            // Storage as fallback
+            { type: BuildingType.METAL_STORAGE, kind: 'building' },
+            { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
+            { type: BuildingType.DEUTERIUM_TANK, kind: 'building' },
         ],
     };
 
     let updatedNpc = { ...npc, resources: { ...npc.resources } };
+
+    // If threatened, use defensive priorities, otherwise use personality-based ones.
     const prioritiesToUse = isThreatened ? DEFENSIVE_PRIORITIES : buildPriorities[npc.personality];
 
+    // Try to build something up to 5 times per evolution cycle
     for (let i = 0; i < 5; i++) {
         let hasBuilt = false;
         for (const item of prioritiesToUse) {
-             let cost: Resources | undefined;
-            if(item.type && (item.kind === 'building' || item.kind === 'research' || item.kind === 'ship' || item.kind === 'defense')) {
-                // Simplified build logic for brevity
-                const data = ALL_GAME_OBJECTS[item.type];
-                const currentCost = data.cost(1);
-                if (checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research) && canAfford(updatedNpc.resources, currentCost)) {
-                    cost = currentCost;
-                    hasBuilt = true;
+            let cost: Resources | undefined;
+
+            if (item.kind === 'cheapest_mine') {
+                const mineOptions = [
+                    BuildingType.METAL_MINE,
+                    BuildingType.CRYSTAL_MINE,
+                    BuildingType.DEUTERIUM_SYNTHESIZER,
+                ].map(mineType => {
+                    const level = updatedNpc.buildings[mineType];
+                    const mineCost = BUILDING_DATA[mineType].cost(level + 1);
+                    return {
+                        type: mineType,
+                        cost: mineCost,
+                        totalCost: mineCost.metal + mineCost.crystal,
+                    };
+                }).sort((a, b) => a.totalCost - b.totalCost);
+
+                for (const mineOption of mineOptions) {
+                    if (canAfford(updatedNpc.resources, mineOption.cost)) {
+                        updatedNpc.buildings[mineOption.type]++;
+                        cost = mineOption.cost;
+                        hasBuilt = true;
+                        break; // Build only the cheapest affordable one
+                    }
                 }
+                if (hasBuilt && cost) {
+                    updatedNpc.resources.metal -= cost.metal;
+                    updatedNpc.resources.crystal -= cost.crystal;
+                    updatedNpc.resources.deuterium -= cost.deuterium;
+                    break;
+                }
+                continue; // Move to the next priority if no mine could be built
             }
 
+            let levelOrAmount: number;
+            let data;
+            let requirementsMet = false;
+            let currentCost: Resources | undefined;
+
+            switch(item.kind) {
+                case 'building':
+                    levelOrAmount = updatedNpc.buildings[item.type as BuildingType] + 1;
+                    data = BUILDING_DATA[item.type as BuildingType];
+                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                    currentCost = data.cost(levelOrAmount);
+                    if (requirementsMet && canAfford(updatedNpc.resources, currentCost)) {
+                        updatedNpc.buildings[item.type as BuildingType]++;
+                        cost = currentCost;
+                        hasBuilt = true;
+                    }
+                    break;
+                case 'research':
+                     levelOrAmount = updatedNpc.research[item.type as ResearchType] + 1;
+                     data = RESEARCH_DATA[item.type as ResearchType];
+                     requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                     currentCost = data.cost(levelOrAmount);
+                     if (requirementsMet && canAfford(updatedNpc.resources, currentCost)) {
+                         updatedNpc.research[item.type as ResearchType]++;
+                         cost = currentCost;
+                         hasBuilt = true;
+                     }
+                     break;
+                case 'ship':
+                    levelOrAmount = item.amount || 1;
+                    data = ALL_SHIP_DATA[item.type as ShipType];
+                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                    currentCost = data.cost(1);
+                    const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                    if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
+                        updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
+                        cost = totalCost;
+                        hasBuilt = true;
+                    }
+                    break;
+                case 'defense':
+                    levelOrAmount = item.amount || 1;
+                    data = DEFENSE_DATA[item.type as DefenseType];
+                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                    currentCost = data.cost(1);
+                    const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                     if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
+                        updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
+                        cost = totalDefenseCost;
+                        hasBuilt = true;
+                    }
+                    break;
+            }
+            
             if (hasBuilt && cost) {
                 updatedNpc.resources.metal -= cost.metal;
                 updatedNpc.resources.crystal -= cost.crystal;
                 updatedNpc.resources.deuterium -= cost.deuterium;
-                break;
+                break; // Exit after one successful build per loop iteration
             }
         }
-        if (!hasBuilt) break;
+        if (!hasBuilt) break; // If nothing could be built, stop trying
     }
 
     return updatedNpc;
