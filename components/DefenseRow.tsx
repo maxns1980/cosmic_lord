@@ -17,13 +17,21 @@ const formatNumber = (num: number): string => {
     return Math.floor(num).toLocaleString('pl-PL');
 };
 
+const formatTime = (seconds: number) => {
+    if (seconds < 0) seconds = 0;
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+};
+
 const CostDisplay: React.FC<{ cost: Resources; available?: Resources }> = ({ cost, available }) => {
     const renderResource = (resKey: keyof Resources, icon: string, name: string) => {
         const resCost = cost[resKey];
         if (!resCost || resCost <= 0) return null;
 
         const hasEnough = !available || available[resKey] >= resCost;
-        const textColorClass = hasEnough ? 'text-green-400' : 'text-red-400';
+        const textColorClass = hasEnough ? 'text-green-400' : 'text-red-500';
 
         return (
             <span key={resKey} className={`flex items-center ${textColorClass}`}>
@@ -97,6 +105,10 @@ const DefenseRow: React.FC<DefenseRowProps> = ({ type, onBuild, resources, isQue
   const canAfford = resources.metal >= totalCost.metal && resources.crystal >= totalCost.crystal && resources.deuterium >= totalCost.deuterium;
   const isDisabled = isQueued || !canAfford || !requirementsMet || amount <= 0;
   
+  const shipyardLevel = buildings[BuildingType.SHIPYARD] || 0;
+  const unitBuildTime = data.buildTime(1);
+  const finalUnitBuildTime = shipyardLevel > 0 ? unitBuildTime / (1 + shipyardLevel) : unitBuildTime;
+
   let buttonText = 'Buduj';
   if (isQueued) buttonText = 'W kolejce...';
   else if (!requirementsMet) buttonText = 'Brak wymagań';
@@ -147,6 +159,10 @@ const DefenseRow: React.FC<DefenseRowProps> = ({ type, onBuild, resources, isQue
          <div className="mt-2">
             <p className="text-sm font-semibold text-gray-400">Koszt 1 sztuki:</p>
             <CostDisplay cost={cost} available={resources} />
+            <div className="flex items-center text-sm mt-1 text-gray-400">
+                <span className="mr-2">Czas budowy/szt.:</span>
+                <span className="font-mono text-white">{formatTime(finalUnitBuildTime)}</span>
+            </div>
         </div>
       </div>
       <div className="flex flex-col items-start justify-between md:items-end w-full md:w-auto mt-4 md:mt-0" style={{minWidth: '250px'}}>

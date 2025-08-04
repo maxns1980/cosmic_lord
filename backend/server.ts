@@ -1,7 +1,6 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './src/types.js';
-import { Json } from './src/database.types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './src/gameEngine.js';
 import { getInitialPlayerState, getInitialWorldState } from './src/constants.js';
 import { supabase } from './src/config/db.js';
@@ -75,7 +74,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: express.Request, res: express.Response) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -150,7 +149,7 @@ app.post('/api/signup', async (req: express.Request, res: express.Response) => {
     }
 });
 
-app.post('/api/login', async (req: express.Request, res: express.Response) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -178,16 +177,16 @@ app.post('/api/login', async (req: express.Request, res: express.Response) => {
     }
 });
 
-interface AppRequest extends express.Request {
+interface AppRequest extends Request {
     userId?: string;
 }
 
-const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+const authMiddleware = (req: AppRequest, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
-    (req as AppRequest).userId = token;
+    req.userId = token;
     next();
 };
 
@@ -246,10 +245,10 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: express.Request, res: express.Response) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: express.Request, res: express.Response) => {
-    const gameState = await loadCombinedGameState((req as AppRequest).userId!);
+app.get('/api/state', authMiddleware, async (req: AppRequest, res: Response) => {
+    const gameState = await loadCombinedGameState(req.userId!);
     if (gameState) {
         res.json(gameState);
     } else {
@@ -257,8 +256,8 @@ app.get('/api/state', authMiddleware, async (req: express.Request, res: express.
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: express.Request, res: express.Response) => {
-    let gameState = await loadCombinedGameState((req as AppRequest).userId!);
+app.post('/api/action', authMiddleware, async (req: AppRequest, res: Response) => {
+    let gameState = await loadCombinedGameState(req.userId!);
     if (!gameState) {
         return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });
     }
@@ -270,11 +269,11 @@ app.post('/api/action', authMiddleware, async (req: express.Request, res: expres
             return res.status(400).json({ message: result.error });
         }
 
-        await saveStates((req as AppRequest).userId!, gameState);
+        await saveStates(req.userId!, gameState);
 
         res.status(200).json({ message: result?.message || 'Akcja przetworzona', gameState });
     } catch (e: any) {
-        console.error(`Error processing action ${type} for user ${(req as AppRequest).userId!}:`, e);
+        console.error(`Error processing action ${type} for user ${req.userId!}:`, e);
         res.status(500).json({ message: e.message || 'Wystąpił błąd podczas przetwarzania akcji.' });
     }
 });

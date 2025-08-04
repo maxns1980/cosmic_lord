@@ -161,6 +161,7 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
 
             let levelOrAmount: number;
             let cost: Resources;
+            let finalBuildTime: number;
 
             if (type === 'building' || type === 'research' || type === 'ship_upgrade') {
                 levelOrAmount = (type === 'building' 
@@ -169,6 +170,7 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
                         ? gameState.research[id as ResearchType] 
                         : gameState.shipLevels[id as ShipType]) + 1;
                 cost = data.cost(levelOrAmount);
+                finalBuildTime = data.buildTime(levelOrAmount);
             } else { // ship or defense
                 levelOrAmount = amount;
                 if (!levelOrAmount || levelOrAmount <= 0) return { error: "Nieprawidłowa ilość." };
@@ -179,6 +181,7 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
                     deuterium: unitCost.deuterium * levelOrAmount,
                     energy: 0
                 };
+                finalBuildTime = data.buildTime(1) * levelOrAmount; // Time per unit * amount
             }
 
             // Check affordability
@@ -186,13 +189,7 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
                 return { error: "Niewystarczające surowce!" };
             }
 
-            // Subtract resources
-            gameState.resources.metal -= cost.metal;
-            gameState.resources.crystal -= cost.crystal;
-            gameState.resources.deuterium -= cost.deuterium;
-            
-            let finalBuildTime = data.buildTime(levelOrAmount);
-
+            // Apply time reductions
             if (type === 'research' || type === 'ship_upgrade') {
                 const allColonies = Object.values(gameState.colonies);
                 const homeworld = allColonies.length > 0 ? allColonies.reduce((oldest, current) => current.creationTime < oldest.creationTime ? current : oldest) : null;
@@ -200,8 +197,18 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
                 if (labLevel > 0) {
                     finalBuildTime /= (1 + labLevel);
                 }
+            } else if (type === 'ship' || type === 'defense') {
+                const shipyardLevel = location.buildings[BuildingType.SHIPYARD] || 0;
+                if (shipyardLevel > 0) {
+                    finalBuildTime /= (1 + shipyardLevel);
+                }
             }
 
+            // Subtract resources
+            gameState.resources.metal -= cost.metal;
+            gameState.resources.crystal -= cost.crystal;
+            gameState.resources.deuterium -= cost.deuterium;
+            
             const isShipyardQueue = type === 'ship' || type === 'defense';
             const queue = isShipyardQueue ? location.shipyardQueue : location.buildingQueue;
             
