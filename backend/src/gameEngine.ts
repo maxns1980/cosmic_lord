@@ -126,7 +126,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
         const numColonies = Object.keys(playerState.colonies).length;
         playerState.resources.metal = Math.min(colonyMaxRes.metal, playerState.resources.metal + (productions.metal / numColonies / 3600) * deltaSeconds);
         playerState.resources.crystal = Math.min(colonyMaxRes.crystal, playerState.resources.crystal + (productions.crystal / numColonies / 3600) * deltaSeconds);
-        playerState.resources.deuterium = Math.min(colonyMaxRes.deuterium, playerState.resources.deuterium + (productions.deuterium / numColonies/ 3600) * deltaSeconds);
+        playerState.resources.deuterium = Math.min(colonyMaxRes.deuterium, playerState.resources.deuterium + (productions.deuterium / numColonies / 3600) * deltaSeconds);
     });
 
     processQueues(playerState, now);

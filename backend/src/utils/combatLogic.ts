@@ -110,6 +110,7 @@ const createCombatGroups = (party: CombatParty): CombatGroup[] => {
 const applyGroupDamage = (group: CombatGroup, damage: number) => {
     if (group.count <= 0 || damage <= 0) return;
 
+    // Damage is first absorbed by the entire shield pool of the group.
     const damageAbsorbedByShield = Math.min(group.currentTotalShield, damage);
     group.currentTotalShield -= damageAbsorbedByShield;
     const damageToHull = damage - damageAbsorbedByShield;
@@ -119,6 +120,7 @@ const applyGroupDamage = (group: CombatGroup, damage: number) => {
         if (group.currentTotalHull <= 0) {
             group.count = 0;
         } else {
+            // Recalculate count based on remaining hull pool
             const survivingUnits = Math.ceil(group.currentTotalHull / group.hull);
             if (survivingUnits < group.count) {
                 group.count = survivingUnits;
