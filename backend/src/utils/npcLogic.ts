@@ -1,8 +1,6 @@
 import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
 import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
 
-type BuildItem = { type?: BuildingType | ResearchType | ShipType | DefenseType; kind: 'building' | 'research' | 'ship' | 'defense' | 'cheapest_mine'; amount?: number };
-
 const calculateNpcProductions = (npc: NPCState) => {
     const { buildings, fleet, developmentSpeed = 1.0 } = npc;
     let energyProduction = BUILDING_DATA[BuildingType.SOLAR_PLANT].production?.(buildings[BuildingType.SOLAR_PLANT]) ?? 0;
@@ -102,6 +100,8 @@ export const calculatePointsForNpc = (npc: NPCState): number => {
 
 // Simplified AI logic for spending resources
 const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
+    type BuildItem = { type?: BuildingType | ResearchType | ShipType | DefenseType; kind: 'building' | 'research' | 'ship' | 'defense' | 'cheapest_mine'; amount?: number };
+
     const DEFENSIVE_PRIORITIES: BuildItem[] = [
         // Top-tier defenses first
         { type: DefenseType.PLASMA_TURRET, kind: 'defense', amount: 2 },
@@ -433,7 +433,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         image: sleeper.image,
         personality: sleeper.personality,
         developmentSpeed: sleeper.developmentSpeed,
-        resources: sleeper.resources ? { ...INITIAL_NPC_STATE.resources, ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
+        resources: sleeper.resources ? { ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
         
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
@@ -442,30 +442,30 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         lastUpdateTime: sleeper.lastUpdate,
     };
 
-    const buildPriorities: Record<NPCPersonality, (BuildItem & { pointsPerUnit?: number })[]> = {
+    const buildPriorities = {
         // Build priorities adapted for point-based regeneration
         [NPCPersonality.AGGRESSIVE]: [
-            { type: ResearchType.WEAPON_TECHNOLOGY, kind: 'research' },
-            { type: BuildingType.METAL_MINE, kind: 'building' },
-            { type: BuildingType.SHIPYARD, kind: 'building' },
-            { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
-            { type: ShipType.LIGHT_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.LIGHT_FIGHTER].cost(1)) },
-            { type: ShipType.HEAVY_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.HEAVY_FIGHTER].cost(1)) },
-            { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', pointsPerUnit: costToPoints(DEFENSE_DATA[DefenseType.ROCKET_LAUNCHER].cost(1)) },
+            { id: ResearchType.WEAPON_TECHNOLOGY, kind: 'research' },
+            { id: BuildingType.METAL_MINE, kind: 'building' },
+            { id: BuildingType.SHIPYARD, kind: 'building' },
+            { id: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+            { id: ShipType.LIGHT_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.LIGHT_FIGHTER].cost(1)) },
+            { id: ShipType.HEAVY_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.HEAVY_FIGHTER].cost(1)) },
+            { id: DefenseType.ROCKET_LAUNCHER, kind: 'defense', pointsPerUnit: costToPoints(DEFENSE_DATA[DefenseType.ROCKET_LAUNCHER].cost(1)) },
         ],
         [NPCPersonality.ECONOMIC]: [
-            { type: BuildingType.METAL_MINE, kind: 'building' },
-            { type: BuildingType.CRYSTAL_MINE, kind: 'building' },
-            { type: BuildingType.SOLAR_PLANT, kind: 'building' },
-            { type: ResearchType.ENERGY_TECHNOLOGY, kind: 'research' },
-            { type: ShipType.CARGO_SHIP, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.CARGO_SHIP].cost(1)) },
+            { id: BuildingType.METAL_MINE, kind: 'building' },
+            { id: BuildingType.CRYSTAL_MINE, kind: 'building' },
+            { id: BuildingType.SOLAR_PLANT, kind: 'building' },
+            { id: ResearchType.ENERGY_TECHNOLOGY, kind: 'research' },
+            { id: ShipType.CARGO_SHIP, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.CARGO_SHIP].cost(1)) },
         ],
         [NPCPersonality.BALANCED]: [
-            { type: BuildingType.METAL_MINE, kind: 'building' },
-            { type: BuildingType.SOLAR_PLANT, kind: 'building' },
-            { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
-            { type: ShipType.LIGHT_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.LIGHT_FIGHTER].cost(1)) },
-            { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', pointsPerUnit: costToPoints(DEFENSE_DATA[DefenseType.ROCKET_LAUNCHER].cost(1)) },
+            { id: BuildingType.METAL_MINE, kind: 'building' },
+            { id: BuildingType.SOLAR_PLANT, kind: 'building' },
+            { id: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+            { id: ShipType.LIGHT_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.LIGHT_FIGHTER].cost(1)) },
+            { id: DefenseType.ROCKET_LAUNCHER, kind: 'defense', pointsPerUnit: costToPoints(DEFENSE_DATA[DefenseType.ROCKET_LAUNCHER].cost(1)) },
         ],
     };
     
@@ -474,24 +474,24 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         let somethingWasBuilt = false;
         for (const item of buildPriorities[sleeper.personality]) {
             let itemCostPoints = 0;
-            const data = ALL_GAME_OBJECTS[item.type as keyof typeof ALL_GAME_OBJECTS];
+            const data = ALL_GAME_OBJECTS[item.id as keyof typeof ALL_GAME_OBJECTS];
             if (!checkNpcRequirements(data.requirements, regeneratedNpc.buildings, regeneratedNpc.research)) {
                 continue;
             }
 
             if (item.kind === 'building') {
-                const nextLevel = regeneratedNpc.buildings[item.type as BuildingType] + 1;
-                itemCostPoints = costToPoints(BUILDING_DATA[item.type as BuildingType].cost(nextLevel));
+                const nextLevel = regeneratedNpc.buildings[item.id as BuildingType] + 1;
+                itemCostPoints = costToPoints(BUILDING_DATA[item.id as BuildingType].cost(nextLevel));
                 if (pointBudget >= itemCostPoints) {
-                    regeneratedNpc.buildings[item.type as BuildingType]++;
+                    regeneratedNpc.buildings[item.id as BuildingType]++;
                     pointBudget -= itemCostPoints;
                     somethingWasBuilt = true;
                 }
             } else if (item.kind === 'research') {
-                const nextLevel = regeneratedNpc.research[item.type as ResearchType] + 1;
-                itemCostPoints = costToPoints(RESEARCH_DATA[item.type as ResearchType].cost(nextLevel));
+                const nextLevel = regeneratedNpc.research[item.id as ResearchType] + 1;
+                itemCostPoints = costToPoints(RESEARCH_DATA[item.id as ResearchType].cost(nextLevel));
                 if (pointBudget >= itemCostPoints) {
-                    regeneratedNpc.research[item.type as ResearchType]++;
+                    regeneratedNpc.research[item.id as ResearchType]++;
                     pointBudget -= itemCostPoints;
                     somethingWasBuilt = true;
                 }
@@ -501,7 +501,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
                     const amountToBuild = Math.max(1, Math.floor(pointBudget / (itemCostPoints * 10))); // build in chunks
                     const totalCost = itemCostPoints * amountToBuild;
                     if(pointBudget >= totalCost){
-                        regeneratedNpc.fleet[item.type as ShipType] = (regeneratedNpc.fleet[item.type as ShipType] || 0) + amountToBuild;
+                        regeneratedNpc.fleet[item.id as ShipType] = (regeneratedNpc.fleet[item.id as ShipType] || 0) + amountToBuild;
                         pointBudget -= totalCost;
                         somethingWasBuilt = true;
                     }
@@ -512,7 +512,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
                     const amountToBuild = Math.max(1, Math.floor(pointBudget / (itemCostPoints * 10)));
                     const totalCost = itemCostPoints * amountToBuild;
                      if(pointBudget >= totalCost){
-                        regeneratedNpc.defenses[item.type as DefenseType] = (regeneratedNpc.defenses[item.type as DefenseType] || 0) + amountToBuild;
+                        regeneratedNpc.defenses[item.id as DefenseType] = (regeneratedNpc.defenses[item.id as DefenseType] || 0) + amountToBuild;
                         pointBudget -= totalCost;
                         somethingWasBuilt = true;
                     }

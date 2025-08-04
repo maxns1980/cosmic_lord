@@ -1,4 +1,4 @@
-import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareState, SolarFlareStatus } from '../types.js';
+import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types.js';
 import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants.js';
 
 // The combat logic has been refactored to use a "health pool" (HP pool) model for each group of units.
@@ -110,10 +110,13 @@ const createCombatGroups = (party: CombatParty): CombatGroup[] => {
 const applyGroupDamage = (group: CombatGroup, damage: number) => {
     if (group.count <= 0 || damage <= 0) return;
 
-    // Damage is first absorbed by the entire shield pool of the group.
-    const damageAbsorbedByShield = Math.min(group.currentTotalShield, damage);
-    group.currentTotalShield -= damageAbsorbedByShield;
+    // A single shot can at most destroy one unit's shields before hitting hull.
+    // This prevents a massive shot from being entirely absorbed by the shield pool.
+    const damageAbsorbedByShield = Math.min(group.shield, damage);
     const damageToHull = damage - damageAbsorbedByShield;
+
+    // Reduce from the total shield pool
+    group.currentTotalShield = Math.max(0, group.currentTotalShield - damageAbsorbedByShield);
 
     if (damageToHull > 0) {
         group.currentTotalHull -= damageToHull;

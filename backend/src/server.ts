@@ -28,7 +28,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // enable pre-flight for all routes
 
 app.use(express.json());
 
@@ -50,8 +49,8 @@ const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => 
 // Simplified and more robust world initialization
 const initializeWorld = async () => {
     console.log("SERVER CODE VERSION: 4.0 - Initializing world state...");
-    const { data, error } = await supabase
-        .from('world_state')
+    const { data, error } = await (supabase
+        .from('world_state') as any)
         .select('*')
         .eq('id', 1)
         .single();
@@ -65,9 +64,9 @@ const initializeWorld = async () => {
     if (!data) {
         console.log("No world state found. Creating new world...");
         const initialWorldState = getInitialWorldState();
-        const { error: insertError } = await supabase
-            .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as unknown as Json }] as any);
+        const { error: insertError } = await (supabase
+            .from('world_state') as any)
+            .insert([{ id: 1, state: initialWorldState as unknown as Json }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -88,7 +87,7 @@ const initializeWorld = async () => {
              // Merge coordinates, preserving existing player locations
              worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
+             const { error: updateError } = await (supabase.from('world_state') as any).update({ state: worldState as unknown as Json }).eq('id', 1);
             if (updateError) {
                 console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
                 throw new Error("FATAL: Could not migrate world state.");
@@ -125,7 +124,7 @@ app.post('/api/signup', async (req, res) => {
         }
 
         // 2. Get world state to find a free spot
-        const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
+        const { data: worldData, error: worldError } = await (supabase.from('world_state') as any).select('state').eq('id', 1).single();
         if (worldError || !worldData) {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
@@ -137,9 +136,9 @@ app.post('/api/signup', async (req, res) => {
         const newPlayerState = getInitialPlayerState(username, homeCoords);
 
         // 4. Create the new user
-        const { error: insertUserError } = await supabase
-            .from('users')
-            .insert([{ username, password }] as any);
+        const { error: insertUserError } = await (supabase
+            .from('users') as any)
+            .insert([{ username, password }]);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -147,9 +146,9 @@ app.post('/api/signup', async (req, res) => {
         }
 
         // 5. Create the player state
-        const { error: insertStateError } = await supabase
-            .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as unknown as Json }] as any);
+        const { error: insertStateError } = await (supabase
+            .from('player_states') as any)
+            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -163,7 +162,7 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
+        const { error: worldSaveError } = await (supabase.from('world_state') as any).update({ state: worldState as unknown as Json }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -214,8 +213,8 @@ const authMiddleware = (req: any, res: any, next: NextFunction) => {
 };
 
 const loadCombinedGameState = async (userId: string): Promise<GameState | null> => {
-    const { data: playerData, error: playerError } = await supabase.from('player_states').select('*').eq('user_id', userId).single();
-    const { data: worldData, error: worldError } = await supabase.from('world_state').select('*').eq('id', 1).single();
+    const { data: playerData, error: playerError } = await (supabase.from('player_states') as any).select('*').eq('user_id', userId).single();
+    const { data: worldData, error: worldError } = await (supabase.from('world_state') as any).select('*').eq('id', 1).single();
     
     if (playerError || !playerData) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
@@ -235,7 +234,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     // If the world state was updated (e.g., NPCs evolved), save it back to the database.
     // This is crucial to persist world evolution outside of specific player actions.
     if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
-        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as unknown as Json } as any).eq('id', 1);
+        const { error } = await (supabase.from('world_state') as any).update({ state: updatedWorldState as unknown as Json }).eq('id', 1);
         if (error) {
             console.error("Error saving world state after background update:", error);
         }
@@ -265,8 +264,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json } as any).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json } as any).eq('id', 1);
+    const playerSavePromise = (supabase.from('player_states') as any).update({ state: playerState as unknown as Json }).eq('user_id', userId);
+    const worldSavePromise = (supabase.from('world_state') as any).update({ state: worldState as unknown as Json }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
