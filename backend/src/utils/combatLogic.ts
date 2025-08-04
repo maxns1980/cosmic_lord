@@ -305,8 +305,8 @@ export const calculateCombat = (
         const data = ALL_SHIP_DATA[id as ShipType];
         if (data && count) {
             const cost = data.cost(1);
-            debris.metal += cost.metal * count * DEBRIS_FIELD_RECOVERY_RATE;
-            debris.crystal += cost.crystal * count * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.metal += cost.metal * (count || 0) * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.crystal += cost.crystal * (count || 0) * DEBRIS_FIELD_RECOVERY_RATE;
         }
     });
     
@@ -354,7 +354,7 @@ export const calculateCombat = (
         const lootableCrystal = Math.max(0, (defenderResources.crystal || 0) - protectedCrystal);
         const lootableDeuterium = Math.max(0, (defenderResources.deuterium || 0) - protectedDeuterium);
         
-        const LOOT_FACTOR = 0.5; // Standard loot is 50% of unprotected resources
+        const LOOT_FACTOR = 1.0; // Standard loot is 100% of unprotected resources
         const metalToLoot = lootableMetal * LOOT_FACTOR;
         const crystalToLoot = lootableCrystal * LOOT_FACTOR;
         const deuteriumToLoot = lootableDeuterium * LOOT_FACTOR;
