@@ -205,9 +205,20 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     
     let playerState = (playerData as any).state as unknown as PlayerState;
     let worldState = (worldData as any).state as unknown as WorldState;
+    
+    const lastNpcCheckBefore = worldState.lastGlobalNpcCheck;
+    const { updatedWorldState } = updateWorldState(worldState);
 
-    const { updatedWorldState, messagesForPlayers } = updateWorldState(worldState);
+    // If the world state was updated (e.g., NPCs evolved), save it back to the database.
+    // This is crucial to persist world evolution outside of specific player actions.
+    if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
+        const { error } = await (supabase.from('world_state') as any).update({ state: updatedWorldState as any }).eq('id', 1);
+        if (error) {
+            console.error("Error saving world state after background update:", error);
+        }
+    }
     worldState = updatedWorldState;
+
 
     playerState = updatePlayerStateForOfflineProgress(playerState);
     

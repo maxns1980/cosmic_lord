@@ -1,4 +1,4 @@
-import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, SolarFlareState, SolarFlareStatus } from '../types';
+import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, SolarFlareState, SolarFlareStatus, CombatParty } from '../types';
 import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants';
 
 // The combat logic has been refactored to use a "health pool" (HP pool) model for each group of units.
@@ -19,15 +19,6 @@ type CombatGroup = {
     currentTotalShield: number;
     currentTotalHull: number;
     rapidFireAgainst?: Record<string, number>;
-};
-
-export type CombatParty = {
-    fleet: Fleet;
-    defenses?: Defenses;
-    research: ResearchLevels;
-    name: string;
-    shipLevels?: ShipLevels;
-    solarFlare?: SolarFlareState;
 };
 
 export type CombatResult = {
@@ -140,6 +131,7 @@ const fireOnGroups = (firingGroups: CombatGroup[], targetGroups: CombatGroup[]) 
     firingGroups.forEach(firingGroup => {
         if (firingGroup.count <= 0) return;
         
+        // Each unit in the group gets to fire.
         for (let i = 0; i < firingGroup.initialCount; i++) {
             let keepFiring = true;
             while (keepFiring) {
@@ -357,7 +349,7 @@ export const calculateCombat = (
         const lootableCrystal = Math.max(0, defenderResources.crystal - protectedCrystal);
         const lootableDeuterium = Math.max(0, defenderResources.deuterium - protectedDeuterium);
         
-        const LOOT_FACTOR = 1.0; // Standard loot is 100% of unprotected resources
+        const LOOT_FACTOR = 0.5; // Standard loot is 50% of unprotected resources
         const metalToLoot = lootableMetal * LOOT_FACTOR;
         const crystalToLoot = lootableCrystal * LOOT_FACTOR;
         const deuteriumToLoot = lootableDeuterium * LOOT_FACTOR;

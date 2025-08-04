@@ -216,6 +216,14 @@ export interface BattleReport {
     rounds?: RoundReport[];
 }
 
+export type CombatParty = {
+    fleet: Fleet;
+    defenses?: Defenses;
+    research: ResearchLevels;
+    name: string;
+    shipLevels?: ShipLevels;
+    solarFlare?: SolarFlareState;
+};
 
 type BaseMessage = {
     id: string;
@@ -679,16 +687,6 @@ export interface NPCState {
 
 export type NPCStates = Record<string, NPCState>;
 
-export interface SleeperNpcState {
-    points: number;
-    name: string;
-    image: string;
-    personality: NPCPersonality;
-    developmentSpeed?: number;
-    lastUpdate: number;
-    resources?: Partial<Resources>;
-}
-
 // --- Event Testing ---
 export enum TestableEventType {
     SOLAR_FLARE = 'SOLAR_FLARE',
@@ -709,6 +707,16 @@ export interface Alliance {
     name: string;
     tag: string;
     description: string;
+}
+
+export interface SleeperNpcState {
+    points: number;
+    name: string;
+    image: string;
+    personality: NPCPersonality;
+    developmentSpeed?: number;
+    lastUpdate: number;
+    resources?: Partial<Resources>;
 }
 
 // --- NEW STATE STRUCTURE ---
