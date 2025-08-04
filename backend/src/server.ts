@@ -30,7 +30,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // enable pre-flight for all routes
 
-app.use(express.json() as RequestHandler);
+app.use(express.json());
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
     for (let g = 1; g <= 9; g++) {
@@ -67,7 +67,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as any }]);
+            .insert([{ id: 1, state: initialWorldState }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -88,7 +88,7 @@ const initializeWorld = async () => {
              // Merge coordinates, preserving existing player locations
              worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState }).eq('id', 1);
             if (updateError) {
                 console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
                 throw new Error("FATAL: Could not migrate world state.");
@@ -149,7 +149,7 @@ app.post('/api/signup', async (req, res) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as any }]);
+            .insert([{ user_id: username, state: newPlayerState }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -163,7 +163,7 @@ app.post('/api/signup', async (req, res) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -204,7 +204,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+const authMiddleware: RequestHandler = (req, res, next) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -235,7 +235,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     // If the world state was updated (e.g., NPCs evolved), save it back to the database.
     // This is crucial to persist world evolution outside of specific player actions.
     if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
-        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as any }).eq('id', 1);
+        const { error } = await supabase.from('world_state').update({ state: updatedWorldState }).eq('id', 1);
         if (error) {
             console.error("Error saving world state after background update:", error);
         }
@@ -244,7 +244,13 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
 
     playerState = updatePlayerStateForOfflineProgress(playerState, worldState);
     
-    return { ...playerState, ...worldState };
+    // Combine states before event processing
+    let combinedState: GameState = { ...playerState, ...worldState };
+    
+    // Process events for this player, which might modify both player and world state
+    combinedState = processRandomEvents(combinedState);
+    
+    return combinedState;
 };
 
 const saveStates = async (userId: string, gameState: GameState) => {
@@ -265,8 +271,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 

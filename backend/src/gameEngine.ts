@@ -2,7 +2,10 @@ import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
     Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission
 } from './types.js';
-import { ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST } from './constants.js';
+import { 
+    ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
+    RANDOM_EVENT_CHECK_INTERVAL, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE
+} from './constants.js';
 import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
 import { TestableEventType } from './types.js';
@@ -77,6 +80,52 @@ const processFleetMissions = (playerState: PlayerState, now: number) => {
     }
     playerState.fleetMissions = playerState.fleetMissions.filter((m: FleetMission) => !missionsToRemove.includes(m.id));
 };
+
+export const processRandomEvents = (gameState: GameState): GameState => {
+    const now = Date.now();
+    // Use last check time from world state
+    if (now - gameState.lastEventCheckTime < RANDOM_EVENT_CHECK_INTERVAL) {
+        return gameState;
+    }
+
+    // Update check time immediately to prevent re-triggering on rapid reloads
+    gameState.lastEventCheckTime = now;
+
+    // Check for each event
+    if (Math.random() < SOLAR_FLARE_CHANCE) {
+        triggerSolarFlare(gameState);
+    }
+    if (Math.random() < PIRATE_MERCENARY_CHANCE) {
+        triggerPirateMercenary(gameState);
+    }
+    if (Math.random() < CONTRABAND_CHANCE) {
+        triggerContraband(gameState);
+    }
+    if (Math.random() < ANCIENT_ARTIFACT_CHANCE) {
+        triggerAncientArtifact(gameState);
+    }
+    if (Math.random() < ASTEROID_IMPACT_CHANCE) {
+        triggerAsteroidImpact(gameState);
+    }
+    if (Math.random() < RESOURCE_VEIN_CHANCE) {
+        triggerResourceVein(gameState);
+    }
+    if (Math.random() < SPACE_PLAGUE_CHANCE) {
+        triggerSpacePlague(gameState);
+    }
+    if (Math.random() < GHOST_SHIP_CHANCE) {
+        triggerGhostShip(gameState);
+    }
+    if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) {
+        triggerGalacticGoldRush(gameState);
+    }
+    if (Math.random() < STELLAR_AURORA_CHANCE) {
+        triggerStellarAurora(gameState);
+    }
+
+    return gameState;
+};
+
 
 export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, worldState: WorldState): PlayerState => {
     const now = Date.now();
