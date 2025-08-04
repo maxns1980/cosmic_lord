@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './src/types';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './src/gameEngine';
-import { getInitialPlayerState, getInitialWorldState } from './src/constants';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants';
 import { supabase } from './src/config/db';
 
 const app = express();
@@ -43,7 +43,7 @@ const initializeWorld = async () => {
     console.log("SERVER CODE VERSION: 4.0 - Initializing world state...");
     const { data, error } = await supabase
         .from('world_state')
-        .select('id')
+        .select('*')
         .eq('id', 1)
         .single();
 
@@ -64,10 +64,28 @@ const initializeWorld = async () => {
             console.error("FATAL: Could not initialize world state.", insertError);
             throw new Error("FATAL: Could not initialize world state.");
         } else {
-            console.log("World state initialized successfully.");
+            console.log("World state initialized successfully with NPCs.");
         }
     } else {
         console.log("World state loaded.");
+        const worldState = (data as any).state as unknown as WorldState;
+        if (!worldState.npcStates || Object.keys(worldState.npcStates).length < TOTAL_NPC_COUNT) {
+             console.log(`World state has insufficient NPCs (${Object.keys(worldState.npcStates || {}).length}). Populating to ${TOTAL_NPC_COUNT}...`);
+
+             const playerCoords = Object.keys(worldState.occupiedCoordinates || {}).filter(coord => !(worldState.npcStates || {})[coord]);
+             const { npcStates, occupiedCoordinates: npcOccupiedCoordinates } = getInitialNpcPopulation(playerCoords);
+
+             worldState.npcStates = npcStates;
+             // Merge coordinates, preserving existing player locations
+             worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
+
+             const { error: updateError } = await (supabase.from('world_state') as any).update({ state: worldState as any }).eq('id', 1);
+            if (updateError) {
+                console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
+                throw new Error("FATAL: Could not migrate world state.");
+            }
+            console.log("NPC migration successful.");
+        }
     }
 };
 
@@ -205,7 +223,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     
     let playerState = (playerData as any).state as unknown as PlayerState;
     let worldState = (worldData as any).state as unknown as WorldState;
-    
+
     const lastNpcCheckBefore = worldState.lastGlobalNpcCheck;
     const { updatedWorldState } = updateWorldState(worldState);
 
@@ -218,7 +236,6 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         }
     }
     worldState = updatedWorldState;
-
 
     playerState = updatePlayerStateForOfflineProgress(playerState);
     

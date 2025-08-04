@@ -1,22 +1,7 @@
 import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types';
-import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS, NPC_NAMES, NPC_IMAGES } from '../constants';
+import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants';
 
-export const generateNewNpc = (): NPCState => {
-    const personalityValues = Object.values(NPCPersonality);
-    const personality = personalityValues[Math.floor(Math.random() * personalityValues.length)];
-    const name = NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)];
-    const image = NPC_IMAGES[Math.floor(Math.random() * NPC_IMAGES.length)];
-    const developmentSpeed = 0.8 + Math.random() * 0.7;
-
-    return {
-        ...INITIAL_NPC_STATE,
-        personality,
-        name,
-        image,
-        developmentSpeed,
-        lastUpdateTime: Date.now(),
-    };
-};
+type BuildItem = { type?: BuildingType | ResearchType | ShipType | DefenseType; kind: 'building' | 'research' | 'ship' | 'defense' | 'cheapest_mine'; amount?: number };
 
 const calculateNpcProductions = (npc: NPCState) => {
     const { buildings, fleet, developmentSpeed = 1.0 } = npc;
@@ -117,8 +102,6 @@ export const calculatePointsForNpc = (npc: NPCState): number => {
 
 // Simplified AI logic for spending resources
 const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
-    type BuildItem = { type?: BuildingType | ResearchType | ShipType | DefenseType; kind: 'building' | 'research' | 'ship' | 'defense' | 'cheapest_mine'; amount?: number };
-
     const DEFENSIVE_PRIORITIES: BuildItem[] = [
         // Top-tier defenses first
         { type: DefenseType.PLASMA_TURRET, kind: 'defense', amount: 2 },
@@ -333,36 +316,95 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
     return updatedNpc;
 }
 
-const missionDecisionAI = (npc: NPCState, sourceCoords: string): { mission: NPCFleetMission | null, updatedFleet: Fleet } => {
-     const militaryPower = Object.values(npc.fleet).reduce((sum, count) => sum + (count || 0), 0);
-     const updatedFleet = { ...npc.fleet };
-    
-    if (npc.personality === NPCPersonality.AGGRESSIVE && militaryPower > 100) {
+const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission | null => {
+     const militaryPower = Object.entries(npc.fleet).reduce((power, [shipId, count]) => {
+        const shipData = SHIPYARD_DATA[shipId as ShipType];
+        if (shipData && count) {
+            const finalAttack = shipData.attack * (1 + (npc.research[ResearchType.WEAPON_TECHNOLOGY] || 0) * 0.1);
+            const finalShield = shipData.shield * (1 + (npc.research[ResearchType.SHIELDING_TECHNOLOGY] || 0) * 0.1);
+            const finalIntegrity = shipData.structuralIntegrity * (1 + (npc.research[ResearchType.ARMOR_TECHNOLOGY] || 0) * 0.1);
+            return power + (finalAttack + finalShield + finalIntegrity / 10) * count;
+        }
+        return power;
+    }, 0);
+
+    // Aggressive NPCs are more likely to act
+    if (npc.personality === NPCPersonality.AGGRESSIVE && militaryPower > 15000) {
+        // 5% chance to attack
         if (Math.random() < 0.05) {
-            const attackingFleet: Fleet = {};
-            const shipType = Object.keys(npc.fleet)[0] as ShipType;
-            if(shipType){
-                attackingFleet[shipType] = 1;
-                updatedFleet[shipType] = (updatedFleet[shipType] || 0) - 1;
-                 const now = Date.now();
-                const mission = {
+            const attackingFleet: Partial<Fleet> = {};
+
+            const bcToSend = Math.floor((npc.fleet[ShipType.BATTLECRUISER] || 0) * 0.5);
+            if (bcToSend > 0) attackingFleet[ShipType.BATTLECRUISER] = bcToSend;
+
+            const destToSend = Math.floor((npc.fleet[ShipType.DESTROYER] || 0) * 0.5);
+            if (destToSend > 0) attackingFleet[ShipType.DESTROYER] = destToSend;
+
+            const bsToSend = Math.floor((npc.fleet[ShipType.BATTLESHIP] || 0) * 0.5);
+            if (bsToSend > 0) attackingFleet[ShipType.BATTLESHIP] = bsToSend;
+
+            const crToSend = Math.floor((npc.fleet[ShipType.CRUISER] || 0) * 0.5);
+            if (crToSend > 0) attackingFleet[ShipType.CRUISER] = crToSend;
+            
+            const hfToSend = Math.floor((npc.fleet[ShipType.HEAVY_FIGHTER] || 0) * 0.5);
+            if (hfToSend > 0) attackingFleet[ShipType.HEAVY_FIGHTER] = hfToSend;
+            
+            const mfToSend = Math.floor((npc.fleet[ShipType.MEDIUM_FIGHTER] || 0) * 0.5);
+            if (mfToSend > 0) attackingFleet[ShipType.MEDIUM_FIGHTER] = mfToSend;
+            
+            const lfToSend = Math.floor((npc.fleet[ShipType.LIGHT_FIGHTER] || 0) * 0.5);
+            if (lfToSend > 0) attackingFleet[ShipType.LIGHT_FIGHTER] = lfToSend;
+            
+            const cargoToSend = Math.floor((npc.fleet[ShipType.CARGO_SHIP] || 0) * 0.5);
+            if (cargoToSend > 0) attackingFleet[ShipType.CARGO_SHIP] = cargoToSend;
+
+
+            if (Object.values(attackingFleet).some(count => count && count > 0)) {
+                const now = Date.now();
+                const missionDuration = 30 * 60 * 1000; // 30 minutes for simplicity
+
+                return {
                     id: `npc-m-${now}-${Math.random()}`,
-                    sourceCoords, fleet: attackingFleet,
+                    sourceCoords,
+                    fleet: attackingFleet,
                     missionType: MissionType.ATTACK,
                     startTime: now,
-                    arrivalTime: now + 30 * 60 * 1000
+                    arrivalTime: now + missionDuration
                 };
-                 return { mission, updatedFleet };
             }
         } 
+        // 10% chance to spy
+        else if (Math.random() < 0.1) {
+             const hasProbes = (npc.research[ResearchType.SPY_TECHNOLOGY] || 0) > 0 && (npc.fleet[ShipType.SPY_PROBE] || 0) > 0;
+             if (hasProbes) {
+                const now = Date.now();
+                const missionDuration = 5 * 60 * 1000; // 5 minutes for spy
+                 return {
+                    id: `npc-m-${now}-${Math.random()}`,
+                    sourceCoords,
+                    fleet: { [ShipType.SPY_PROBE]: 1 },
+                    missionType: MissionType.SPY,
+                    startTime: now,
+                    arrivalTime: now + missionDuration
+                };
+             }
+        }
     }
-    return { mission: null, updatedFleet };
+    return null;
 }
 
 
 export const evolveNpc = (npc: NPCState, offlineSeconds: number, coords: string, isThreatened: boolean): { updatedNpc: NPCState, mission: NPCFleetMission | null } => {
-    let evolvedNpc = { ...npc, resources: { ...npc.resources }, fleet: { ...npc.fleet } };
+    let evolvedNpc = {
+        ...npc,
+        resources: { ...npc.resources },
+        buildings: { ...npc.buildings },
+        research: { ...npc.research },
+        fleet: { ...npc.fleet },
+        defenses: { ...npc.defenses },
+    };
 
+    // 1. Resource Production
     const productions = calculateNpcProductions(evolvedNpc);
     const maxResources = calculateNpcMaxResources(evolvedNpc.buildings);
 
@@ -370,10 +412,13 @@ export const evolveNpc = (npc: NPCState, offlineSeconds: number, coords: string,
     evolvedNpc.resources.crystal = Math.min(maxResources.crystal, evolvedNpc.resources.crystal + (productions.crystal / 3600) * offlineSeconds);
     evolvedNpc.resources.deuterium = Math.min(maxResources.deuterium, evolvedNpc.resources.deuterium + (productions.deuterium / 3600) * offlineSeconds);
 
+    // 2. AI spending resources
     evolvedNpc = spendResourcesAI(evolvedNpc, isThreatened);
 
-    const { mission, updatedFleet } = missionDecisionAI(evolvedNpc, coords);
-    evolvedNpc.fleet = updatedFleet;
+    // 3. AI deciding to launch a mission
+    const mission = missionDecisionAI(evolvedNpc, coords);
+
+    // 4. Update timestamp
     evolvedNpc.lastUpdateTime = Date.now();
 
     return { updatedNpc: evolvedNpc, mission };
@@ -389,27 +434,106 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         personality: sleeper.personality,
         developmentSpeed: sleeper.developmentSpeed,
         resources: sleeper.resources ? { ...INITIAL_NPC_STATE.resources, ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
+        
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
         fleet: {},
         defenses: {},
         lastUpdateTime: sleeper.lastUpdate,
     };
-    
-    // Simplified regeneration logic for brevity
-    if (pointBudget > 1000) {
-        regeneratedNpc.buildings[BuildingType.METAL_MINE] = 5;
-    }
 
+    const buildPriorities = {
+        // Build priorities adapted for point-based regeneration
+        [NPCPersonality.AGGRESSIVE]: [
+            { type: ResearchType.WEAPON_TECHNOLOGY, kind: 'research' },
+            { type: BuildingType.METAL_MINE, kind: 'building' },
+            { type: BuildingType.SHIPYARD, kind: 'building' },
+            { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+            { type: ShipType.LIGHT_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.LIGHT_FIGHTER].cost(1)) },
+            { type: ShipType.HEAVY_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.HEAVY_FIGHTER].cost(1)) },
+            { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', pointsPerUnit: costToPoints(DEFENSE_DATA[DefenseType.ROCKET_LAUNCHER].cost(1)) },
+        ],
+        [NPCPersonality.ECONOMIC]: [
+            { type: BuildingType.METAL_MINE, kind: 'building' },
+            { type: BuildingType.CRYSTAL_MINE, kind: 'building' },
+            { type: BuildingType.SOLAR_PLANT, kind: 'building' },
+            { type: ResearchType.ENERGY_TECHNOLOGY, kind: 'research' },
+            { type: ShipType.CARGO_SHIP, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.CARGO_SHIP].cost(1)) },
+        ],
+        [NPCPersonality.BALANCED]: [
+            { type: BuildingType.METAL_MINE, kind: 'building' },
+            { type: BuildingType.SOLAR_PLANT, kind: 'building' },
+            { type: ResearchType.ARMOR_TECHNOLOGY, kind: 'research' },
+            { type: ShipType.LIGHT_FIGHTER, kind: 'ship', pointsPerUnit: costToPoints(ALL_SHIP_DATA[ShipType.LIGHT_FIGHTER].cost(1)) },
+            { type: DefenseType.ROCKET_LAUNCHER, kind: 'defense', pointsPerUnit: costToPoints(DEFENSE_DATA[DefenseType.ROCKET_LAUNCHER].cost(1)) },
+        ],
+    };
+    
+    // Spend points to rebuild structure
+    while (pointBudget > 5) { // 5 is arbitrary threshold to stop
+        let somethingWasBuilt = false;
+        for (const item of buildPriorities[sleeper.personality]) {
+            let itemCostPoints = 0;
+            const data = ALL_GAME_OBJECTS[item.type as keyof typeof ALL_GAME_OBJECTS];
+            if (!checkNpcRequirements(data.requirements, regeneratedNpc.buildings, regeneratedNpc.research)) {
+                continue;
+            }
+
+            if (item.kind === 'building') {
+                const nextLevel = regeneratedNpc.buildings[item.type as BuildingType] + 1;
+                itemCostPoints = costToPoints(BUILDING_DATA[item.type as BuildingType].cost(nextLevel));
+                if (pointBudget >= itemCostPoints) {
+                    regeneratedNpc.buildings[item.type as BuildingType]++;
+                    pointBudget -= itemCostPoints;
+                    somethingWasBuilt = true;
+                }
+            } else if (item.kind === 'research') {
+                const nextLevel = regeneratedNpc.research[item.type as ResearchType] + 1;
+                itemCostPoints = costToPoints(RESEARCH_DATA[item.type as ResearchType].cost(nextLevel));
+                if (pointBudget >= itemCostPoints) {
+                    regeneratedNpc.research[item.type as ResearchType]++;
+                    pointBudget -= itemCostPoints;
+                    somethingWasBuilt = true;
+                }
+            } else if (item.kind === 'ship') {
+                itemCostPoints = item.pointsPerUnit || 1;
+                if (pointBudget >= itemCostPoints) {
+                    const amountToBuild = Math.max(1, Math.floor(pointBudget / (itemCostPoints * 10))); // build in chunks
+                    const totalCost = itemCostPoints * amountToBuild;
+                    if(pointBudget >= totalCost){
+                        regeneratedNpc.fleet[item.type as ShipType] = (regeneratedNpc.fleet[item.type as ShipType] || 0) + amountToBuild;
+                        pointBudget -= totalCost;
+                        somethingWasBuilt = true;
+                    }
+                }
+            } else if (item.kind === 'defense') {
+                 itemCostPoints = item.pointsPerUnit || 1;
+                 if (pointBudget >= itemCostPoints) {
+                    const amountToBuild = Math.max(1, Math.floor(pointBudget / (itemCostPoints * 10)));
+                    const totalCost = itemCostPoints * amountToBuild;
+                     if(pointBudget >= totalCost){
+                        regeneratedNpc.defenses[item.type as DefenseType] = (regeneratedNpc.defenses[item.type as DefenseType] || 0) + amountToBuild;
+                        pointBudget -= totalCost;
+                        somethingWasBuilt = true;
+                    }
+                }
+            }
+        }
+        if (!somethingWasBuilt) break; // Exit if no affordable upgrades found
+    }
+    
+    // Now that the structure is rebuilt, calculate production during sleep
     const offlineSeconds = (Date.now() - sleeper.lastUpdate) / 1000;
     if (offlineSeconds > 0) {
         const productions = calculateNpcProductions(regeneratedNpc);
         const maxResources = calculateNpcMaxResources(regeneratedNpc.buildings);
-        regeneratedNpc.resources.metal = Math.min(maxResources.metal, (regeneratedNpc.resources.metal || 0) + (productions.metal / 3600) * offlineSeconds);
-        regeneratedNpc.resources.crystal = Math.min(maxResources.crystal, (regeneratedNpc.resources.crystal || 0) + (productions.crystal / 3600) * offlineSeconds);
-        regeneratedNpc.resources.deuterium = Math.min(maxResources.deuterium, (regeneratedNpc.resources.deuterium || 0) + (productions.deuterium / 3600) * offlineSeconds);
+
+        regeneratedNpc.resources.metal = Math.min(maxResources.metal, regeneratedNpc.resources.metal + (productions.metal / 3600) * offlineSeconds);
+        regeneratedNpc.resources.crystal = Math.min(maxResources.crystal, regeneratedNpc.resources.crystal + (productions.crystal / 3600) * offlineSeconds);
+        regeneratedNpc.resources.deuterium = Math.min(maxResources.deuterium, regeneratedNpc.resources.deuterium + (productions.deuterium / 3600) * offlineSeconds);
     }
 
+    // Set final update time to now, as it's now active
     regeneratedNpc.lastUpdateTime = Date.now();
     
     return regeneratedNpc;

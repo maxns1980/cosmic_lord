@@ -1,11 +1,13 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus
 } from './types';
-import { ALL_GAME_OBJECTS, getInitialPlayerState } from './constants';
-import { calculateProductions, calculateMaxResources } from './utils/gameLogic';
+import { ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST } from './constants';
+import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic';
 import { TestableEventType } from './types';
+import { calculateCombat } from './utils/combatLogic';
+import { evolveNpc, regenerateNpcFromSleeper } from './utils/npcLogic';
 
 const addMessage = (playerState: PlayerState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     playerState.messages.unshift({
@@ -102,7 +104,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
             type: 'info',
             subject: 'Otrzymano Dzienną Skrzynię!',
             text: 'Twoja codzienna nagroda za lojalność została dodana do Twojego inwentarza. Aktywuj ją, kiedy zechcesz!'
-        } as InfoMessage)
+        } as InfoMessage));
     }
 
     const lastSave = playerState.lastSaveTime || now;
@@ -113,4 +115,112 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
         return playerState;
     }
     
-    // We need
+    // We need a temporary GameState object for production calculations
+    const tempGameState = { ...playerState, ...({} as WorldState) } as GameState;
+    const productions = calculateProductions(tempGameState);
+    const maxRes = calculateMaxResources(playerState.colonies);
+
+    Object.values(playerState.colonies).forEach(colony => {
+        const colonyMaxRes = maxRes[colony.id];
+        // For simplicity, we distribute the total production evenly for now. A more complex model could be used.
+        const numColonies = Object.keys(playerState.colonies).length;
+        playerState.resources.metal = Math.min(colonyMaxRes.metal, playerState.resources.metal + (productions.metal / numColonies / 3600) * deltaSeconds);
+        playerState.resources.crystal = Math.min(colonyMaxRes.crystal, playerState.resources.crystal + (productions.crystal / numColonies / 3600) * deltaSeconds);
+        playerState.resources.deuterium = Math.min(colonyMaxRes.deuterium, playerState.resources.deuterium + (productions.deuterium / numColonies/ 3600) * deltaSeconds);
+    });
+
+    processQueues(playerState, now);
+    processFleetMissions(playerState, now);
+
+    playerState.lastSaveTime = now;
+    return playerState;
+};
+
+export const updateWorldState = (worldState: WorldState): { updatedWorldState: WorldState, newPlayerMessages: Record<string, Message[]> } => {
+    // This function will handle global events, NPC evolution, etc.
+    return { updatedWorldState: worldState, newPlayerMessages: {} };
+}
+
+
+export const handleAction = (gameState: GameState, type: string, payload: any): { message?: string, error?: string } => {
+    switch (type) {
+        case 'ACTIVATE_BOOST': {
+            const { boostId } = payload;
+            const boostIndex = gameState.inventory.boosts.findIndex(b => b.id === boostId);
+            if (boostIndex === -1) {
+                return { error: "Bonus nie został znaleziony." };
+            }
+            const boost = gameState.inventory.boosts[boostIndex];
+
+            if (boost.type === BoostType.DAILY_BONUS_CRATE && boost.rewards) {
+                gameState.resources.metal += boost.rewards.metal || 0;
+                gameState.resources.crystal += boost.rewards.crystal || 0;
+                gameState.resources.deuterium += boost.rewards.deuterium || 0;
+                gameState.credits += boost.rewards.credits || 0;
+                
+                gameState.inventory.boosts.splice(boostIndex, 1);
+                return { message: "Odebrano nagrody ze skrzyni!" };
+            }
+
+            return { error: "Tego bonusa nie można aktywować w ten sposób." };
+        }
+
+        // Other actions will go here...
+        case 'ADD_TO_QUEUE': {
+            const { id, type: queueType, amount, activeLocationId } = payload;
+            const location = gameState.colonies[activeLocationId] || gameState.moons[activeLocationId];
+            if (!location) return { error: 'Nieprawidłowa lokalizacja.' };
+            
+            const data = ALL_GAME_OBJECTS[id as GameObject];
+            const isShipyard = queueType === 'ship' || queueType === 'defense';
+            const levelOrAmount = isShipyard ? amount : (queueType === 'building' ? location.buildings[id as BuildingType] + 1 : (queueType === 'research' ? gameState.research[id as ResearchType] + 1 : gameState.shipLevels[id as ShipType] + 1));
+            
+            const cost = data.cost(levelOrAmount);
+            const totalCost = isShipyard ? { metal: cost.metal * amount, crystal: cost.crystal * amount, deuterium: cost.deuterium * amount, energy: 0 } : cost;
+            
+            if (gameState.resources.metal < totalCost.metal || gameState.resources.crystal < totalCost.crystal || gameState.resources.deuterium < totalCost.deuterium) {
+                return { error: 'Niewystarczające surowce.' };
+            }
+
+            gameState.resources.metal -= totalCost.metal;
+            gameState.resources.crystal -= totalCost.crystal;
+            gameState.resources.deuterium -= totalCost.deuterium;
+
+            const now = Date.now();
+            const lastItemEndTime = isShipyard 
+                ? location.shipyardQueue[location.shipyardQueue.length - 1]?.endTime || now
+                : location.buildingQueue[location.buildingQueue.length - 1]?.endTime || now;
+
+            let buildTime: number;
+            if (queueType === 'research') {
+                const labLevel = gameState.colonies[Object.keys(gameState.colonies)[0]].buildings[BuildingType.RESEARCH_LAB] || 1;
+                buildTime = data.buildTime(levelOrAmount) / (1 + labLevel);
+            } else if (isShipyard) {
+                const shipyardLevel = location.buildings[BuildingType.SHIPYARD] || 1;
+                buildTime = data.buildTime(1) * amount / (1 + shipyardLevel);
+            } else {
+                buildTime = data.buildTime(levelOrAmount);
+            }
+
+            const newItem: QueueItem = {
+                id: id as GameObject,
+                type: queueType,
+                levelOrAmount,
+                startTime: lastItemEndTime,
+                endTime: lastItemEndTime + buildTime * 1000,
+                buildTime,
+            };
+
+            if (isShipyard) {
+                location.shipyardQueue.push(newItem);
+            } else {
+                location.buildingQueue.push(newItem);
+            }
+
+            return { message: `${data.name} dodano do kolejki.` };
+        }
+        
+        default:
+            return { error: 'Unknown action type.' };
+    }
+};
