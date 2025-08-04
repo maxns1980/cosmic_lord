@@ -204,7 +204,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-const authMiddleware = (req: any, res: any, next: NextFunction) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -242,7 +242,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     }
     worldState = updatedWorldState;
 
-    playerState = updatePlayerStateForOfflineProgress(playerState);
+    playerState = updatePlayerStateForOfflineProgress(playerState, worldState);
     
     return { ...playerState, ...worldState };
 };

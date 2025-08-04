@@ -78,7 +78,7 @@ const processFleetMissions = (playerState: PlayerState, now: number) => {
     playerState.fleetMissions = playerState.fleetMissions.filter((m: FleetMission) => !missionsToRemove.includes(m.id));
 };
 
-export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): PlayerState => {
+export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, worldState: WorldState): PlayerState => {
     const now = Date.now();
 
     // Daily bonus check - add crate to inventory
@@ -117,7 +117,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
     }
     
     // We need a temporary GameState object for production calculations
-    const tempGameState = { ...playerState, ...({} as WorldState) } as GameState;
+    const tempGameState = { ...playerState, ...worldState } as GameState;
     const productions = calculateProductions(tempGameState);
     
     const perColonyMaxRes = calculateMaxResources(playerState.colonies);
