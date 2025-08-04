@@ -352,6 +352,76 @@ export const handleAction = (gameState: GameState, type: string, payload: any): 
             return { message: `${data.name} dodano do kolejki.` };
         }
         
+        case 'ANCIENT_ARTIFACT_CHOICE': {
+            const { choice } = payload;
+            if (gameState.ancientArtifactState.status !== AncientArtifactStatus.AWAITING_CHOICE) {
+                return { error: 'Nie ma aktywnego artefaktu do podjęcia decyzji.' };
+            }
+
+            // Optimistically set status to INACTIVE. Will be reverted on error.
+            gameState.ancientArtifactState.status = AncientArtifactStatus.INACTIVE;
+
+            switch (choice) {
+                case AncientArtifactChoice.STUDY: {
+                    const STUDY_COST = { credits: 5000, crystal: 2000 };
+                    if (gameState.credits < STUDY_COST.credits || gameState.resources.crystal < STUDY_COST.crystal) {
+                        gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE; // Revert
+                        return { error: 'Niewystarczające środki na zbadanie artefaktu.' };
+                    }
+                    gameState.credits -= STUDY_COST.credits;
+                    gameState.resources.crystal -= STUDY_COST.crystal;
+                    
+                    const success = Math.random() < 0.5;
+                    const outcome: AncientArtifactMessage['outcome'] = { success };
+                    let subject: string;
+                    let message: string;
+
+                    if (success) {
+                        const potentialTechs = (Object.keys(gameState.research) as ResearchType[])
+                            .filter(tech => (gameState.research[tech] > 0 && gameState.research[tech] < 20));
+                        
+                        if (potentialTechs.length > 0) {
+                            const techToUpgrade = potentialTechs[Math.floor(Math.random() * potentialTechs.length)];
+                            const newLevel = gameState.research[techToUpgrade] + 1;
+                            gameState.research[techToUpgrade] = newLevel;
+                            outcome.technology = techToUpgrade;
+                            outcome.newLevel = newLevel;
+                            subject = 'Przełom technologiczny!';
+                            message = 'Badanie artefaktu zakończyło się sukcesem!';
+                        } else {
+                            gameState.credits += STUDY_COST.credits / 2;
+                            gameState.resources.crystal += STUDY_COST.crystal / 2;
+                            subject = 'Dziwny artefakt';
+                            message = 'Badanie artefaktu nie przyniosło przełomu, ale odzyskano część kosztów.';
+                        }
+                    } else {
+                        subject = 'Porażka badawcza';
+                        message = 'Badanie artefaktu nie powiodło się, zasoby zostały stracone.';
+                    }
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
+                    return { message };
+                }
+                case AncientArtifactChoice.SELL: {
+                    const SELL_GAIN = 10000;
+                    gameState.credits += SELL_GAIN;
+                    const outcome: AncientArtifactMessage['outcome'] = { creditsGained: SELL_GAIN };
+                    const subject = 'Sprzedano artefakt';
+                    const message = `Sprzedano artefakt za ${SELL_GAIN} kredytów.`;
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
+                    return { message };
+                }
+                case AncientArtifactChoice.IGNORE: {
+                    const subject = 'Zignorowano artefakt';
+                    const message = 'Zdecydowano zostawić artefakt w spokoju.';
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome: {} } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
+                    return { message };
+                }
+                default:
+                    gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE; // Revert
+                    return { error: 'Nieznany wybór dotyczący artefaktu.' };
+            }
+        }
+
         default:
             return { error: 'Unknown action type.' };
     }
