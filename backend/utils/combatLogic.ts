@@ -350,9 +350,9 @@ export const calculateCombat = (
         const protectedCrystal = crystalCapacity * protectionFactor;
         const protectedDeuterium = deuteriumCapacity * protectionFactor;
 
-        const lootableMetal = Math.max(0, defenderResources.metal - protectedMetal);
-        const lootableCrystal = Math.max(0, defenderResources.crystal - protectedCrystal);
-        const lootableDeuterium = Math.max(0, defenderResources.deuterium - protectedDeuterium);
+        const lootableMetal = Math.max(0, (defenderResources.metal || 0) - protectedMetal);
+        const lootableCrystal = Math.max(0, (defenderResources.crystal || 0) - protectedCrystal);
+        const lootableDeuterium = Math.max(0, (defenderResources.deuterium || 0) - protectedDeuterium);
         
         const LOOT_FACTOR = 0.5; // Standard loot is 50% of unprotected resources
         const metalToLoot = lootableMetal * LOOT_FACTOR;

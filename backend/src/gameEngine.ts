@@ -80,10 +80,10 @@ const processFleetMissions = (playerState: PlayerState, now: number) => {
 
 export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, worldState: WorldState): PlayerState => {
     const now = Date.now();
-
-    // Daily bonus check - add crate to inventory
     const twentyFourHours = 24 * 60 * 60 * 1000;
-    if (now - playerState.lastBonusClaimTime > twentyFourHours) {
+    const hasUnclaimedBonus = playerState.inventory.boosts.some(b => b.type === BoostType.DAILY_BONUS_CRATE);
+
+    if (now - playerState.lastBonusClaimTime > twentyFourHours && !hasUnclaimedBonus) {
         const rewards = {
             metal: Math.floor(Math.random() * 1001) + 1000,
             crystal: Math.floor(Math.random() * 501) + 500,
@@ -91,7 +91,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
         };
 
         const bonusCrate: Boost = {
-            id: `daily-bonus-${Date.now()}`,
+            id: `daily-bonus-${now}`,
             type: BoostType.DAILY_BONUS_CRATE,
             level: 1,
             duration: 0,
@@ -99,7 +99,6 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
         };
 
         playerState.inventory.boosts.push(bonusCrate);
-        playerState.lastBonusClaimTime = now;
         
         addMessage(playerState, {
             type: 'info',
@@ -163,6 +162,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any): 
                 gameState.credits += boost.rewards.credits || 0;
                 
                 gameState.inventory.boosts.splice(boostIndex, 1);
+                gameState.lastBonusClaimTime = Date.now();
                 return { message: "Odebrano nagrody ze skrzyni!" };
             }
 
