@@ -1,11 +1,11 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
     Alliance, WorldState, PlayerState
-} from './types.js';
-import { ALL_GAME_OBJECTS, getInitialPlayerState } from './constants.js';
-import { calculateProductions, calculateMaxResources } from './utils/gameLogic.js';
-import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
-import { TestableEventType } from './types.js';
+} from './types';
+import { ALL_GAME_OBJECTS, getInitialPlayerState } from './constants';
+import { calculateProductions, calculateMaxResources } from './utils/gameLogic';
+import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic';
+import { TestableEventType } from './types';
 
 const addMessage = (gameState: GameState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     gameState.messages.unshift({

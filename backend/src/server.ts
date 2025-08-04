@@ -45,10 +45,10 @@ const initializeWorld = async () => {
 
     if (!worldUser) {
         console.log("World state user not found. Creating...");
-        const { error: userInsertError } = await supabase.from('users').insert({
+        const { error: userInsertError } = await supabase.from('users').insert([{
             username: WORLD_STATE_USER_ID,
             password: `__WORLD_STATE_PASSWORD_${Date.now()}__` // A dummy, random password
-        });
+        }]);
         if (userInsertError) {
             console.error("FATAL: Could not create world state user.", userInsertError);
             throw new Error("FATAL: Could not create world state user.");
@@ -89,10 +89,10 @@ const initializeWorld = async () => {
             }
         }
 
-        const { error: insertError } = await supabase.from('game_state').insert({
+        const { error: insertError } = await supabase.from('game_state').insert([{
             user_id: WORLD_STATE_USER_ID,
             state: initialWorldState as unknown as Json
-        });
+        }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -144,7 +144,7 @@ app.post('/api/signup', async (req, res) => {
 
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert({ username, password });
+            .insert([{ username, password }]);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -153,7 +153,7 @@ app.post('/api/signup', async (req, res) => {
 
         const { error: insertStateError } = await supabase
             .from('game_state')
-            .insert({ user_id: username, state: newPlayerState as unknown as Json });
+            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
