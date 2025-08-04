@@ -1,23 +1,27 @@
 
 import express from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState } from './src/types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './src/gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID } from './src/constants.js';
-import { supabase } from './src/config/db.js';
+import { GameState, PlayerState, WorldState } from './src/types';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './src/gameEngine';
+import { getInitialPlayerState, getInitialWorldState, WORLD_STATE_USER_ID } from './src/constants';
+import { supabase } from './src/config/db';
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const allowedOrigin = process.env.FRONTEND_URL;
-console.log(`CORS configured to allow origin: ${allowedOrigin || '!!! NOT SET - WILL BLOCK FRONTEND !!!'}`);
+const allowedOrigin = process.env.FRONTEND_URL || 'https://star-lord.netlify.app';
+console.log(`CORS configured to allow origin: ${allowedOrigin}`);
 
 const corsOptions = {
   origin: allowedOrigin,
-  optionsSuccessStatus: 200 
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // enable pre-flight for all routes
+
 app.use(express.json({ limit: '10mb' }) as any);
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
@@ -100,7 +104,7 @@ const initializeWorld = async () => {
         const { error: insertError } = await supabase.from('game_state').insert([
             {
                 user_id: WORLD_STATE_USER_ID,
-                state: initialWorldState
+                state: initialWorldState as any
             }
         ]);
 
@@ -145,7 +149,7 @@ app.post('/api/signup', async (req, res) => {
         if (worldError || !worldData?.state) {
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
-        const worldState = worldData.state as WorldState;
+        const worldState = worldData.state as unknown as WorldState;
 
         const homeCoords = findUnoccupiedCoordinates(worldState.occupiedCoordinates);
         worldState.occupiedCoordinates[homeCoords] = username;
@@ -163,7 +167,7 @@ app.post('/api/signup', async (req, res) => {
 
         const { error: insertStateError } = await supabase
             .from('game_state')
-            .insert([{ user_id: username, state: newPlayerState }]);
+            .insert([{ user_id: username, state: newPlayerState as any }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -173,7 +177,7 @@ app.post('/api/signup', async (req, res) => {
         }
         
         // Save the updated world state
-        const { error: worldSaveError } = await supabase.from('game_state').update({ state: worldState }).eq('user_id', WORLD_STATE_USER_ID);
+        const { error: worldSaveError } = await supabase.from('game_state').update({ state: worldState as any }).eq('user_id', WORLD_STATE_USER_ID);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // Non-fatal, but should be logged
@@ -238,8 +242,8 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         return null;
     }
     
-    let playerState = playerData.state as PlayerState;
-    let worldState = worldData.state as WorldState;
+    let playerState = playerData.state as unknown as PlayerState;
+    let worldState = worldData.state as unknown as WorldState;
 
     const { updatedWorldState, messagesForPlayers } = updateWorldState(worldState);
     worldState = updatedWorldState;
