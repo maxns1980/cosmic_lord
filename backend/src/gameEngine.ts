@@ -1,7 +1,6 @@
-
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState
+    Alliance, WorldState, PlayerState, Resources
 } from './types.js';
 import { ALL_GAME_OBJECTS, getInitialPlayerState } from './constants.js';
 import { calculateProductions, calculateMaxResources } from './utils/gameLogic.js';
@@ -78,10 +77,23 @@ const processFleetMissions = (playerState: PlayerState, now: number) => {
 
 export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): PlayerState => {
     const now = Date.now();
+
+    // Daily bonus check
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (!playerState.dailyBonus.isAvailable && (now - playerState.lastBonusClaimTime > twentyFourHours)) {
+        playerState.dailyBonus.isAvailable = true;
+        playerState.dailyBonus.rewards = {
+            metal: Math.floor(Math.random() * 1001) + 1000, // 1000 - 2000
+            crystal: Math.floor(Math.random() * 501) + 500,  // 500 - 1000
+            credits: Math.floor(Math.random() * 401) + 100,  // 100 - 500
+        };
+    }
+
     const lastSave = playerState.lastSaveTime || now;
     const deltaSeconds = (now - lastSave) / 1000;
 
     if (deltaSeconds <= 1) {
+        playerState.lastSaveTime = now;
         return playerState;
     }
     
@@ -91,7 +103,16 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState): P
     const tempGameState = { ...playerState, ...{ solarFlare: { status: 'INACTIVE' }, resourceVeinBonus: { active: false }, stellarAuroraState: { active: false } } } as any;
 
     const productions = calculateProductions(tempGameState);
-    const maxResources = calculateMaxResources(playerState.colonies);
+    const maxResourcesByColony = calculateMaxResources(playerState.colonies);
+
+    // Calculate total max resources
+    const maxResources = {
+        metal: Object.values(maxResourcesByColony).reduce((sum, r) => sum + r.metal, 0),
+        crystal: Object.values(maxResourcesByColony).reduce((sum, r) => sum + r.crystal, 0),
+        deuterium: Object.values(maxResourcesByColony).reduce((sum, r) => sum + r.deuterium, 0),
+        energy: Object.values(maxResourcesByColony).reduce((sum, r) => sum + r.energy, 0),
+    };
+
 
     playerState.resources.metal = Math.min(maxResources.metal, playerState.resources.metal + (productions.metal / 3600) * deltaSeconds);
     playerState.resources.crystal = Math.min(maxResources.crystal, playerState.resources.crystal + (productions.crystal / 3600) * deltaSeconds);
@@ -137,22 +158,65 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
             
             const location = gameState.colonies[activeLocationId] || gameState.moons[activeLocationId];
             if(!location) return {error: "Nie znaleziono lokacji"};
+
+            let levelOrAmount: number;
+            let cost: Resources;
+
+            if (type === 'building' || type === 'research' || type === 'ship_upgrade') {
+                levelOrAmount = (type === 'building' 
+                    ? location.buildings[id as BuildingType] 
+                    : type === 'research' 
+                        ? gameState.research[id as ResearchType] 
+                        : gameState.shipLevels[id as ShipType]) + 1;
+                cost = data.cost(levelOrAmount);
+            } else { // ship or defense
+                levelOrAmount = amount;
+                if (!levelOrAmount || levelOrAmount <= 0) return { error: "Nieprawidłowa ilość." };
+                const unitCost = data.cost(1);
+                cost = {
+                    metal: unitCost.metal * levelOrAmount,
+                    crystal: unitCost.crystal * levelOrAmount,
+                    deuterium: unitCost.deuterium * levelOrAmount,
+                    energy: 0
+                };
+            }
+
+            // Check affordability
+            if (gameState.resources.metal < cost.metal || gameState.resources.crystal < cost.crystal || gameState.resources.deuterium < cost.deuterium) {
+                return { error: "Niewystarczające surowce!" };
+            }
+
+            // Subtract resources
+            gameState.resources.metal -= cost.metal;
+            gameState.resources.crystal -= cost.crystal;
+            gameState.resources.deuterium -= cost.deuterium;
             
-            const cost = data.cost(1); // Simplified for now
+            let finalBuildTime = data.buildTime(levelOrAmount);
+
+            if (type === 'research' || type === 'ship_upgrade') {
+                const allColonies = Object.values(gameState.colonies);
+                const homeworld = allColonies.length > 0 ? allColonies.reduce((oldest, current) => current.creationTime < oldest.creationTime ? current : oldest) : null;
+                const labLevel = homeworld?.buildings[BuildingType.RESEARCH_LAB] || 0;
+                if (labLevel > 0) {
+                    finalBuildTime /= (1 + labLevel);
+                }
+            }
+
+            const isShipyardQueue = type === 'ship' || type === 'defense';
+            const queue = isShipyardQueue ? location.shipyardQueue : location.buildingQueue;
+            
+            const lastItemInQueue = queue.length > 0 ? queue[queue.length - 1] : null;
+            const startTime = lastItemInQueue ? lastItemInQueue.endTime : Date.now();
             
             const newQueueItem: QueueItem = {
-                id, type,
-                levelOrAmount: (type === 'building' || type === 'research' || type === 'ship_upgrade' ? (type === 'building' ? location.buildings[id as BuildingType] : type === 'research' ? gameState.research[id as ResearchType] : gameState.shipLevels[id as ShipType]) + 1 : amount),
-                startTime: Date.now(),
-                buildTime: data.buildTime(1),
-                endTime: Date.now() + data.buildTime(1) * 1000,
+                id, type, levelOrAmount,
+                startTime,
+                buildTime: finalBuildTime,
+                endTime: startTime + finalBuildTime * 1000,
             };
 
-            if (type === 'ship' || type === 'defense') {
-                location.shipyardQueue.push(newQueueItem);
-            } else {
-                location.buildingQueue.push(newQueueItem);
-            }
+            queue.push(newQueueItem);
+
             return { message: `${data.name} dodano do kolejki.` };
         }
         case 'SEND_FLEET': {
@@ -222,6 +286,27 @@ export function handleAction(gameState: GameState, type: string, payload: any): 
             gameState.ancientArtifactState.status = AncientArtifactStatus.INACTIVE;
             addMessage(gameState, message);
             return { message: 'Decyzja została podjęta.' };
+        }
+        case 'CLAIM_BONUS': {
+            if (!gameState.dailyBonus.isAvailable) {
+                return { error: 'Bonus jest niedostępny.' };
+            }
+            const rewards = gameState.dailyBonus.rewards;
+            gameState.resources.metal += rewards.metal || 0;
+            gameState.resources.crystal += rewards.crystal || 0;
+            gameState.credits += rewards.credits || 0;
+
+            gameState.dailyBonus.isAvailable = false;
+            gameState.dailyBonus.rewards = {};
+            gameState.lastBonusClaimTime = Date.now();
+
+            return { message: 'Odebrano dzienną nagrodę!' };
+        }
+        case 'DISMISS_BONUS': {
+            if (gameState.dailyBonus.isAvailable) {
+                gameState.dailyBonus.isAvailable = false;
+            }
+            return {};
         }
         // ... stubs for other actions
         default:

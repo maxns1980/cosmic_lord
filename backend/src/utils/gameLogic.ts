@@ -1,7 +1,7 @@
 
 
 import { BuildingLevels, Resources, ResourceVeinBonus, Colony, ActiveBoosts, SolarFlareState, Fleet, StellarAuroraState, ResearchLevels, BuildingType, ResearchType, ShipType, PlanetSpecialization, SolarFlareStatus, BoostType, GameState } from '../types.js';
-import { BUILDING_DATA, ALL_SHIP_DATA, COLONY_INCOME_BONUS_PER_HOUR, BASE_STORAGE_CAPACITY, PLAYER_HOME_COORDS } from '../constants.js';
+import { BUILDING_DATA, ALL_SHIP_DATA, COLONY_INCOME_BONUS_PER_HOUR, BASE_STORAGE_CAPACITY } from '../constants.js';
 
 export const calculateNextBlackMarketIncome = (level: number): number => {
     if (level === 0) return 0;
@@ -10,15 +10,17 @@ export const calculateNextBlackMarketIncome = (level: number): number => {
     return Math.floor(Math.random() * (maxIncome - minIncome + 1)) + minIncome;
 };
 
-export const calculateMaxResources = (colonies: Record<string, Colony>): Resources => {
-    let totalCapacity: Resources = { metal: 0, crystal: 0, deuterium: 0, energy: 0 };
-     for (const colony of Object.values(colonies)) {
-        totalCapacity.metal += BUILDING_DATA[BuildingType.METAL_STORAGE].capacity?.(colony.buildings[BuildingType.METAL_STORAGE]) ?? BASE_STORAGE_CAPACITY;
-        totalCapacity.crystal += BUILDING_DATA[BuildingType.CRYSTAL_STORAGE].capacity?.(colony.buildings[BuildingType.CRYSTAL_STORAGE]) ?? BASE_STORAGE_CAPACITY;
-        totalCapacity.deuterium += BUILDING_DATA[BuildingType.DEUTERIUM_TANK].capacity?.(colony.buildings[BuildingType.DEUTERIUM_TANK]) ?? BASE_STORAGE_CAPACITY;
-        totalCapacity.energy += BUILDING_DATA[BuildingType.ENERGY_STORAGE].capacity?.(colony.buildings[BuildingType.ENERGY_STORAGE]) ?? 0;
+export const calculateMaxResources = (colonies: Record<string, Colony>): Record<string, Resources> => {
+    const maxResourcesByColony: Record<string, Resources> = {};
+    for (const colony of Object.values(colonies)) {
+        maxResourcesByColony[colony.id] = {
+            metal: BUILDING_DATA[BuildingType.METAL_STORAGE].capacity?.(colony.buildings[BuildingType.METAL_STORAGE]) ?? BASE_STORAGE_CAPACITY,
+            crystal: BUILDING_DATA[BuildingType.CRYSTAL_STORAGE].capacity?.(colony.buildings[BuildingType.CRYSTAL_STORAGE]) ?? BASE_STORAGE_CAPACITY,
+            deuterium: BUILDING_DATA[BuildingType.DEUTERIUM_TANK].capacity?.(colony.buildings[BuildingType.DEUTERIUM_TANK]) ?? BASE_STORAGE_CAPACITY,
+            energy: BUILDING_DATA[BuildingType.ENERGY_STORAGE].capacity?.(colony.buildings[BuildingType.ENERGY_STORAGE]) ?? 0,
+        };
     }
-    return totalCapacity;
+    return maxResourcesByColony;
 };
 
 export const calculateProductions = (gameState: GameState) => {
@@ -27,7 +29,21 @@ export const calculateProductions = (gameState: GameState) => {
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 
-    for (const planet of Object.values(colonies)) {
+    const allColonies = Object.values(colonies);
+    if (allColonies.length === 0) {
+        return {
+            metal: 0,
+            crystal: 0,
+            deuterium: 0,
+            energy: { produced: 0, consumed: 0, efficiency: 1 }
+        };
+    }
+      
+    const homeworld = allColonies.reduce((oldest, current) => 
+        current.creationTime < oldest.creationTime ? current : oldest
+    );
+
+    for (const planet of allColonies) {
         const energyTechLevel = research[ResearchType.ENERGY_TECHNOLOGY] || 0;
         const energyTechBonus = 1 + (energyTechLevel * 0.02);
 
@@ -67,7 +83,7 @@ export const calculateProductions = (gameState: GameState) => {
             deuteriumProd -= BUILDING_DATA[BuildingType.FUSION_REACTOR].deuteriumConsumption?.(planet.buildings[BuildingType.FUSION_REACTOR]) ?? 0;
         }
 
-        if (planet.id !== PLAYER_HOME_COORDS) {
+        if (planet.id !== homeworld.id) {
             metalProd += COLONY_INCOME_BONUS_PER_HOUR.metal;
             crystalProd += COLONY_INCOME_BONUS_PER_HOUR.crystal;
             let colonyDeuterium = COLONY_INCOME_BONUS_PER_HOUR.deuterium;
