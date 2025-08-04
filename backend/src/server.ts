@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { GameState, Json, PlayerState, WorldState } from './types';
+import { GameState, PlayerState, WorldState } from './types';
+import { Json } from './database.types';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState } from './gameEngine';
 import { getInitialPlayerState, getInitialWorldState } from './constants';
 import { supabase } from './config/db';
@@ -58,7 +59,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as Json }]);
+            .insert([{ id: 1, state: initialWorldState as Json }] as any);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -103,7 +104,7 @@ app.post('/api/signup', async (req, res) => {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
-        const worldState = worldData.state as unknown as WorldState;
+        const worldState = (worldData as any).state as unknown as WorldState;
 
         // 3. Find coordinates and create initial player state
         const homeCoords = findUnoccupiedCoordinates(worldState.occupiedCoordinates);
@@ -112,7 +113,7 @@ app.post('/api/signup', async (req, res) => {
         // 4. Create the new user
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert([{ username, password }]);
+            .insert([{ username, password }] as any);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -122,18 +123,21 @@ app.post('/api/signup', async (req, res) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as Json }]);
+            .insert([{ user_id: username, state: newPlayerState as Json }] as any);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
             // Rollback user creation if state creation fails
             await supabase.from('users').delete().eq('username', username);
+             if (insertStateError.message.includes('relation "public.player_states" does not exist')) {
+                return res.status(500).json({ message: 'Błąd serwera: Tabela "player_states" nie istnieje w bazie danych. Uruchom poprawny skrypt SQL.' });
+            }
             return res.status(500).json({ message: 'Nie udało się utworzyć stanu gry.' });
         }
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as Json } as any).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -163,11 +167,11 @@ app.post('/api/login', async (req, res) => {
              return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło.' });
         }
 
-        if (user.password !== password) {
+        if ((user as any).password !== password) {
             return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło.' });
         }
 
-        res.status(200).json({ message: 'Zalogowano pomyślnie.', token: user.username });
+        res.status(200).json({ message: 'Zalogowano pomyślnie.', token: (user as any).username });
     } catch (e) {
         console.error('Login exception:', e);
         res.status(500).json({ message: 'Wystąpił nieoczekiwany błąd.' });
@@ -196,8 +200,8 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         return null;
     }
     
-    let playerState = playerData.state as unknown as PlayerState;
-    let worldState = worldData.state as unknown as WorldState;
+    let playerState = (playerData as any).state as unknown as PlayerState;
+    let worldState = (worldData as any).state as unknown as WorldState;
 
     const { updatedWorldState, messagesForPlayers } = updateWorldState(worldState);
     worldState = updatedWorldState;
@@ -225,8 +229,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as Json }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as Json } as any).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as Json } as any).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
