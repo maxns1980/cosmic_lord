@@ -1,6 +1,6 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission
 } from './types.js';
 import { ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST } from './constants.js';
 import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
@@ -140,8 +140,46 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
 };
 
 export const updateWorldState = (worldState: WorldState): { updatedWorldState: WorldState, newPlayerMessages: Record<string, Message[]> } => {
-    // This function will handle global events, NPC evolution, etc.
-    return { updatedWorldState: worldState, newPlayerMessages: {} };
+    const now = Date.now();
+    // Use last check time from world state, default to 1 min ago if it's missing for some reason
+    const lastCheck = worldState.lastGlobalNpcCheck || (now - 60 * 1000);
+    const deltaSeconds = (now - lastCheck) / 1000;
+
+    // To prevent excessive processing on rapid requests, only update if at least a minute has passed.
+    if (deltaSeconds < 60) {
+        return { updatedWorldState: worldState, newPlayerMessages: {} };
+    }
+    
+    const updatedNpcStates = { ...worldState.npcStates };
+    const newNpcMissions = [...worldState.npcFleetMissions];
+
+    // Evolve all NPCs based on the time that has passed
+    for (const coords in updatedNpcStates) {
+        const npc = updatedNpcStates[coords];
+        // For now, threat detection is simplified: an NPC is threatened if a player fleet is heading towards it.
+        // This would require player state access, so we'll pass false.
+        const isThreatened = false; 
+        
+        const { updatedNpc, mission } = evolveNpc(npc, deltaSeconds, coords, isThreatened);
+        updatedNpcStates[coords] = updatedNpc;
+        
+        if (mission) {
+            newNpcMissions.push(mission);
+            // In a full implementation, we would alert the target player.
+        }
+    }
+    
+    // Process NPC missions to remove completed ones. A full combat implementation is complex and deferred.
+    const activeNpcMissions = newNpcMissions.filter(mission => now < mission.arrivalTime);
+
+    const updatedWorldState: WorldState = {
+        ...worldState,
+        npcStates: updatedNpcStates,
+        npcFleetMissions: activeNpcMissions,
+        lastGlobalNpcCheck: now,
+    };
+
+    return { updatedWorldState, newPlayerMessages: {} };
 }
 
 
