@@ -57,8 +57,8 @@ const initializeWorld = async () => {
     if (!data) {
         console.log("No world state found. Creating new world...");
         const initialWorldState = getInitialWorldState();
-        const { error: insertError } = await supabase
-            .from('world_state')
+        const { error: insertError } = await (supabase
+            .from('world_state') as any)
             .insert([{ id: 1, state: initialWorldState as any }]);
 
         if (insertError) {
@@ -111,8 +111,8 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         const newPlayerState = getInitialPlayerState(username, homeCoords);
 
         // 4. Create the new user
-        const { error: insertUserError } = await supabase
-            .from('users')
+        const { error: insertUserError } = await (supabase
+            .from('users') as any)
             .insert([{ username, password }]);
 
         if (insertUserError) {
@@ -121,8 +121,8 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         }
 
         // 5. Create the player state
-        const { error: insertStateError } = await supabase
-            .from('player_states')
+        const { error: insertStateError } = await (supabase
+            .from('player_states') as any)
             .insert([{ user_id: username, state: newPlayerState as any }]);
         
         if (insertStateError) {
@@ -137,7 +137,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         
         // 6. Update world state with the new occupied coordinate
         worldState.occupiedCoordinates[homeCoords] = username;
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+        const { error: worldSaveError } = await (supabase.from('world_state') as any).update({ state: worldState as any }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -233,8 +233,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
     (playerState as PlayerState).lastSaveTime = Date.now();
     
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+    const playerSavePromise = (supabase.from('player_states') as any).update({ state: playerState as any }).eq('user_id', userId);
+    const worldSavePromise = (supabase.from('world_state') as any).update({ state: worldState as any }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -248,8 +248,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
 
 app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: AppRequest, res: Response) => {
-    const gameState = await loadCombinedGameState(req.userId!);
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
+    const gameState = await loadCombinedGameState((req as AppRequest).userId!);
     if (gameState) {
         res.json(gameState);
     } else {
@@ -257,8 +257,8 @@ app.get('/api/state', authMiddleware, async (req: AppRequest, res: Response) => 
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: AppRequest, res: Response) => {
-    let gameState = await loadCombinedGameState(req.userId!);
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
+    let gameState = await loadCombinedGameState((req as AppRequest).userId!);
     if (!gameState) {
         return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });
     }
@@ -270,11 +270,11 @@ app.post('/api/action', authMiddleware, async (req: AppRequest, res: Response) =
             return res.status(400).json({ message: result.error });
         }
 
-        await saveStates(req.userId!, gameState);
+        await saveStates((req as AppRequest).userId!, gameState);
 
         res.status(200).json({ message: result?.message || 'Akcja przetworzona', gameState });
     } catch (e: any) {
-        console.error(`Error processing action ${type} for user ${req.userId!}:`, e);
+        console.error(`Error processing action ${type} for user ${(req as AppRequest).userId!}:`, e);
         res.status(500).json({ message: e.message || 'Wystąpił błąd podczas przetwarzania akcji.' });
     }
 });

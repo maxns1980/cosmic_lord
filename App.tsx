@@ -201,20 +201,20 @@ function App() {
     setTimeout(() => setNotification(null), 4000);
   }, []);
 
+  const handleLogout = useCallback(() => {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('username');
+      setAuthToken(null);
+      setUsername(null);
+      setGameState(null);
+      setActiveLocationId(null);
+  }, []);
+
   const handleLoginSuccess = (token: string, loggedInUsername: string) => {
       localStorage.setItem('authToken', token);
       localStorage.setItem('username', loggedInUsername);
       setAuthToken(token);
       setUsername(loggedInUsername);
-      setGameState(null);
-      setActiveLocationId(null);
-  };
-
-  const handleLogout = () => {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('username');
-      setAuthToken(null);
-      setUsername(null);
       setGameState(null);
       setActiveLocationId(null);
   };
@@ -230,7 +230,10 @@ function App() {
 
             if (!response.ok) {
                 console.error(`Failed to fetch state from server, status: ${response.status}`);
-                handleLogout();
+                // If token is invalid (e.g. user was deleted from DB), log out
+                if (response.status === 401 || response.status === 404) {
+                    handleLogout();
+                }
                 return;
             }
 
@@ -238,7 +241,7 @@ function App() {
             setGameState(data);
         } catch (error) {
             console.error("Error fetching game state:", error);
-            handleLogout();
+            // Don't log out on network errors, just retry
         }
     };
 
@@ -246,7 +249,7 @@ function App() {
     const interval = setInterval(fetchState, 5000);
 
     return () => clearInterval(interval);
-  }, [API_URL, authToken]);
+  }, [API_URL, authToken, handleLogout]);
   
   useEffect(() => {
     if (gameState && !activeLocationId) {
@@ -385,22 +388,15 @@ function App() {
         performAction('LEAVE_ALLIANCE', {});
     }
   }, []);
-
-  if (!authToken || !username) {
-      return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  if (!gameState || !activeLocationId) {
-    return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
-  }
   
-  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
-
-  const isMoon = activeLocationId.endsWith('_moon');
-  const planetId = isMoon ? activeLocationId.replace('_moon', '') : activeLocationId;
+  const activeEntity = useMemo(() => {
+    if (!gameState || !activeLocationId) return null;
+    const { colonies, moons } = gameState;
+    const isMoon = activeLocationId.endsWith('_moon');
+    const planetId = isMoon ? activeLocationId.replace('_moon', '') : activeLocationId;
+    return isMoon ? (moons[planetId] || null) : (colonies[planetId] || null);
+  }, [gameState, activeLocationId]);
   
-  const activeEntity = isMoon ? moons[planetId] : colonies[planetId];
-
   const homeworld = useMemo(() => {
     if (!gameState) return null;
     const allColonies = Object.values(gameState.colonies);
@@ -410,11 +406,18 @@ function App() {
     );
   }, [gameState]);
 
-  if (!activeEntity) {
-      return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl">Ładowanie lokacji...</p></div>;
+  if (!authToken || !username) {
+      return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  if (!gameState || !activeLocationId || !activeEntity) {
+    return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
+  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
+  
   const { fleet: activeFleet, buildings: activeBuildings, defenses: activeDefenses, buildingQueue: activeBuildingQueue, shipyardQueue: activeShipyardQueue, maxFields } = activeEntity;
+  const isMoon = activeLocationId.endsWith('_moon');
 
   const productions = calculateProductions(gameState);
   const maxResources = calculateMaxResources(activeBuildings);
