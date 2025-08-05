@@ -75,12 +75,7 @@ const calculateMaxResources = (buildings: BuildingLevels): Resources => {
 };
 
 const calculateProductions = (gameState: GameState) => {
-    const { colonies, activeBoosts, research } = gameState;
-    
-    // Use player-scoped test event if active, otherwise fall back to global event
-    const resourceVeinBonus = gameState.scopedResourceVeinBonus || gameState.resourceVeinBonus;
-    const solarFlare = gameState.scopedSolarFlareState || gameState.solarFlare;
-    const stellarAuroraState = gameState.scopedStellarAuroraState || gameState.stellarAuroraState;
+    const { colonies, activeBoosts, research, scopedResourceVeinBonus, scopedSolarFlareState, scopedStellarAuroraState } = gameState;
 
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
@@ -99,7 +94,7 @@ const calculateProductions = (gameState: GameState) => {
         const energyTechBonus = 1 + (energyTechLevel * 0.02);
 
         let solarPlantProduction = (BUILDING_DATA[BuildingType.SOLAR_PLANT].production?.(planet.buildings[BuildingType.SOLAR_PLANT]) ?? 0) * energyTechBonus;
-        if (stellarAuroraState.active) {
+        if (scopedStellarAuroraState?.active) {
             solarPlantProduction *= 1.30;
         }
 
@@ -112,7 +107,7 @@ const calculateProductions = (gameState: GameState) => {
         const satelliteData = ALL_SHIP_DATA[ShipType.SOLAR_SATELLITE];
         planetEnergyProduction += (planet.fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
        
-        if (solarFlare.status === SolarFlareStatus.POWER_BOOST) {
+        if (scopedSolarFlareState?.status === SolarFlareStatus.POWER_BOOST) {
             planetEnergyProduction *= 1.5;
         }
 
@@ -152,10 +147,10 @@ const calculateProductions = (gameState: GameState) => {
     }
 
 
-    if (resourceVeinBonus?.active && resourceVeinBonus.resourceType) {
-        if (resourceVeinBonus.resourceType === 'metal') totalProductions.metal *= resourceVeinBonus.bonusMultiplier;
-        else if (resourceVeinBonus.resourceType === 'crystal') totalProductions.crystal *= resourceVeinBonus.bonusMultiplier;
-        else if (resourceVeinBonus.resourceType === 'deuterium') totalProductions.deuterium *= resourceVeinBonus.bonusMultiplier;
+    if (scopedResourceVeinBonus?.active && scopedResourceVeinBonus.resourceType) {
+        if (scopedResourceVeinBonus.resourceType === 'metal') totalProductions.metal *= scopedResourceVeinBonus.bonusMultiplier;
+        else if (scopedResourceVeinBonus.resourceType === 'crystal') totalProductions.crystal *= scopedResourceVeinBonus.bonusMultiplier;
+        else if (scopedResourceVeinBonus.resourceType === 'deuterium') totalProductions.deuterium *= scopedResourceVeinBonus.bonusMultiplier;
     }
 
     if (activeBoosts?.[BoostType.RESOURCE_PRODUCTION_BOOST]) {
@@ -413,15 +408,12 @@ function App() {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
-  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, npcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
-  
-    // Use player-scoped test event if active, otherwise fall back to global event
-  const pirateMercenaryState = gameState.scopedPirateMercenaryState || gameState.pirateMercenaryState;
-  const solarFlare = gameState.scopedSolarFlareState || gameState.solarFlare;
-  const contrabandState = gameState.scopedContrabandState || gameState.contrabandState;
-  const ghostShipState = gameState.scopedGhostShipState || gameState.ghostShipState;
-  const ancientArtifactState = gameState.scopedAncientArtifactState || gameState.ancientArtifactState;
-  const spacePlague = gameState.scopedSpacePlagueState || gameState.spacePlague;
+  const { 
+      resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, npcStates, debrisFields, 
+      colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets,
+      scopedPirateMercenaryState, scopedSolarFlareState, scopedContrabandState, scopedGhostShipState, scopedAncientArtifactState, scopedSpacePlagueState,
+      scopedResourceVeinBonus, scopedStellarAuroraState
+  } = gameState;
 
   const { fleet: activeFleet, buildings: activeBuildings, defenses: activeDefenses, buildingQueue: activeBuildingQueue, shipyardQueue: activeShipyardQueue, maxFields } = activeEntity;
   const isMoon = activeLocationId.endsWith('_moon');
@@ -447,11 +439,11 @@ function App() {
             productions={productions}
             credits={credits}
             blackMarketHourlyIncome={nextBlackMarketIncome}
-            resourceVeinBonus={gameState.scopedResourceVeinBonus || gameState.resourceVeinBonus}
+            resourceVeinBonus={scopedResourceVeinBonus}
             inventory={inventory}
             activeBoosts={activeBoosts}
-            solarFlare={solarFlare}
-            stellarAuroraState={gameState.scopedStellarAuroraState || gameState.stellarAuroraState}
+            solarFlare={scopedSolarFlareState}
+            stellarAuroraState={scopedStellarAuroraState}
             npcFleetMissions={npcFleetMissions}
             colonies={colonies}
             moons={moons}
@@ -557,8 +549,8 @@ function App() {
                         onRecallFleet={handleRecallFleet}
                         initialTarget={fleetTarget}
                         onClearInitialTarget={() => setFleetTarget(null)}
-                        spacePlague={spacePlague}
-                        solarFlare={solarFlare}
+                        spacePlague={scopedSpacePlagueState}
+                        solarFlare={scopedSolarFlareState}
                         colonies={colonies}
                         npcStates={npcStates}
                         fleetTemplates={fleetTemplates}
@@ -697,12 +689,12 @@ function App() {
                 {notification}
             </div>
         )}
-         {ancientArtifactState.status === AncientArtifactStatus.AWAITING_CHOICE && (
+         {scopedAncientArtifactState?.status === AncientArtifactStatus.AWAITING_CHOICE && (
             <AncientArtifactModal onChoice={(choice) => performAction('ANCIENT_ARTIFACT_CHOICE', { choice })} />
         )}
-        {contrabandState.status === ContrabandStatus.ACTIVE && (
+        {scopedContrabandState?.status === ContrabandStatus.ACTIVE && (
             <ContrabandModal 
-                contrabandState={contrabandState} 
+                contrabandState={scopedContrabandState} 
                 resources={resources}
                 credits={credits}
                 npcStates={npcStates}

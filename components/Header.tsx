@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Resources, ResourceVeinBonus, Inventory, ActiveBoosts, BoostType, NPCFleetMission, SolarFlareState, SolarFlareStatus, Colony, Moon, StellarAuroraState } from '../types';
 
@@ -18,11 +16,11 @@ interface HeaderProps {
     };
     credits: number;
     blackMarketHourlyIncome: number;
-    resourceVeinBonus: ResourceVeinBonus;
+    resourceVeinBonus?: ResourceVeinBonus;
     inventory: Inventory;
     activeBoosts: ActiveBoosts;
-    solarFlare: SolarFlareState;
-    stellarAuroraState: StellarAuroraState;
+    solarFlare?: SolarFlareState;
+    stellarAuroraState?: StellarAuroraState;
     npcFleetMissions: NPCFleetMission[];
     colonies: Record<string, Colony>;
     moons: Record<string, Moon>;
@@ -88,7 +86,7 @@ const LocationSwitcher: React.FC<{
         .forEach(colony => {
             locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });
             if (moons[colony.id]) {
-                locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${colony.id}]` });
+                locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${homeworld.id}]` });
             }
         });
     
@@ -111,8 +109,8 @@ const LocationSwitcher: React.FC<{
     )
 }
 
-const SolarFlareDisplay: React.FC<{ solarFlare: SolarFlareState }> = ({ solarFlare }) => {
-    if (solarFlare.status === SolarFlareStatus.INACTIVE) {
+const SolarFlareDisplay: React.FC<{ solarFlare?: SolarFlareState }> = ({ solarFlare }) => {
+    if (!solarFlare || solarFlare.status === SolarFlareStatus.INACTIVE) {
         return null;
     }
 
@@ -196,7 +194,7 @@ const ResourceDisplay: React.FC<{
     capacity: number; 
     icon: string; 
     colorClass: string; 
-    bonus: ResourceVeinBonus; 
+    bonus?: ResourceVeinBonus; 
     isBoosted: boolean;
     energyDetails?: { produced: number; consumed: number; efficiency: number; };
 }> = ({ label, resKey, value, production, capacity, icon, colorClass, bonus, isBoosted, energyDetails }) => {
@@ -243,7 +241,7 @@ const ResourceDisplay: React.FC<{
         valueColor = 'text-yellow-400';
     }
 
-    const isBonusActive = bonus.active && bonus.resourceType === resKey;
+    const isBonusActive = bonus?.active && bonus.resourceType === resKey;
     const productionColor = production >= 0 ? 'text-green-400' : 'text-red-400';
     const productionSign = production >= 0 ? '+' : '';
 
@@ -259,7 +257,7 @@ const ResourceDisplay: React.FC<{
             <div className={`text-xs mt-1 ${isBonusActive || isBoosted ? 'text-purple-400 font-bold' : productionColor}`}>
                 {productionSign}{formatNumber(production)}/h
             </div>
-            {isBonusActive && resKey !== 'energy' ? (
+            {isBonusActive && resKey !== 'energy' && bonus.endTime ? (
                 <div className="text-xs font-mono text-yellow-300">(<Countdown targetTime={bonus.endTime} />)</div>
             ) : (
                 <div className="h-[16px]"></div>

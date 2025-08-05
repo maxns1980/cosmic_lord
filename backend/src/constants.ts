@@ -890,59 +890,6 @@ export const INITIAL_MERCHANT_STATE: MerchantState = {
     shipOffers: {}
 };
 
-export const INITIAL_PIRATE_MERCENARY_STATE: PirateMercenaryState = {
-    status: PirateMercenaryStatus.INACTIVE,
-    fleet: {},
-    hireCost: 0,
-    arrivalTime: 0,
-    departureTime: 0,
-};
-
-export const INITIAL_RESOURCE_VEIN_BONUS: ResourceVeinBonus = {
-    active: false,
-    resourceType: null,
-    endTime: 0,
-    bonusMultiplier: 1.25,
-};
-
-export const INITIAL_ANCIENT_ARTIFACT_STATE: AncientArtifactState = {
-    status: AncientArtifactStatus.INACTIVE,
-};
-
-export const INITIAL_SPACE_PLAGUE_STATE: SpacePlagueState = {
-    active: false,
-    infectedShip: null,
-    endTime: 0,
-};
-
-export const INITIAL_SOLAR_FLARE_STATE: SolarFlareState = {
-    status: SolarFlareStatus.INACTIVE,
-    endTime: 0,
-};
-
-export const INITIAL_CONTRABAND_STATE: ContrabandState = {
-    status: ContrabandStatus.INACTIVE,
-    offer: null,
-    arrivalTime: 0,
-    departureTime: 0,
-};
-
-export const INITIAL_GHOST_SHIP_STATE: GhostShipState = {
-    status: GhostShipStatus.INACTIVE,
-    locationCoords: '',
-    shipType: ShipType.DESTROYER,
-};
-
-export const INITIAL_GALACTIC_GOLD_RUSH_STATE: GalacticGoldRushState = {
-    active: false,
-    endTime: 0,
-};
-
-export const INITIAL_STELLAR_AURORA_STATE: StellarAuroraState = {
-    active: false,
-    endTime: 0,
-};
-
 export const INITIAL_NPC_STATE: Omit<NPCState, 'lastUpdateTime' | 'personality' | 'name' | 'image'> = {
     resources: { metal: 1000, crystal: 500, deuterium: 100, energy: 0 },
     buildings: { ...INITIAL_BUILDING_LEVELS, METAL_MINE: 2, CRYSTAL_MINE: 1, SOLAR_PLANT: 2 },
@@ -1002,20 +949,10 @@ export const getInitialWorldState = (): WorldState => {
         npcFleetMissions: INITIAL_NPC_FLEET_MISSIONS,
         debrisFields: INITIAL_DEBRIS_FIELDS,
         merchantState: INITIAL_MERCHANT_STATE,
-        pirateMercenaryState: INITIAL_PIRATE_MERCENARY_STATE,
-        resourceVeinBonus: INITIAL_RESOURCE_VEIN_BONUS,
-        ancientArtifactState: INITIAL_ANCIENT_ARTIFACT_STATE,
-        spacePlague: INITIAL_SPACE_PLAGUE_STATE,
-        solarFlare: INITIAL_SOLAR_FLARE_STATE,
-        contrabandState: INITIAL_CONTRABAND_STATE,
-        ghostShipState: INITIAL_GHOST_SHIP_STATE,
-        galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
-        stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
         occupiedCoordinates,
         publicPlayerData,
         nextMerchantCheckTime: Date.now() + MERCHANT_CHECK_INTERVAL,
         lastGlobalNpcCheck: Date.now(),
-        lastEventCheckTime: Date.now(),
     };
 };
 
@@ -1057,4 +994,5 @@ export const getInitialPlayerState = (username: string, homeCoords: string): Pla
   nextBlackMarketIncome: 0,
   lastBlackMarketIncomeCheck: Date.now(),
   lastBonusClaimTime: 0,
+  lastPlayerEventCheckTime: Date.now(),
 });
