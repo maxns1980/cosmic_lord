@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
@@ -68,7 +68,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as Json }]);
+            .insert([{ id: 1, state: initialWorldState as any }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -128,7 +128,7 @@ const initializeWorld = async () => {
                 console.log(`Migration successful. Populated public data for ${Object.keys(worldState.npcStates).length} NPCs.`);
             }
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
             if (updateError) {
                 console.error("MIGRATION FAILED: Could not save migrated world state.", updateError);
             }
@@ -145,7 +145,7 @@ const initializeWorld = async () => {
              // Merge coordinates, preserving existing player locations
              worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
             if (updateError) {
                 console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
                 throw new Error("FATAL: Could not migrate world state.");
@@ -158,7 +158,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: Request, res: Response) => {
+app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -206,7 +206,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as Json }]);
+            .insert([{ user_id: username, state: newPlayerState as any }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -223,7 +223,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         const initialPoints = calculatePlayerPoints(newPlayerState);
         worldState.publicPlayerData[username] = { points: initialPoints, lastActivity: Date.now() };
 
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -236,7 +236,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/login', async (req: Request, res: Response) => {
+app.post('/api/login', async (req: ExpressRequest, res: ExpressResponse) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -264,7 +264,7 @@ app.post('/api/login', async (req: Request, res: Response) => {
     }
 });
 
-const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -295,7 +295,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     // If the world state was updated (e.g., NPCs evolved), save it back to the database.
     // This is crucial to persist world evolution outside of specific player actions.
     if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
-        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as Json }).eq('id', 1);
+        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as any }).eq('id', 1);
         if (error) {
             console.error("Error saving world state after background update:", error);
         }
@@ -341,8 +341,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
         lastActivity: Date.now(),
     };
 
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as Json }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as Json }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -354,9 +354,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
+app.get('/health', (req: ExpressRequest, res: ExpressResponse) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/state', authMiddleware, async (req: ExpressRequest, res: ExpressResponse) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -368,7 +368,7 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/action', authMiddleware, async (req: ExpressRequest, res: ExpressResponse) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

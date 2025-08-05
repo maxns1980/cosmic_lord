@@ -1,3 +1,4 @@
+
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
     Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage
@@ -94,34 +95,34 @@ export const processRandomEvents = (gameState: GameState): GameState => {
 
     // Check for each event
     if (Math.random() < SOLAR_FLARE_CHANCE) {
-        triggerSolarFlare(gameState, false);
+        triggerSolarFlare(gameState);
     }
     if (Math.random() < PIRATE_MERCENARY_CHANCE) {
-        triggerPirateMercenary(gameState, false);
+        triggerPirateMercenary(gameState);
     }
     if (Math.random() < CONTRABAND_CHANCE) {
-        triggerContraband(gameState, false);
+        triggerContraband(gameState);
     }
     if (Math.random() < ANCIENT_ARTIFACT_CHANCE) {
-        triggerAncientArtifact(gameState, false);
+        triggerAncientArtifact(gameState);
     }
     if (Math.random() < ASTEROID_IMPACT_CHANCE) {
         triggerAsteroidImpact(gameState);
     }
     if (Math.random() < RESOURCE_VEIN_CHANCE) {
-        triggerResourceVein(gameState, false);
+        triggerResourceVein(gameState);
     }
     if (Math.random() < SPACE_PLAGUE_CHANCE) {
-        triggerSpacePlague(gameState, false);
+        triggerSpacePlague(gameState);
     }
     if (Math.random() < GHOST_SHIP_CHANCE) {
-        triggerGhostShip(gameState, false);
+        triggerGhostShip(gameState);
     }
     if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) {
-        triggerGalacticGoldRush(gameState, false);
+        triggerGalacticGoldRush(gameState);
     }
     if (Math.random() < STELLAR_AURORA_CHANCE) {
-        triggerStellarAurora(gameState, false);
+        triggerStellarAurora(gameState);
     }
 
     return gameState;
@@ -247,39 +248,38 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
     switch (type) {
         case 'TRIGGER_EVENT': {
             const { eventType } = payload;
-            const isTest = userId === 'maxns1980';
             let message = 'Wydarzenie testowe uruchomione!';
 
             switch (eventType as TestableEventType) {
                 case TestableEventType.SOLAR_FLARE:
-                    triggerSolarFlare(gameState, isTest);
+                    triggerSolarFlare(gameState);
                     break;
                 case TestableEventType.PIRATE_MERCENARY:
-                    triggerPirateMercenary(gameState, isTest);
+                    triggerPirateMercenary(gameState);
                     break;
                 case TestableEventType.CONTRABAND:
-                    triggerContraband(gameState, isTest);
+                    triggerContraband(gameState);
                     break;
                 case TestableEventType.ANCIENT_ARTIFACT:
-                    triggerAncientArtifact(gameState, isTest);
+                    triggerAncientArtifact(gameState);
                     break;
                 case TestableEventType.ASTEROID_IMPACT:
-                    triggerAsteroidImpact(gameState); // This one is always scoped to the player
+                    triggerAsteroidImpact(gameState);
                     break;
                 case TestableEventType.RESOURCE_VEIN:
-                    triggerResourceVein(gameState, isTest);
+                    triggerResourceVein(gameState);
                     break;
                 case TestableEventType.SPACE_PLAGUE:
-                    triggerSpacePlague(gameState, isTest);
+                    triggerSpacePlague(gameState);
                     break;
                 case TestableEventType.GHOST_SHIP:
-                    triggerGhostShip(gameState, isTest);
+                    triggerGhostShip(gameState);
                     break;
                 case TestableEventType.GALACTIC_GOLD_RUSH:
-                    triggerGalacticGoldRush(gameState, isTest);
+                    triggerGalacticGoldRush(gameState);
                     break;
                 case TestableEventType.STELLAR_AURORA:
-                    triggerStellarAurora(gameState, isTest);
+                    triggerStellarAurora(gameState);
                     break;
                 default:
                     return { error: 'Nieznany typ wydarzenia testowego.' };
@@ -366,24 +366,18 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
         
         case 'ANCIENT_ARTIFACT_CHOICE': {
             const { choice } = payload;
-            let wasTestEvent = false;
-
-            if (gameState.scopedAncientArtifactState?.status === AncientArtifactStatus.AWAITING_CHOICE) {
-                gameState.scopedAncientArtifactState.status = AncientArtifactStatus.INACTIVE;
-                wasTestEvent = true;
-            } else if (gameState.ancientArtifactState.status === AncientArtifactStatus.AWAITING_CHOICE) {
-                gameState.ancientArtifactState.status = AncientArtifactStatus.INACTIVE;
-            } else {
+            if (gameState.ancientArtifactState.status !== AncientArtifactStatus.AWAITING_CHOICE) {
                 return { error: 'Nie ma aktywnego artefaktu do podjęcia decyzji.' };
             }
+
+            // Optimistically set status to INACTIVE. Will be reverted on error.
+            gameState.ancientArtifactState.status = AncientArtifactStatus.INACTIVE;
 
             switch (choice) {
                 case AncientArtifactChoice.STUDY: {
                     const STUDY_COST = { credits: 5000, crystal: 2000 };
                     if (gameState.credits < STUDY_COST.credits || gameState.resources.crystal < STUDY_COST.crystal) {
-                        // Revert status if cannot afford
-                        if(wasTestEvent) gameState.scopedAncientArtifactState!.status = AncientArtifactStatus.AWAITING_CHOICE;
-                        else gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE;
+                        gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE; // Revert
                         return { error: 'Niewystarczające środki na zbadanie artefaktu.' };
                     }
                     gameState.credits -= STUDY_COST.credits;
@@ -391,7 +385,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     
                     const success = Math.random() < 0.5;
                     const outcome: AncientArtifactMessage['outcome'] = { success };
-                    let subject = wasTestEvent ? 'Artefakt (Test)' : 'Starożytny Artefakt';
+                    let subject: string;
                     let message: string;
 
                     if (success) {
@@ -404,15 +398,16 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                             gameState.research[techToUpgrade] = newLevel;
                             outcome.technology = techToUpgrade;
                             outcome.newLevel = newLevel;
-                            subject = `Przełom technologiczny! ${wasTestEvent ? '(Test)' : ''}`;
+                            subject = 'Przełom technologiczny!';
                             message = 'Badanie artefaktu zakończyło się sukcesem!';
                         } else {
                             gameState.credits += STUDY_COST.credits / 2;
                             gameState.resources.crystal += STUDY_COST.crystal / 2;
-                            message = 'Badanie nie przyniosło przełomu, odzyskano część kosztów.';
+                            subject = 'Dziwny artefakt';
+                            message = 'Badanie artefaktu nie przyniosło przełomu, ale odzyskano część kosztów.';
                         }
                     } else {
-                        subject = `Porażka badawcza ${wasTestEvent ? '(Test)' : ''}`;
+                        subject = 'Porażka badawcza';
                         message = 'Badanie artefaktu nie powiodło się, zasoby zostały stracone.';
                     }
                     addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
@@ -422,42 +417,35 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     const SELL_GAIN = 10000;
                     gameState.credits += SELL_GAIN;
                     const outcome: AncientArtifactMessage['outcome'] = { creditsGained: SELL_GAIN };
-                    const subject = `Sprzedano artefakt ${wasTestEvent ? '(Test)' : ''}`;
+                    const subject = 'Sprzedano artefakt';
                     const message = `Sprzedano artefakt za ${SELL_GAIN} kredytów.`;
                     addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
                     return { message };
                 }
                 case AncientArtifactChoice.IGNORE: {
-                    const subject = `Zignorowano artefakt ${wasTestEvent ? '(Test)' : ''}`;
+                    const subject = 'Zignorowano artefakt';
                     const message = 'Zdecydowano zostawić artefakt w spokoju.';
                     addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome: {} } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
                     return { message };
                 }
                 default:
-                     if(wasTestEvent) gameState.scopedAncientArtifactState!.status = AncientArtifactStatus.AWAITING_CHOICE;
-                     else gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE;
+                    gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE; // Revert
                     return { error: 'Nieznany wybór dotyczący artefaktu.' };
             }
         }
         case 'GHOST_SHIP_CHOICE': {
             const { choice } = payload;
-            let wasTestEvent = false;
-
-            if (gameState.scopedGhostShipState?.status === GhostShipStatus.AWAITING_CHOICE) {
-                gameState.scopedGhostShipState.status = GhostShipStatus.INACTIVE;
-                wasTestEvent = true;
-            } else if (gameState.ghostShipState.status === GhostShipStatus.AWAITING_CHOICE) {
-                gameState.ghostShipState.status = GhostShipStatus.INACTIVE;
-            } else {
-                 return { error: 'Nie ma aktywnego Statku Widmo.' };
+             if (gameState.ghostShipState.status !== GhostShipStatus.AWAITING_CHOICE) {
+                return { error: 'Nie ma aktywnego Statku Widmo.' };
             }
 
+            gameState.ghostShipState.status = GhostShipStatus.INACTIVE;
             const outcome: GhostShipOutcomeMessage['outcome'] = { text: '' };
-            let subject: string = `Statek Widmo ${wasTestEvent ? '(Test)' : ''}`;
+            let subject: string = 'Statek Widmo';
 
             if (choice === GhostShipChoice.IGNORE) {
                 outcome.text = 'Postanowiono zignorować sygnał. Tajemnica wraku pozostanie nieodkryta.';
-                subject = `Zignorowano Statek Widmo ${wasTestEvent ? '(Test)' : ''}`;
+                subject = 'Zignorowano Statek Widmo';
             } else if (choice === GhostShipChoice.INVESTIGATE) {
                 const rand = Math.random();
                 if (rand < 0.4) { // 40% chance for resources
@@ -469,14 +457,14 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     gameState.resources.crystal += resourcesGained.crystal;
                     outcome.resourcesGained = resourcesGained;
                     outcome.text = 'Ekipa badawcza z sukcesem odzyskała cenne surowce z wraku!';
-                    subject = `Odzyskano surowce z wraku ${wasTestEvent ? '(Test)' : ''}`;
+                    subject = 'Odzyskano surowce z wraku';
                 } else if (rand < 0.7) { // 30% chance for an ambush
                     outcome.text = 'To była pułapka! Wrak był przynętą dla starożytnych dronów obronnych. Twoja ekipa musi walczyć o przetrwanie!';
-                    subject = `Zasadzka przy Wraku! ${wasTestEvent ? '(Test)' : ''}`;
+                    subject = 'Zasadzka przy Wraku!';
                     // Here you would trigger a simple battle against a predefined drone fleet
                 } else { // 30% chance for nothing
                     outcome.text = 'Wysłana ekipa nie znalazła niczego wartościowego. Wrak był pusty.';
-                    subject = `Pusty Wrak ${wasTestEvent ? '(Test)' : ''}`;
+                    subject = 'Pusty Wrak';
                 }
             }
              addMessage(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome } as Omit<GhostShipOutcomeMessage, 'id' | 'timestamp' | 'isRead'>);
