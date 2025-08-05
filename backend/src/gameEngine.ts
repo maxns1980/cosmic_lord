@@ -1,6 +1,6 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType
 } from './types.js';
 import { 
     ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
@@ -88,7 +88,49 @@ export const processRandomEvents = (gameState: GameState): GameState => {
     // --- EVENT STATE PROGRESSION AND EXPIRATION ---
     // This runs on every state load to ensure events expire correctly, even if a new event isn't triggered.
     
-    // Solar Flare (Global and Scoped)
+    const processPirates = (p: PirateMercenaryState | undefined, isScoped: boolean): PirateMercenaryState | undefined => {
+        if (!p) return undefined;
+        if (p.status === PirateMercenaryStatus.INCOMING && now >= p.arrivalTime) {
+            p.status = PirateMercenaryStatus.AVAILABLE;
+            p.departureTime = now + 10 * 60 * 1000; // 10 minutes to decide
+            // Generate fleet and cost on arrival
+            p.fleet = { [ShipType.LIGHT_FIGHTER]: 50, [ShipType.CRUISER]: 5 };
+            p.hireCost = 25000;
+            addMessage<PirateMessage>(gameState, { type: 'pirate', subject: `${isScoped ? 'TEST: ' : ''}Piraci-Najemnicy przybyli!`, pirateState: p });
+        }
+        if (p.status === PirateMercenaryStatus.AVAILABLE && now >= p.departureTime) {
+            addMessage<PirateMessage>(gameState, { type: 'pirate', subject: `${isScoped ? 'TEST: ' : ''}Najemnicy odlecieli`, pirateState: p });
+            return { status: PirateMercenaryStatus.INACTIVE, arrivalTime: 0, departureTime: 0, fleet: {}, hireCost: 0 };
+        }
+        return p;
+    }
+    gameState.pirateMercenaryState = processPirates(gameState.pirateMercenaryState, false) || gameState.pirateMercenaryState;
+    if (gameState.scopedPirateMercenaryState) {
+        const result = processPirates(gameState.scopedPirateMercenaryState, true);
+        if (result?.status === PirateMercenaryStatus.INACTIVE) gameState.scopedPirateMercenaryState = undefined;
+        else gameState.scopedPirateMercenaryState = result;
+    }
+
+    const processContraband = (c: any, isScoped: boolean) => {
+        if (!c) return undefined;
+        if (c.status === ContrabandStatus.INCOMING && now >= c.arrivalTime) {
+            c.status = ContrabandStatus.ACTIVE;
+            c.departureTime = now + 5 * 60 * 1000; // 5 minutes to decide
+            c.offer = { type: ContrabandOfferType.PROTOTYPE_SHIP, shipType: ShipType.SHADOW_CORSAIR, cost: { credits: 50000, deuterium: 10000 }};
+            addMessage<ContrabandMessage>(gameState, { type: 'contraband', subject: `${isScoped ? 'TEST: ' : ''}Oferta Kontrabandy!`, accepted: false, offer: c.offer, outcomeText: '', isArrivalAnnouncement: true });
+        }
+        if (c.status === ContrabandStatus.ACTIVE && now >= c.departureTime) {
+            return { status: ContrabandStatus.INACTIVE, arrivalTime: 0, departureTime: 0, offer: null };
+        }
+        return c;
+    };
+    gameState.contrabandState = processContraband(gameState.contrabandState, false) || gameState.contrabandState;
+    if (gameState.scopedContrabandState) {
+        const result = processContraband(gameState.scopedContrabandState, true);
+        if (result?.status === ContrabandStatus.INACTIVE) gameState.scopedContrabandState = undefined;
+        else gameState.scopedContrabandState = result;
+    }
+
     const processSolarFlare = (s: SolarFlareState | undefined, isScoped: boolean): SolarFlareState | undefined => {
         if (s && s.status !== SolarFlareStatus.INACTIVE && now >= s.endTime) {
             addMessage<SolarFlareMessage>(gameState, { type: 'solar_flare', subject: `${isScoped ? 'TEST: ' : ''}Zjawisko słoneczne zakończone`, status: s.status, isEndMessage: true });
@@ -103,7 +145,6 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         else gameState.scopedSolarFlareState = result;
     }
 
-    // Resource Vein (Global and Scoped)
     const processResourceVein = (rv: ResourceVeinBonus | undefined, isScoped: boolean): ResourceVeinBonus | undefined => {
         if (rv && rv.active && now >= rv.endTime) {
             addMessage<ResourceVeinMessage>(gameState, { type: 'resource_vein', subject: `${isScoped ? 'TEST: ' : ''}Premia do wydobycia wygasła`, resourceType: rv.resourceType!, status: 'expired', bonusEndTime: rv.endTime });
@@ -118,7 +159,6 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         else gameState.scopedResourceVeinBonus = result;
     }
 
-    // Space Plague (Global and Scoped)
     const processSpacePlague = (sp: SpacePlagueState | undefined, isScoped: boolean): SpacePlagueState | undefined => {
         if (sp && sp.active && now >= sp.endTime) {
             addMessage<SpacePlagueMessage>(gameState, { type: 'space_plague', subject: `${isScoped ? 'TEST: ' : ''}Zaraza zwalczona`, infectedShip: sp.infectedShip!, status: 'expired' });
@@ -133,7 +173,6 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         else gameState.scopedSpacePlagueState = result;
     }
 
-    // Galactic Gold Rush (Global and Scoped)
     const processGoldRush = (gr: GalacticGoldRushState | undefined, isScoped: boolean): GalacticGoldRushState | undefined => {
         if (gr && gr.active && now >= gr.endTime) {
             addMessage<GalacticGoldRushMessage>(gameState, { type: 'galactic_gold_rush', subject: `${isScoped ? 'TEST: ' : ''}Galaktyczna Gorączka Złota zakończona`, status: 'expired' });
@@ -148,7 +187,6 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         else gameState.scopedGalacticGoldRushState = result;
     }
     
-    // Stellar Aurora (Global and Scoped)
     const processStellarAurora = (sa: StellarAuroraState | undefined, isScoped: boolean): StellarAuroraState | undefined => {
         if (sa && sa.active && now >= sa.endTime) {
             addMessage<StellarAuroraMessage>(gameState, { type: 'stellar_aurora', subject: `${isScoped ? 'TEST: ' : ''}Zorza Gwiezdna wygasła`, status: 'expired', durationHours: 0 });
@@ -168,6 +206,7 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         const boost = (gameState.activeBoosts as any)[boostType];
         if (boost && boost.endTime && now >= boost.endTime) {
             delete (gameState.activeBoosts as any)[boostType];
+             addMessage<InfoMessage>(gameState, { type: 'info', subject: `Bonus wygasł`, text: `Twój aktywny bonus dobiegł końca.` });
         }
     }
 
@@ -310,6 +349,20 @@ export const updateWorldState = (worldState: WorldState): { updatedWorldState: W
 
 export const handleAction = (gameState: GameState, type: string, payload: any, userId?: string): { message?: string, error?: string } => {
     switch (type) {
+        case 'DELETE_ACCOUNT': {
+            if (!userId) return { error: 'Brak autoryzacji.' };
+            
+            for (const colonyId in gameState.colonies) {
+                delete gameState.occupiedCoordinates[colonyId];
+            }
+            for (const moonId in gameState.moons) {
+                delete gameState.occupiedCoordinates[moonId];
+            }
+            
+            delete gameState.publicPlayerData[userId];
+            
+            return { message: 'Konto zostało pomyślnie usunięte.' };
+        }
         case 'TRIGGER_EVENT': {
             const { eventType } = payload;
             let message = 'Lokalne wydarzenie testowe uruchomione!';

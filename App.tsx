@@ -277,6 +277,13 @@ function App() {
           if (!response.ok) {
               throw new Error(result.message || 'Action failed');
           }
+
+          if (type === 'DELETE_ACCOUNT') {
+              showNotification(result.message || 'Konto usunięte pomyślnie.');
+              handleLogout();
+              return;
+          }
+          
           if (result.message) {
               showNotification(result.message);
           }
@@ -360,6 +367,14 @@ function App() {
   const handleResetGame = useCallback(() => {
       if (window.confirm('Czy na pewno chcesz zresetować grę? Cały postęp zostanie utracony!')) {
           performAction('RESET_GAME', {});
+      }
+  }, []);
+
+  const handleDeleteAccount = useCallback(() => {
+      if (window.confirm('CZY NA PEWNO CHCESZ TRWALE USUNĄĆ SWOJE KONTO?')) {
+          if (window.confirm('Ta akcja jest nieodwracalna. Wszystkie Twoje dane, planety i postęp zostaną natychmiast usunięte z gry. Kontynuować?')) {
+              performAction('DELETE_ACCOUNT', {});
+          }
       }
   }, []);
 
@@ -669,6 +684,7 @@ function App() {
             <InfoModal
                 onClose={() => setIsInfoModalOpen(false)}
                 onResetGame={handleResetGame}
+                onDeleteAccount={handleDeleteAccount}
             />
         )}
         {isEncyclopediaOpen && (

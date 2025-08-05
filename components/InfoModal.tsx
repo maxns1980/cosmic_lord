@@ -1,12 +1,12 @@
-
 import React from 'react';
 
 interface InfoModalProps {
     onClose: () => void;
     onResetGame: () => void;
+    onDeleteAccount: () => void;
 }
 
-const InfoModal: React.FC<InfoModalProps> = ({ onClose, onResetGame }) => {
+const InfoModal: React.FC<InfoModalProps> = ({ onClose, onResetGame, onDeleteAccount }) => {
     return (
         <div 
             className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
@@ -63,13 +63,19 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose, onResetGame }) => {
                         <section>
                             <h3 className="text-xl font-bold text-red-500 mb-2">Strefa Niebezpieczna</h3>
                             <p className="text-gray-400 mb-4">
-                                Poniższa akcja jest nieodwracalna. Używaj z rozwagą.
+                                Poniższe akcje są nieodwracalne. Używaj z rozwagą.
                             </p>
                             <button
                                 onClick={onResetGame}
                                 className="w-full px-6 py-2 text-base font-bold text-white rounded-md shadow-md transition-colors duration-300 bg-red-700 hover:bg-red-600 focus:ring-4 focus:ring-red-500 focus:ring-opacity-50"
                             >
                                 Zresetuj Grę (Usuń Zapis)
+                            </button>
+                            <button
+                                onClick={onDeleteAccount}
+                                className="w-full mt-2 px-6 py-2 text-base font-bold text-white rounded-md shadow-md transition-colors duration-300 bg-red-800 hover:bg-red-700 focus:ring-4 focus:ring-red-600 focus:ring-opacity-50"
+                            >
+                                Trwale Usuń Konto
                             </button>
                         </section>
                     </div>

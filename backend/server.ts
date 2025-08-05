@@ -1,5 +1,5 @@
 
-import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './src/types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
@@ -77,14 +77,15 @@ const initializeWorld = async () => {
         }
     } else {
         console.log("World state loaded.");
-        const worldState = (data as any).state as WorldState;
+        const worldState = data.state as WorldState;
         
         let migrationNeeded = false;
         if (!worldState.publicPlayerData) {
              migrationNeeded = true;
         } else if (worldState.npcStates) {
             // Check if publicPlayerData is missing for any NPC
-            for (const npc of Object.values(worldState.npcStates)) {
+            for (const coord in worldState.npcStates) {
+                const npc = worldState.npcStates[coord];
                 if (!worldState.publicPlayerData[npc.name]) {
                     migrationNeeded = true;
                     break;
@@ -105,10 +106,10 @@ const initializeWorld = async () => {
                 console.error("MIGRATION FAILED: could not fetch players to build public data.", allPlayersError);
             } else if (allPlayers) {
                 for (const player of allPlayers) {
-                    if (!(player as any).user_id) continue;
-                    const playerState = (player as any).state as PlayerState;
+                    if (!player.user_id) continue;
+                    const playerState = player.state as PlayerState;
                     const points = calculatePlayerPoints(playerState);
-                    worldState.publicPlayerData[(player as any).user_id] = {
+                    worldState.publicPlayerData[player.user_id] = {
                         points: points,
                         lastActivity: playerState.lastSaveTime || Date.now()
                     };
@@ -118,7 +119,8 @@ const initializeWorld = async () => {
 
             // Handle NPCs
             if (worldState.npcStates) {
-                for (const npc of Object.values(worldState.npcStates)) {
+                for (const coord in worldState.npcStates) {
+                    const npc = worldState.npcStates[coord];
                     const points = calculatePointsForNpc(npc);
                     worldState.publicPlayerData[npc.name] = {
                         points: points,
@@ -158,7 +160,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -183,11 +185,11 @@ app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
 
         // 2. Get world state to find a free spot
         const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-        if (worldError || !worldData || !(worldData as any).state) {
+        if (worldError || !worldData || !worldData.state) {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
-        const worldState = (worldData as any).state as WorldState;
+        const worldState = worldData.state as WorldState;
 
         // 3. Find coordinates and create initial player state
         const homeCoords = findUnoccupiedCoordinates(worldState.occupiedCoordinates);
@@ -236,7 +238,7 @@ app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
     }
 });
 
-app.post('/api/login', async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -253,18 +255,18 @@ app.post('/api/login', async (req: ExpressRequest, res: ExpressResponse) => {
              return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło.' });
         }
 
-        if ((user as any).password !== password) {
+        if (user.password !== password) {
             return res.status(401).json({ message: 'Nieprawidłowa nazwa użytkownika lub hasło.' });
         }
 
-        res.status(200).json({ message: 'Zalogowano pomyślnie.', token: (user as any).username });
+        res.status(200).json({ message: 'Zalogowano pomyślnie.', token: user.username });
     } catch (e) {
         console.error('Login exception:', e);
         res.status(500).json({ message: 'Wystąpił nieoczekiwany błąd.' });
     }
 });
 
-const authMiddleware = (req: ExpressRequest, res: ExpressResponse, next: NextFunction) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -286,8 +288,8 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         return null;
     }
     
-    let playerState = (playerData as any).state as PlayerState;
-    let worldState = (worldData as any).state as WorldState;
+    let playerState = playerData.state as PlayerState;
+    let worldState = worldData.state as WorldState;
 
     const lastNpcCheckBefore = worldState.lastGlobalNpcCheck;
     const { updatedWorldState } = updateWorldState(worldState);
@@ -354,9 +356,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: ExpressRequest, res: ExpressResponse) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: ExpressRequest, res: ExpressResponse) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -368,7 +370,7 @@ app.get('/api/state', authMiddleware, async (req: ExpressRequest, res: ExpressRe
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: ExpressRequest, res: ExpressResponse) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -382,6 +384,30 @@ app.post('/api/action', authMiddleware, async (req: ExpressRequest, res: Express
         const result = handleAction(gameState, type, payload, req.userId);
         if (result?.error) {
             return res.status(400).json({ message: result.error });
+        }
+
+        if (type === 'DELETE_ACCOUNT' && req.userId) {
+            const userId = req.userId;
+            console.log(`Processing account deletion for user: ${userId}`);
+
+            const { error: playerStateError } = await supabase.from('player_states').delete().eq('user_id', userId);
+            if (playerStateError) console.error(`Error deleting player_state for ${userId}:`, playerStateError);
+
+            const { error: userError } = await supabase.from('users').delete().eq('username', userId);
+            if (userError) console.error(`Error deleting user for ${userId}:`, userError);
+            
+            const worldStateKeys = Object.keys(getInitialWorldState());
+            const worldState: Partial<WorldState> = {};
+            for (const key in gameState) {
+                if (worldStateKeys.includes(key)) {
+                    (worldState as any)[key] = (gameState as any)[key];
+                }
+            }
+            const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
+            if (worldSaveError) console.error(`Error saving world state after account deletion for ${userId}:`, worldSaveError);
+            
+            console.log(`Account deletion for user ${userId} completed.`);
+            return res.status(200).json({ message: result.message });
         }
 
         if (req.userId) {
