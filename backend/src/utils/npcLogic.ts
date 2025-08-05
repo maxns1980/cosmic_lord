@@ -1,5 +1,3 @@
-
-
 import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
 import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
 
@@ -532,8 +530,8 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
     }
     
     // Now that the structure is rebuilt, calculate production during sleep
-    const offlineSeconds = (Date.now() - sleeper.lastUpdate) / 1000;
-    if (Number(offlineSeconds) > 0) {
+    const offlineSeconds: number = (Date.now() - sleeper.lastUpdate) / 1000;
+    if (offlineSeconds > 0) {
         const productions = calculateNpcProductions(regeneratedNpc);
         const maxResources = calculateNpcMaxResources(regeneratedNpc.buildings);
 

@@ -1,5 +1,5 @@
 import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, PlayerState, WorldState, InfoMessage, NPCStates } from './types.js';
-import { calculatePointsForNpc } from './utils/npcLogic';
+import { calculatePointsForNpc } from './utils/npcLogic.js';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -1002,6 +1002,11 @@ export const getInitialWorldState = (): WorldState => {
         npcFleetMissions: INITIAL_NPC_FLEET_MISSIONS,
         debrisFields: INITIAL_DEBRIS_FIELDS,
         merchantState: INITIAL_MERCHANT_STATE,
+        occupiedCoordinates,
+        publicPlayerData,
+        nextMerchantCheckTime: Date.now() + MERCHANT_CHECK_INTERVAL,
+        lastGlobalNpcCheck: Date.now(),
+        // These are now player-scoped, but we keep an initial template for the world
         pirateMercenaryState: INITIAL_PIRATE_MERCENARY_STATE,
         resourceVeinBonus: INITIAL_RESOURCE_VEIN_BONUS,
         ancientArtifactState: INITIAL_ANCIENT_ARTIFACT_STATE,
@@ -1011,10 +1016,6 @@ export const getInitialWorldState = (): WorldState => {
         ghostShipState: INITIAL_GHOST_SHIP_STATE,
         galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
         stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
-        occupiedCoordinates,
-        publicPlayerData,
-        nextMerchantCheckTime: Date.now() + MERCHANT_CHECK_INTERVAL,
-        lastGlobalNpcCheck: Date.now(),
         lastEventCheckTime: Date.now(),
     };
 };
