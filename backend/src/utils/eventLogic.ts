@@ -1,4 +1,5 @@
 
+
 import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony } from '../types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
@@ -109,8 +110,11 @@ export const triggerSpacePlague = (gameState: GameState) => {
     if (gameState.spacePlague.active) return;
 
     const playerFleet = Object.values(gameState.colonies)
-        .flatMap((colony: Colony) => Object.entries(colony.fleet))
-        .filter(([, count]) => (count || 0) > 0);
+        .flatMap((colony: Colony): [string, number | undefined][] => Object.entries(colony.fleet))
+        .filter((entry): entry is [ShipType, number] => {
+            const [, count] = entry;
+            return (count || 0) > 0;
+        });
         
     if (playerFleet.length > 0) {
         const [infectedShip] = playerFleet[Math.floor(Math.random() * playerFleet.length)];

@@ -1,3 +1,4 @@
+
 import { BuildingLevels, Resources, ResourceVeinBonus, Colony, ActiveBoosts, SolarFlareState, Fleet, StellarAuroraState, ResearchLevels, BuildingType, ResearchType, ShipType, PlanetSpecialization, SolarFlareStatus, BoostType, GameState } from '../types.js';
 import { BUILDING_DATA, ALL_SHIP_DATA, COLONY_INCOME_BONUS_PER_HOUR, BASE_STORAGE_CAPACITY } from '../constants.js';
 
@@ -22,8 +23,13 @@ export const calculateMaxResources = (colonies: Record<string, Colony>): Record<
 };
 
 export const calculateProductions = (gameState: GameState) => {
-    const { colonies, resourceVeinBonus, activeBoosts, solarFlare, stellarAuroraState, research } = gameState;
+    const { colonies, activeBoosts, research } = gameState;
     
+    // Use player-scoped test event if active, otherwise fall back to global event
+    const resourceVeinBonus = gameState.scopedResourceVeinBonus || gameState.resourceVeinBonus;
+    const solarFlare = gameState.scopedSolarFlareState || gameState.solarFlare;
+    const stellarAuroraState = gameState.scopedStellarAuroraState || gameState.stellarAuroraState;
+
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 

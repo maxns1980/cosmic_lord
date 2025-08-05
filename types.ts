@@ -758,6 +758,15 @@ export interface PlayerState {
     nextBlackMarketIncome: number;
     lastBlackMarketIncomeCheck: number;
     lastBonusClaimTime: number;
+
+    // Player-scoped test events
+    scopedPirateMercenaryState?: PirateMercenaryState;
+    scopedResourceVeinBonus?: ResourceVeinBonus;
+    scopedSolarFlareState?: SolarFlareState;
+    scopedContrabandState?: ContrabandState;
+    scopedGhostShipState?: GhostShipState;
+    scopedGalacticGoldRushState?: GalacticGoldRushState;
+    scopedStellarAuroraState?: StellarAuroraState;
 }
 
 

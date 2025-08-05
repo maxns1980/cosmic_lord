@@ -79,8 +79,13 @@ const calculateMaxResources = (buildings: BuildingLevels): Resources => {
 };
 
 const calculateProductions = (gameState: GameState) => {
-    const { colonies, resourceVeinBonus, activeBoosts, solarFlare, stellarAuroraState, research } = gameState;
+    const { colonies, activeBoosts, research } = gameState;
     
+    // Use player-scoped test event if active, otherwise fall back to global event
+    const resourceVeinBonus = gameState.scopedResourceVeinBonus || gameState.resourceVeinBonus;
+    const solarFlare = gameState.scopedSolarFlareState || gameState.solarFlare;
+    const stellarAuroraState = gameState.scopedStellarAuroraState || gameState.stellarAuroraState;
+
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 
@@ -397,8 +402,14 @@ function App() {
     return <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center"><p className="text-2xl animate-pulse">Łączenie z serwerem gry...</p></div>;
   }
   
-  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, pirateMercenaryState, ancientArtifactState, spacePlague, solarFlare, contrabandState, ghostShipState, npcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
+  const { resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, ancientArtifactState, spacePlague, npcStates, debrisFields, colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets } = gameState;
   
+    // Use player-scoped test event if active, otherwise fall back to global event
+  const pirateMercenaryState = gameState.scopedPirateMercenaryState || gameState.pirateMercenaryState;
+  const solarFlare = gameState.scopedSolarFlareState || gameState.solarFlare;
+  const contrabandState = gameState.scopedContrabandState || gameState.contrabandState;
+  const ghostShipState = gameState.scopedGhostShipState || gameState.ghostShipState;
+
   const { fleet: activeFleet, buildings: activeBuildings, defenses: activeDefenses, buildingQueue: activeBuildingQueue, shipyardQueue: activeShipyardQueue, maxFields } = activeEntity;
   const isMoon = activeLocationId.endsWith('_moon');
 
@@ -423,11 +434,11 @@ function App() {
             productions={productions}
             credits={credits}
             blackMarketHourlyIncome={nextBlackMarketIncome}
-            resourceVeinBonus={gameState.resourceVeinBonus}
+            resourceVeinBonus={gameState.scopedResourceVeinBonus || gameState.resourceVeinBonus}
             inventory={inventory}
             activeBoosts={activeBoosts}
             solarFlare={solarFlare}
-            stellarAuroraState={gameState.stellarAuroraState}
+            stellarAuroraState={gameState.scopedStellarAuroraState || gameState.stellarAuroraState}
             npcFleetMissions={npcFleetMissions}
             colonies={colonies}
             moons={moons}
