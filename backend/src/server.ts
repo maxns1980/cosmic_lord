@@ -1,12 +1,12 @@
 
 import express from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState, Json } from './types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants.js';
-import { supabase } from './config/db.js';
-import { calculatePlayerPoints } from './utils/pointsLogic.js';
-import { calculatePointsForNpc } from './utils/npcLogic.js';
+import { GameState, PlayerState, WorldState, Json } from './src/types.js';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants.js';
+import { supabase } from './src/config/db.js';
+import { calculatePlayerPoints } from './src/utils/pointsLogic.js';
+import { calculatePointsForNpc } from './src/utils/npcLogic.js';
 
 declare global {
     namespace Express {
@@ -33,6 +33,20 @@ app.use(cors(corsOptions));
 app.use(express.json() as any);
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
+    const MAX_ATTEMPTS = 1000; // To prevent an infinite loop in a full universe
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        const g = Math.floor(Math.random() * 9) + 1;
+        const s = Math.floor(Math.random() * 499) + 1;
+        const p = Math.floor(Math.random() * (12 - 4 + 1)) + 4; // Positions 4-12
+        const coords = `${g}:${s}:${p}`;
+        if (!occupied[coords]) {
+            console.log(`Found random unoccupied coordinates after ${i + 1} attempts: ${coords}`);
+            return coords;
+        }
+    }
+
+    // Fallback to sequential search if random attempts fail (for a very full universe)
+    console.warn(`Could not find random coordinates after ${MAX_ATTEMPTS} attempts. Falling back to sequential search.`);
     for (let g = 1; g <= 9; g++) {
         for (let s = 1; s <= 499; s++) {
             for (let p = 4; p <= 12; p++) {
@@ -43,8 +57,9 @@ const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => 
             }
         }
     }
-    // Fallback in case all preferred spots are taken
-    return `1:${Math.floor(Math.random() * 499) + 1}:16`; 
+
+    // Absolute fallback (should never be reached in a normal game)
+    return `1:${Math.floor(Math.random() * 499) + 1}:16`;
 };
 
 // Simplified and more robust world initialization
