@@ -1,4 +1,5 @@
 import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, PlayerState, WorldState, InfoMessage, NPCStates } from './types.js';
+import { calculatePointsForNpc } from './utils/npcLogic.js';
 
 export const TICK_INTERVAL = 1000; // ms
 export const BASE_STORAGE_CAPACITY = 10000;
@@ -1105,6 +1106,16 @@ export const getInitialNpcPopulation = (existingPlayerCoords: string[] = []): { 
 
 export const getInitialWorldState = (): WorldState => {
     const { npcStates, occupiedCoordinates } = getInitialNpcPopulation();
+    const publicPlayerData: WorldState['publicPlayerData'] = {};
+
+    // Calculate initial points for NPCs
+    for (const npc of Object.values(npcStates)) {
+        publicPlayerData[npc.name] = {
+            points: calculatePointsForNpc(npc),
+            lastActivity: npc.lastUpdateTime
+        };
+    }
+
     return {
         npcStates,
         npcFleetMissions: [],
@@ -1120,7 +1131,7 @@ export const getInitialWorldState = (): WorldState => {
         galacticGoldRushState: INITIAL_GALACTIC_GOLD_RUSH_STATE,
         stellarAuroraState: INITIAL_STELLAR_AURORA_STATE,
         occupiedCoordinates,
-        publicPlayerData: {},
+        publicPlayerData,
         nextMerchantCheckTime: Date.now() + (15 * 60 * 1000), // First check in 15 minutes
         lastGlobalNpcCheck: Date.now(),
         lastEventCheckTime: Date.now(),

@@ -27,7 +27,7 @@ export const calculateProductions = (gameState: GameState) => {
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 
-    const allColonies = Object.values(colonies);
+    const allColonies: Colony[] = Object.values(colonies);
     if (allColonies.length === 0) {
         return {
             metal: 0,

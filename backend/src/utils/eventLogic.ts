@@ -103,9 +103,9 @@ export const triggerResourceVein = (gameState: GameState) => {
 export const triggerSpacePlague = (gameState: GameState) => {
     if (gameState.spacePlague.active) return;
 
-    const playerFleet = Object.entries(gameState.colonies)
-        .flatMap(([, colony]) => Object.entries(colony.fleet))
-        .filter(([, count]) => count > 0);
+    const playerFleet = Object.values(gameState.colonies)
+        .flatMap(colony => Object.entries(colony.fleet))
+        .filter(([, count]) => (count || 0) > 0);
         
     if (playerFleet.length > 0) {
         const [infectedShip] = playerFleet[Math.floor(Math.random() * playerFleet.length)];

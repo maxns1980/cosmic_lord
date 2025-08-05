@@ -6,11 +6,11 @@ import {
     ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
     RANDOM_EVENT_CHECK_INTERVAL, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE
 } from './constants.js';
-import { calculateProductions, calculateMaxResources, calculateNextBlackMarketIncome } from './utils/gameLogic.js';
+import { calculateProductions, calculateMaxResources } from './utils/gameLogic.js';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
 import { TestableEventType } from './types.js';
 import { calculateCombat } from './utils/combatLogic.js';
-import { evolveNpc, regenerateNpcFromSleeper } from './utils/npcLogic.js';
+import { evolveNpc, regenerateNpcFromSleeper, calculatePointsForNpc } from './utils/npcLogic.js';
 
 const addMessage = (playerState: PlayerState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     playerState.messages.unshift({
@@ -201,16 +201,25 @@ export const updateWorldState = (worldState: WorldState): { updatedWorldState: W
     
     const updatedNpcStates = { ...worldState.npcStates };
     const newNpcMissions = [...worldState.npcFleetMissions];
+    const updatedPublicPlayerData = { ...worldState.publicPlayerData };
 
     // Evolve all NPCs based on the time that has passed
     for (const coords in updatedNpcStates) {
         const npc = updatedNpcStates[coords];
-        // For now, threat detection is simplified: an NPC is threatened if a player fleet is heading towards it.
-        // This would require player state access, so we'll pass false.
-        const isThreatened = false; 
+        // Threat detection would require iterating all player states, which is too slow here.
+        // A better implementation would be to flag NPCs when an attack is launched against them.
+        // For now, we'll keep it simple.
+        const isThreatened = false;
         
         const { updatedNpc, mission } = evolveNpc(npc, deltaSeconds, coords, isThreatened);
         updatedNpcStates[coords] = updatedNpc;
+
+        // Recalculate and update points for the evolved NPC
+        const npcPoints = calculatePointsForNpc(updatedNpc);
+        updatedPublicPlayerData[updatedNpc.name] = {
+            points: npcPoints,
+            lastActivity: updatedNpc.lastUpdateTime
+        };
         
         if (mission) {
             newNpcMissions.push(mission);
@@ -225,6 +234,7 @@ export const updateWorldState = (worldState: WorldState): { updatedWorldState: W
         ...worldState,
         npcStates: updatedNpcStates,
         npcFleetMissions: activeNpcMissions,
+        publicPlayerData: updatedPublicPlayerData,
         lastGlobalNpcCheck: now,
     };
 

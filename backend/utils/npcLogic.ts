@@ -164,7 +164,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
             { type: BuildingType.METAL_STORAGE, kind: 'building' },
             { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
             { type: BuildingType.DEUTERIUM_TANK, kind: 'building' },
-        ] as BuildItem[],
+        ],
         [NPCPersonality.ECONOMIC]: [
             { kind: 'cheapest_mine' },
             { type: BuildingType.SOLAR_PLANT, kind: 'building' },
@@ -181,7 +181,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
             { type: ResearchType.ENERGY_TECHNOLOGY, kind: 'research' },
             { type: BuildingType.RESEARCH_LAB, kind: 'building' },
             { type: BuildingType.SHIPYARD, kind: 'building' },
-        ] as BuildItem[],
+        ],
         [NPCPersonality.BALANCED]: [
             { kind: 'cheapest_mine' },
             { type: BuildingType.SOLAR_PLANT, kind: 'building' },
@@ -203,7 +203,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
             { type: BuildingType.METAL_STORAGE, kind: 'building' },
             { type: BuildingType.CRYSTAL_STORAGE, kind: 'building' },
             { type: BuildingType.DEUTERIUM_TANK, kind: 'building' },
-        ] as BuildItem[],
+        ],
     };
 
     let updatedNpc = { ...npc, resources: { ...npc.resources } };
