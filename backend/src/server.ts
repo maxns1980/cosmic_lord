@@ -1,5 +1,5 @@
 
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
@@ -30,7 +30,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json() as any);
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
     for (let g = 1; g <= 9; g++) {
@@ -77,7 +77,7 @@ const initializeWorld = async () => {
         }
     } else {
         console.log("World state loaded.");
-        const worldState = data.state as WorldState;
+        const worldState = data.state as unknown as WorldState;
         
         let migrationNeeded = false;
         if (!worldState.publicPlayerData) {
@@ -107,7 +107,7 @@ const initializeWorld = async () => {
             } else if (allPlayers) {
                 for (const player of allPlayers) {
                     if (!player.user_id) continue;
-                    const playerState = player.state as PlayerState;
+                    const playerState = player.state as unknown as PlayerState;
                     const points = calculatePlayerPoints(playerState);
                     worldState.publicPlayerData[player.user_id] = {
                         points: points,
@@ -160,7 +160,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: Request, res: Response) => {
+app.post('/api/signup', async (req: any, res: any) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -189,7 +189,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
-        const worldState = worldData.state as WorldState;
+        const worldState = worldData.state as unknown as WorldState;
 
         // 3. Find coordinates and create initial player state
         const homeCoords = findUnoccupiedCoordinates(worldState.occupiedCoordinates);
@@ -238,7 +238,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/login', async (req: Request, res: Response) => {
+app.post('/api/login', async (req: any, res: any) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -266,7 +266,7 @@ app.post('/api/login', async (req: Request, res: Response) => {
     }
 });
 
-const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+const authMiddleware = (req: any, res: any, next: any) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -288,8 +288,8 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         return null;
     }
     
-    let playerState = playerData.state as PlayerState;
-    let worldState = worldData.state as WorldState;
+    let playerState = playerData.state as unknown as PlayerState;
+    let worldState = worldData.state as unknown as WorldState;
 
     const lastNpcCheckBefore = worldState.lastGlobalNpcCheck;
     const { updatedWorldState } = updateWorldState(worldState);
@@ -356,9 +356,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
+app.get('/health', (req: any, res: any) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/state', authMiddleware, async (req: any, res: any) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -370,7 +370,7 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/action', authMiddleware, async (req: any, res: any) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
