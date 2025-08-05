@@ -1,4 +1,3 @@
-
 import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './types.js';
