@@ -34,16 +34,6 @@ export type CombatResult = {
 };
 
 const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, number> => {
-    const shipRapidFire = Object.values(ShipType).reduce((acc, val) => {
-        acc[val] = 250;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const defenseRapidFire = Object.values(DefenseType).reduce((acc, val) => {
-        acc[val] = 250;
-        return acc;
-    }, {} as Record<string, number>);
-
     const rapidFireData: Partial<Record<ShipType, Record<string, number>>> = {
         [ShipType.CRUISER]: { [ShipType.LIGHT_FIGHTER]: 6, [DefenseType.ROCKET_LAUNCHER]: 10, [ShipType.SOLAR_SATELLITE]: 10 },
         [ShipType.BOMBER]: { 
@@ -54,8 +44,8 @@ const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, numbe
         },
         [ShipType.BATTLESHIP]: { [ShipType.BATTLECRUISER]: 2 },
         [ShipType.DEATHSTAR]: {
-             ...shipRapidFire,
-             ...defenseRapidFire,
+             ...(Object.values(ShipType).reduce((acc, val: ShipType) => { acc[val] = 250; return acc; }, {} as Record<string, number>)),
+             ...(Object.values(DefenseType).reduce((acc, val: DefenseType) => { acc[val] = 250; return acc; }, {} as Record<string, number>)),
         }
     };
     return rapidFireData[unitId as ShipType] || {};

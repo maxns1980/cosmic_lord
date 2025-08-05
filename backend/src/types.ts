@@ -783,6 +783,8 @@ export interface PlayerState {
     scopedGhostShipState?: GhostShipState;
     scopedGalacticGoldRushState?: GalacticGoldRushState;
     scopedStellarAuroraState?: StellarAuroraState;
+    scopedAncientArtifactState?: AncientArtifactState;
+    scopedSpacePlagueState?: SpacePlagueState;
 }
 
 
