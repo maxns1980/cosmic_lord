@@ -31,7 +31,7 @@ const CostDisplay: React.FC<{ cost: Resources }> = ({ cost }) => {
     if (cost.metal > 0) costs.push(<span key="m" className="flex items-center text-sm">🔩<span className="ml-1.5 text-gray-400">Metal:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.metal)}</span></span>);
     if (cost.crystal > 0) costs.push(<span key="c" className="flex items-center text-sm">💎<span className="ml-1.5 text-gray-400">Kryształ:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.crystal)}</span></span>);
     if (cost.deuterium > 0) costs.push(<span key="d" className="flex items-center text-sm">💧<span className="ml-1.5 text-gray-400">Deuter:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.deuterium)}</span></span>);
-    return <>{costs}</>;
+    return <div className="space-y-1 mt-1">{costs}</div>;
 };
 
 const RequirementsDisplay: React.FC<{ requirements?: Partial<BuildingLevels & ResearchLevels> }> = ({ requirements }) => {
@@ -68,9 +68,7 @@ const ItemCard: React.FC<{ itemData: any }> = ({ itemData }) => {
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
                         <h4 className="font-semibold text-gray-300">Koszt (poz. 1 / 1 szt.)</h4>
-                        <div className="space-y-1 mt-1">
-                            <CostDisplay cost={cost} />
-                        </div>
+                        <CostDisplay cost={cost} />
                         <p className="mt-1"><span className="text-gray-400">Czas budowy:</span> <span className="font-mono text-white">{formatTime(buildTime)}</span></p>
                     </div>
                      <div>
