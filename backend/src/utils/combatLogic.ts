@@ -1,3 +1,4 @@
+
 import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types.js';
 import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants.js';
 
@@ -305,8 +306,8 @@ export const calculateCombat = (
         const data = ALL_SHIP_DATA[id as ShipType];
         if (data && count) {
             const cost = data.cost(1);
-            debris.metal += cost.metal * count * DEBRIS_FIELD_RECOVERY_RATE;
-            debris.crystal += cost.crystal * count * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.metal += cost.metal * Number(count) * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.crystal += cost.crystal * Number(count) * DEBRIS_FIELD_RECOVERY_RATE;
         }
     });
     

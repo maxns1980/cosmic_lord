@@ -1,3 +1,4 @@
+
 import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
 import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
 
@@ -9,9 +10,9 @@ const calculateNpcProductions = (npc: NPCState) => {
     energyProduction += (fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
     
     const energyConsumption = (Object.keys(buildings) as BuildingType[]).reduce((total, type) => {
-        const buildingInfo = BUILDING_DATA[type];
-        if (type !== BuildingType.FUSION_REACTOR && buildings[type] > 0) {
-           return total + (buildingInfo.energyConsumption?.(buildings[type]) ?? 0);
+        const buildingInfo = BUILDING_DATA[type as BuildingType];
+        if (type !== BuildingType.FUSION_REACTOR && buildings[type as BuildingType] > 0) {
+           return total + (buildingInfo.energyConsumption?.(buildings[type as BuildingType]) ?? 0);
         }
         return total;
     }, 0);
