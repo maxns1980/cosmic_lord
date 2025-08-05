@@ -45,8 +45,8 @@ const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, numbe
         },
         [ShipType.BATTLESHIP]: { [ShipType.BATTLECRUISER]: 2 },
         [ShipType.DEATHSTAR]: {
-             ...(Object.values(ShipType).reduce((acc, val) => { acc[val] = 250; return acc; }, {} as Record<string, number>)),
-             ...(Object.values(DefenseType).reduce((acc, val) => { acc[val] = 250; return acc; }, {} as Record<string, number>)),
+             ...Object.fromEntries(Object.values(ShipType).map(val => [val, 250])),
+             ...Object.fromEntries(Object.values(DefenseType).map(val => [val, 250])),
         }
     };
     return rapidFireData[unitId as ShipType] || {};
