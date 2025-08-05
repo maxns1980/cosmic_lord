@@ -1,6 +1,6 @@
 
-import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
-import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
+import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types';
+import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants';
 
 const calculateNpcProductions = (npc: NPCState) => {
     const { buildings, fleet, developmentSpeed = 1.0 } = npc;
@@ -509,7 +509,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
                     const amountToBuild = Math.max(1, Math.floor(pointBudget / (itemCostPoints * 10))); // build in chunks
                     const totalCost = itemCostPoints * amountToBuild;
                     if(pointBudget >= totalCost){
-                        regeneratedNpc.fleet[item.id as ShipType] = (regeneratedNpc.fleet[item.id as ShipType] || 0) + amountToBuild;
+                        regeneratedNpc.fleet[item.id as ShipType] = Number(regeneratedNpc.fleet[item.id as ShipType] || 0) + amountToBuild;
                         pointBudget -= totalCost;
                         somethingWasBuilt = true;
                     }
@@ -520,7 +520,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
                     const amountToBuild = Math.max(1, Math.floor(pointBudget / (itemCostPoints * 10)));
                     const totalCost = itemCostPoints * amountToBuild;
                      if(pointBudget >= totalCost){
-                        regeneratedNpc.defenses[item.id as DefenseType] = (regeneratedNpc.defenses[item.id as DefenseType] || 0) + amountToBuild;
+                        regeneratedNpc.defenses[item.id as DefenseType] = Number(regeneratedNpc.defenses[item.id as DefenseType] || 0) + amountToBuild;
                         pointBudget -= totalCost;
                         somethingWasBuilt = true;
                     }
@@ -532,7 +532,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
     
     // Now that the structure is rebuilt, calculate production during sleep
     const offlineSeconds = (Date.now() - sleeper.lastUpdate) / 1000;
-    if (offlineSeconds > 0) {
+    if (Number(offlineSeconds) > 0) {
         const productions = calculateNpcProductions(regeneratedNpc);
         const maxResources = calculateNpcMaxResources(regeneratedNpc.buildings);
 

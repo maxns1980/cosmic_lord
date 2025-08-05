@@ -664,6 +664,86 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
              addMessage<GhostShipOutcomeMessage>(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome });
              return { message: outcome.text };
         }
+        case 'CONTRABAND_DEAL': {
+            const { accepted } = payload;
+            const isScopedEvent = gameState.scopedContrabandState?.status === ContrabandStatus.ACTIVE;
+            const isGlobalEvent = gameState.contrabandState.status === ContrabandStatus.ACTIVE;
+        
+            if (!isScopedEvent && !isGlobalEvent) {
+                return { error: 'Nie ma aktywnej oferty kontrabandy.' };
+            }
+        
+            const contrabandState = isScopedEvent ? gameState.scopedContrabandState! : gameState.contrabandState;
+            const { offer } = contrabandState;
+        
+            if (!offer) {
+                return { error: 'Błąd oferty kontrabandy.' };
+            }
+        
+            // Reset the event state immediately to prevent re-triggering
+            if (isScopedEvent) {
+                gameState.scopedContrabandState = undefined;
+            } else {
+                gameState.contrabandState = {
+                    status: ContrabandStatus.INACTIVE,
+                    offer: null,
+                    arrivalTime: 0,
+                    departureTime: 0,
+                };
+            }
+        
+            if (accepted) {
+                if (gameState.credits < offer.cost.credits || gameState.resources.deuterium < offer.cost.deuterium) {
+                    // Because we already cleared the state, we can't easily revert.
+                    // The frontend should prevent this, but this is a server-side safeguard.
+                    return { error: 'Nie masz wystarczających środków. Oferta przepadła.' };
+                }
+        
+                gameState.credits -= offer.cost.credits;
+                gameState.resources.deuterium -= offer.cost.deuterium;
+        
+                let outcomeText = '';
+                let subject = 'Transakcja z Przemytnikami';
+                
+                switch (offer.type) {
+                    case ContrabandOfferType.PROTOTYPE_SHIP:
+                        if (offer.shipType) {
+                            const homeworld = Object.values(gameState.colonies).sort((a, b) => a.creationTime - b.creationTime)[0];
+                            if (homeworld) {
+                                homeworld.fleet[offer.shipType] = (homeworld.fleet[offer.shipType] || 0) + 1;
+                                const shipName = ALL_SHIP_DATA[offer.shipType].name;
+                                outcomeText = `Transakcja zakończona pomyślnie. Nowy ${shipName} został dostarczony do hangaru na Twojej planecie matce.`;
+                            } else {
+                                outcomeText = 'Transakcja nieudana - nie znaleziono planety matki.';
+                            }
+                        }
+                        break;
+                    // TODO: Implement other offer types like SHIP_UPGRADE and SPY_DATA
+                }
+                
+                addMessage<ContrabandMessage>(gameState, {
+                    type: 'contraband',
+                    subject,
+                    accepted: true,
+                    offer,
+                    outcomeText,
+                });
+        
+                return { message: 'Oferta przyjęta!' };
+        
+            } else { // Rejected
+                const outcomeText = 'Odrzuciłeś ofertę przemytników. Kontakt został zerwany... na razie.';
+                addMessage<ContrabandMessage>(gameState, {
+                    type: 'contraband',
+                    subject: 'Odrzucono Ofertę',
+                    accepted: false,
+                    offer,
+                    outcomeText,
+                });
+        
+                return { message: 'Oferta odrzucona.' };
+            }
+        }
 
         case 'READ_MESSAGE': {
             const { messageId } = payload;
