@@ -1,4 +1,3 @@
-
 {
   "name": "cosmic-lord-backend",
   "version": "1.0.0",
@@ -8,8 +7,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
-    "prepare": "husky install"
+    "build": "tsc"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.4",

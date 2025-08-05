@@ -93,10 +93,10 @@ export const processRandomEvents = (gameState: GameState): GameState => {
             p.departureTime = now + 10 * 60 * 1000;
             p.fleet = { [ShipType.LIGHT_FIGHTER]: 50, [ShipType.CRUISER]: 5 };
             p.hireCost = 25000;
-            addMessage<PirateMessage>(gameState, { type: 'pirate', subject: `Piraci-Najemnicy przybyli!`, pirateState: p });
+            addMessage(gameState, { type: 'pirate', subject: `Piraci-Najemnicy przybyli!`, pirateState: p } as any);
         }
         if (p.status === PirateMercenaryStatus.AVAILABLE && now >= p.departureTime) {
-            addMessage<PirateMessage>(gameState, { type: 'pirate', subject: `Najemnicy odlecieli`, pirateState: p });
+            addMessage(gameState, { type: 'pirate', subject: `Najemnicy odlecieli`, pirateState: p } as any);
             return undefined; // Clears the state
         }
         return p;
@@ -109,7 +109,7 @@ export const processRandomEvents = (gameState: GameState): GameState => {
             c.status = ContrabandStatus.ACTIVE;
             c.departureTime = now + 5 * 60 * 1000;
             c.offer = { type: ContrabandOfferType.PROTOTYPE_SHIP, shipType: ShipType.SHADOW_CORSAIR, cost: { credits: 50000, deuterium: 10000 }};
-            addMessage<ContrabandMessage>(gameState, { type: 'contraband', subject: `Oferta Kontrabandy!`, accepted: false, offer: c.offer, outcomeText: '', isArrivalAnnouncement: true });
+            addMessage(gameState, { type: 'contraband', subject: `Oferta Kontrabandy!`, accepted: false, offer: c.offer, outcomeText: '', isArrivalAnnouncement: true } as any);
         }
         if (c.status === ContrabandStatus.ACTIVE && now >= c.departureTime) {
             return undefined; // Clears the state
@@ -119,27 +119,27 @@ export const processRandomEvents = (gameState: GameState): GameState => {
     gameState.scopedContrabandState = processContraband(gameState.scopedContrabandState);
 
     if (gameState.scopedSolarFlareState && gameState.scopedSolarFlareState.status !== SolarFlareStatus.INACTIVE && now >= gameState.scopedSolarFlareState.endTime) {
-        addMessage<SolarFlareMessage>(gameState, { type: 'solar_flare', subject: `Zjawisko słoneczne zakończone`, status: gameState.scopedSolarFlareState.status, isEndMessage: true });
+        addMessage(gameState, { type: 'solar_flare', subject: `Zjawisko słoneczne zakończone`, status: gameState.scopedSolarFlareState.status, isEndMessage: true } as any);
         gameState.scopedSolarFlareState = undefined;
     }
 
     if (gameState.scopedResourceVeinBonus && gameState.scopedResourceVeinBonus.active && now >= gameState.scopedResourceVeinBonus.endTime) {
-        addMessage<ResourceVeinMessage>(gameState, { type: 'resource_vein', subject: `Premia do wydobycia wygasła`, resourceType: gameState.scopedResourceVeinBonus.resourceType!, status: 'expired', bonusEndTime: gameState.scopedResourceVeinBonus.endTime });
+        addMessage(gameState, { type: 'resource_vein', subject: `Premia do wydobycia wygasła`, resourceType: gameState.scopedResourceVeinBonus.resourceType!, status: 'expired', bonusEndTime: gameState.scopedResourceVeinBonus.endTime } as any);
         gameState.scopedResourceVeinBonus = undefined;
     }
 
     if (gameState.scopedSpacePlagueState && gameState.scopedSpacePlagueState.active && now >= gameState.scopedSpacePlagueState.endTime) {
-        addMessage<SpacePlagueMessage>(gameState, { type: 'space_plague', subject: `Zaraza zwalczona`, infectedShip: gameState.scopedSpacePlagueState.infectedShip!, status: 'expired' });
+        addMessage(gameState, { type: 'space_plague', subject: `Zaraza zwalczona`, infectedShip: gameState.scopedSpacePlagueState.infectedShip!, status: 'expired' } as any);
         gameState.scopedSpacePlagueState = undefined;
     }
 
     if (gameState.scopedGalacticGoldRushState && gameState.scopedGalacticGoldRushState.active && now >= gameState.scopedGalacticGoldRushState.endTime) {
-        addMessage<GalacticGoldRushMessage>(gameState, { type: 'galactic_gold_rush', subject: `Galaktyczna Gorączka Złota zakończona`, status: 'expired' });
+        addMessage(gameState, { type: 'galactic_gold_rush', subject: `Galaktyczna Gorączka Złota zakończona`, status: 'expired' } as any);
         gameState.scopedGalacticGoldRushState = undefined;
     }
     
     if (gameState.scopedStellarAuroraState && gameState.scopedStellarAuroraState.active && now >= gameState.scopedStellarAuroraState.endTime) {
-        addMessage<StellarAuroraMessage>(gameState, { type: 'stellar_aurora', subject: `Zorza Gwiezdna wygasła`, status: 'expired', durationHours: 0 });
+        addMessage(gameState, { type: 'stellar_aurora', subject: `Zorza Gwiezdna wygasła`, status: 'expired', durationHours: 0 } as any);
         gameState.scopedStellarAuroraState = undefined;
     }
 
@@ -147,7 +147,7 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         const boost = (gameState.activeBoosts as any)[boostType];
         if (boost && boost.endTime && now >= boost.endTime) {
             delete (gameState.activeBoosts as any)[boostType];
-             addMessage<InfoMessage>(gameState, { type: 'info', subject: `Bonus wygasł`, text: `Twój aktywny bonus dobiegł końca.` });
+             addMessage(gameState, { type: 'info', subject: `Bonus wygasł`, text: `Twój aktywny bonus dobiegł końca.` } as any);
         }
     }
 
@@ -193,11 +193,11 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
 
         playerState.inventory.boosts.push(bonusCrate);
         
-        addMessage<InfoMessage>(playerState, {
+        addMessage(playerState, {
             type: 'info',
             subject: 'Otrzymano Dzienną Skrzynię!',
             text: 'Twoja codzienna nagroda za lojalność została dodana do Twojego inwentarza. Aktywuj ją, kiedy zechcesz!'
-        });
+        } as any);
     }
 
     const lastSave = playerState.lastSaveTime || now;
@@ -393,8 +393,9 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                 : location.buildingQueue[location.buildingQueue.length - 1]?.endTime || now;
 
             let buildTime: number;
-            if (queueType === 'research') {
-                const labLevel = gameState.colonies[Object.keys(gameState.colonies)[0]].buildings[BuildingType.RESEARCH_LAB] || 1;
+            if (queueType === 'research' || queueType === 'ship_upgrade') {
+                const homeworld = Object.values(gameState.colonies).sort((a,b) => a.creationTime - b.creationTime)[0];
+                const labLevel = homeworld.buildings[BuildingType.RESEARCH_LAB] || 1;
                 buildTime = data.buildTime(levelOrAmount) / (1 + labLevel);
             } else if (isShipyard) {
                 const shipyardLevel = location.buildings[BuildingType.SHIPYARD] || 1;
@@ -466,7 +467,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         subject = 'Porażka badawcza';
                         message = 'Badanie artefaktu nie powiodło się, zasoby zostały stracone.';
                     }
-                    addMessage<AncientArtifactMessage>(gameState, { type: 'ancient_artifact', subject, choice, outcome });
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as any);
                     return { message };
                 }
                 case AncientArtifactChoice.SELL: {
@@ -475,13 +476,13 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     const outcome: AncientArtifactMessage['outcome'] = { creditsGained: SELL_GAIN };
                     const subject = 'Sprzedano artefakt';
                     const message = `Sprzedano artefakt za ${SELL_GAIN} kredytów.`;
-                    addMessage<AncientArtifactMessage>(gameState, { type: 'ancient_artifact', subject, choice, outcome });
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as any);
                     return { message };
                 }
                 case AncientArtifactChoice.IGNORE: {
                     const subject = 'Zignorowano artefakt';
                     const message = 'Zdecydowano zostawić artefakt w spokoju.';
-                    addMessage<AncientArtifactMessage>(gameState, { type: 'ancient_artifact', subject, choice, outcome: {} });
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome: {} } as any);
                     return { message };
                 }
                 default:
@@ -523,7 +524,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     subject = 'Pusty Wrak';
                 }
             }
-             addMessage<GhostShipOutcomeMessage>(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome });
+             addMessage(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome } as any);
              return { message: outcome.text };
         }
         case 'CONTRABAND_DEAL': {
@@ -567,12 +568,12 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         break;
                 }
                 
-                addMessage<ContrabandMessage>(gameState, { type: 'contraband', subject, accepted: true, offer, outcomeText });
+                addMessage(gameState, { type: 'contraband', subject, accepted: true, offer, outcomeText } as any);
                 return { message: 'Oferta przyjęta!' };
         
             } else { // Rejected
                 const outcomeText = 'Odrzuciłeś ofertę przemytników. Kontakt został zerwany... na razie.';
-                addMessage<ContrabandMessage>(gameState, { type: 'contraband', subject: 'Odrzucono Ofertę', accepted: false, offer, outcomeText });
+                addMessage(gameState, { type: 'contraband', subject: 'Odrzucono Ofertę', accepted: false, offer, outcomeText } as any);
                 return { message: 'Oferta odrzucona.' };
             }
         }

@@ -1,5 +1,3 @@
-
-
 import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMessage, ContrabandMessage } from '../src/types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../src/constants.js';
 
@@ -29,7 +27,7 @@ export const triggerSolarFlare = (gameState: GameState) => {
         subject: isDisruption ? 'Rozbłysk: Zakłócenia Systemów!' : 'Rozbłysk: Bonus Energii!', 
         status,
         isEndMessage: false,
-    });
+    } as any);
 };
 
 export const triggerPirateMercenary = (gameState: GameState) => {
@@ -42,7 +40,7 @@ export const triggerPirateMercenary = (gameState: GameState) => {
         fleet: {},
         hireCost: 0,
     };
-    addMessage(gameState, { type: 'info', subject: 'Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' });
+    addMessage(gameState, { type: 'info', subject: 'Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' } as any);
 };
 
 export const triggerContraband = (gameState: GameState) => {
@@ -54,14 +52,14 @@ export const triggerContraband = (gameState: GameState) => {
         departureTime: 0,
         offer: null,
     };
-    addMessage(gameState, { type: 'info', subject: 'Zaszyfrowana transmisja!', text: 'Przemytnicy kontrabandy wkrótce złożą ofertę.' });
+    addMessage(gameState, { type: 'info', subject: 'Zaszyfrowana transmisja!', text: 'Przemytnicy kontrabandy wkrótce złożą ofertę.' } as any);
 };
 
 export const triggerAncientArtifact = (gameState: GameState) => {
     if (gameState.scopedAncientArtifactState && gameState.scopedAncientArtifactState.status !== AncientArtifactStatus.INACTIVE) return;
     
     gameState.scopedAncientArtifactState = { status: AncientArtifactStatus.AWAITING_CHOICE };
-    addMessage(gameState, { type: 'info', subject: 'Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' });
+    addMessage(gameState, { type: 'info', subject: 'Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' } as any);
 };
 
 export const triggerAsteroidImpact = (gameState: GameState) => {
@@ -76,7 +74,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
             subject: 'Deszcz Meteorytów!',
             impactType: AsteroidImpactType.BONUS,
             details: { resourceType, amount }
-        });
+        } as any);
     } else {
         const colonyIds = Object.keys(gameState.colonies);
         if (colonyIds.length === 0) return;
@@ -97,7 +95,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
                     subject: 'Uderzenie Asteroidy!',
                     impactType: AsteroidImpactType.DAMAGE,
                     details: { buildingId: buildingToDamage, newLevel }
-                });
+                } as any);
             }
         }
     }
@@ -122,7 +120,7 @@ export const triggerResourceVein = (gameState: GameState) => {
         resourceType,
         status: 'activated',
         bonusEndTime: endTime
-    });
+    } as any);
 };
 
 export const triggerSpacePlague = (gameState: GameState) => {
@@ -149,7 +147,7 @@ export const triggerSpacePlague = (gameState: GameState) => {
             subject: 'Wykryto Kosmiczną Zarazę!',
             infectedShip: infectedShip as ShipType,
             status: 'activated'
-        });
+        } as any);
     }
 };
 
@@ -176,7 +174,7 @@ export const triggerGhostShip = (gameState: GameState) => {
         subject: 'Wykryto Statek Widmo!',
         shipType: shipType,
         locationCoords: coords
-    });
+    } as any);
 };
 
 export const triggerGalacticGoldRush = (gameState: GameState) => {
@@ -191,7 +189,7 @@ export const triggerGalacticGoldRush = (gameState: GameState) => {
         type: 'galactic_gold_rush',
         subject: 'Ogłoszono Galaktyczną Gorączkę Złota!',
         status: 'activated'
-    });
+    } as any);
 };
 
 export const triggerStellarAurora = (gameState: GameState) => {
@@ -207,5 +205,5 @@ export const triggerStellarAurora = (gameState: GameState) => {
         subject: 'Pojawiła się Zorza Gwiezdna!',
         status: 'activated',
         durationHours: durationHours
-    });
+    } as any);
 };
