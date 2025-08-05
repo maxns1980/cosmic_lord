@@ -1,7 +1,6 @@
-
 import express, { Request as ExpressRequest, Response as ExpressResponse, NextFunction } from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState } from './src/types.js';
+import { GameState, PlayerState, WorldState, Json } from './src/types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
 import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants.js';
 import { supabase } from './src/config/db.js';
@@ -67,7 +66,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as any }] as any);
+            .insert([{ id: 1, state: initialWorldState as any }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -127,7 +126,7 @@ const initializeWorld = async () => {
                 console.log(`Migration successful. Populated public data for ${Object.keys(worldState.npcStates).length} NPCs.`);
             }
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any } as any).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
             if (updateError) {
                 console.error("MIGRATION FAILED: Could not save migrated world state.", updateError);
             }
@@ -144,7 +143,7 @@ const initializeWorld = async () => {
              // Merge coordinates, preserving existing player locations
              worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any } as any).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
             if (updateError) {
                 console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
                 throw new Error("FATAL: Could not migrate world state.");
@@ -195,7 +194,7 @@ app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
         // 4. Create the new user
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert([{ username, password }] as any);
+            .insert([{ username, password }]);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -205,7 +204,7 @@ app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as any }] as any);
+            .insert([{ user_id: username, state: newPlayerState as any }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -222,7 +221,7 @@ app.post('/api/signup', async (req: ExpressRequest, res: ExpressResponse) => {
         const initialPoints = calculatePlayerPoints(newPlayerState);
         worldState.publicPlayerData[username] = { points: initialPoints, lastActivity: Date.now() };
 
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any } as any).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -294,7 +293,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     // If the world state was updated (e.g., NPCs evolved), save it back to the database.
     // This is crucial to persist world evolution outside of specific player actions.
     if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
-        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as any } as any).eq('id', 1);
+        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as any }).eq('id', 1);
         if (error) {
             console.error("Error saving world state after background update:", error);
         }
@@ -340,8 +339,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
         lastActivity: Date.now(),
     };
 
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any } as any).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any } as any).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -378,7 +377,7 @@ app.post('/api/action', authMiddleware, async (req: ExpressRequest, res: Express
 
     const { type, payload } = req.body;
     try {
-        const result = handleAction(gameState, type, payload);
+        const result = handleAction(gameState, type, payload, req.userId);
         if (result?.error) {
             return res.status(400).json({ message: result.error });
         }

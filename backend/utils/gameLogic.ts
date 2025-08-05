@@ -22,8 +22,13 @@ export const calculateMaxResources = (colonies: Record<string, Colony>): Record<
 };
 
 export const calculateProductions = (gameState: GameState) => {
-    const { colonies, resourceVeinBonus, activeBoosts, solarFlare, stellarAuroraState, research } = gameState;
+    const { colonies, activeBoosts, research } = gameState;
     
+    // Use player-scoped test event if active, otherwise fall back to global event
+    const resourceVeinBonus = gameState.scopedResourceVeinBonus || gameState.resourceVeinBonus;
+    const solarFlare = gameState.scopedSolarFlareState || gameState.solarFlare;
+    const stellarAuroraState = gameState.scopedStellarAuroraState || gameState.stellarAuroraState;
+
     let totalProductions = { metal: 0, crystal: 0, deuterium: 0 };
     let totalEnergy = { produced: 0, consumed: 0 };
 
