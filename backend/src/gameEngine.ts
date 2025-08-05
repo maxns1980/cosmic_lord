@@ -1,6 +1,6 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState
 } from './types.js';
 import { 
     ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
@@ -84,45 +84,110 @@ const processFleetMissions = (playerState: PlayerState, now: number) => {
 
 export const processRandomEvents = (gameState: GameState): GameState => {
     const now = Date.now();
-    // Use last check time from world state
+
+    // --- EVENT STATE PROGRESSION AND EXPIRATION ---
+    // This runs on every state load to ensure events expire correctly, even if a new event isn't triggered.
+    
+    // Solar Flare
+    const processSolarFlare = (s: SolarFlareState | undefined, isScoped: boolean): SolarFlareState | undefined => {
+        if (s && s.status !== SolarFlareStatus.INACTIVE && now >= s.endTime) {
+            addMessage(gameState, { type: 'solar_flare', subject: `${isScoped ? 'TEST: ' : ''}Zjawisko słoneczne zakończone`, status: s.status, isEndMessage: true } as Omit<SolarFlareMessage, 'id' | 'timestamp' | 'isRead'>);
+            return { status: SolarFlareStatus.INACTIVE, endTime: 0 };
+        }
+        return s;
+    };
+    gameState.solarFlare = processSolarFlare(gameState.solarFlare, false) || gameState.solarFlare;
+    if (gameState.scopedSolarFlareState) {
+        const result = processSolarFlare(gameState.scopedSolarFlareState, true);
+        if (result?.status === SolarFlareStatus.INACTIVE) gameState.scopedSolarFlareState = undefined;
+        else gameState.scopedSolarFlareState = result;
+    }
+
+    // Resource Vein
+    const processResourceVein = (rv: ResourceVeinBonus | undefined, isScoped: boolean): ResourceVeinBonus | undefined => {
+        if (rv && rv.active && now >= rv.endTime) {
+            addMessage(gameState, { type: 'resource_vein', subject: `${isScoped ? 'TEST: ' : ''}Premia do wydobycia wygasła`, resourceType: rv.resourceType, status: 'expired', bonusEndTime: rv.endTime } as Omit<ResourceVeinMessage, 'id', 'timestamp' | 'isRead'>);
+            return { active: false, resourceType: null, endTime: 0, bonusMultiplier: 1.25 };
+        }
+        return rv;
+    };
+    gameState.resourceVeinBonus = processResourceVein(gameState.resourceVeinBonus, false) || gameState.resourceVeinBonus;
+     if (gameState.scopedResourceVeinBonus) {
+        const result = processResourceVein(gameState.scopedResourceVeinBonus, true);
+        if (result && !result.active) gameState.scopedResourceVeinBonus = undefined;
+        else gameState.scopedResourceVeinBonus = result;
+    }
+
+    // Space Plague
+    const processSpacePlague = (sp: SpacePlagueState | undefined, isScoped: boolean): SpacePlagueState | undefined => {
+        if (sp && sp.active && now >= sp.endTime) {
+            addMessage(gameState, { type: 'space_plague', subject: `${isScoped ? 'TEST: ' : ''}Zaraza zwalczona`, infectedShip: sp.infectedShip, status: 'expired' } as Omit<SpacePlagueMessage, 'id', 'timestamp' | 'isRead'>);
+            return { active: false, infectedShip: null, endTime: 0 };
+        }
+        return sp;
+    }
+    gameState.spacePlague = processSpacePlague(gameState.spacePlague, false) || gameState.spacePlague;
+     if (gameState.scopedSpacePlagueState) {
+        const result = processSpacePlague(gameState.scopedSpacePlagueState, true);
+        if (result && !result.active) gameState.scopedSpacePlagueState = undefined;
+        else gameState.scopedSpacePlagueState = result;
+    }
+
+    // Galactic Gold Rush
+    const processGoldRush = (gr: GalacticGoldRushState | undefined, isScoped: boolean): GalacticGoldRushState | undefined => {
+        if (gr && gr.active && now >= gr.endTime) {
+            addMessage(gameState, { type: 'galactic_gold_rush', subject: `${isScoped ? 'TEST: ' : ''}Galaktyczna Gorączka Złota zakończona`, status: 'expired' } as Omit<GalacticGoldRushMessage, 'id' | 'timestamp' | 'isRead'>);
+            return { active: false, endTime: 0 };
+        }
+        return gr;
+    }
+    gameState.galacticGoldRushState = processGoldRush(gameState.galacticGoldRushState, false) || gameState.galacticGoldRushState;
+    if (gameState.scopedGalacticGoldRushState) {
+        const result = processGoldRush(gameState.scopedGalacticGoldRushState, true);
+        if (result && !result.active) gameState.scopedGalacticGoldRushState = undefined;
+        else gameState.scopedGalacticGoldRushState = result;
+    }
+    
+    // Stellar Aurora
+    const processStellarAurora = (sa: StellarAuroraState | undefined, isScoped: boolean): StellarAuroraState | undefined => {
+        if (sa && sa.active && now >= sa.endTime) {
+            addMessage(gameState, { type: 'stellar_aurora', subject: `${isScoped ? 'TEST: ' : ''}Zorza Gwiezdna wygasła`, status: 'expired', durationHours: 0 } as Omit<StellarAuroraMessage, 'id', 'timestamp' | 'isRead'>);
+            return { active: false, endTime: 0 };
+        }
+        return sa;
+    }
+    gameState.stellarAuroraState = processStellarAurora(gameState.stellarAuroraState, false) || gameState.stellarAuroraState;
+    if (gameState.scopedStellarAuroraState) {
+        const result = processStellarAurora(gameState.scopedStellarAuroraState, true);
+        if (result && !result.active) gameState.scopedStellarAuroraState = undefined;
+        else gameState.scopedStellarAuroraState = result;
+    }
+
+    // Active Boosts
+    for (const boostType in gameState.activeBoosts) {
+        const boost = (gameState.activeBoosts as any)[boostType];
+        if (boost && boost.endTime && now >= boost.endTime) {
+            delete (gameState.activeBoosts as any)[boostType];
+        }
+    }
+
+    // --- TRIGGER NEW EVENTS ---
     if (now - gameState.lastEventCheckTime < RANDOM_EVENT_CHECK_INTERVAL) {
         return gameState;
     }
 
-    // Update check time immediately to prevent re-triggering on rapid reloads
     gameState.lastEventCheckTime = now;
 
-    // Check for each event
-    if (Math.random() < SOLAR_FLARE_CHANCE) {
-        triggerSolarFlare(gameState);
-    }
-    if (Math.random() < PIRATE_MERCENARY_CHANCE) {
-        triggerPirateMercenary(gameState);
-    }
-    if (Math.random() < CONTRABAND_CHANCE) {
-        triggerContraband(gameState);
-    }
-    if (Math.random() < ANCIENT_ARTIFACT_CHANCE) {
-        triggerAncientArtifact(gameState);
-    }
-    if (Math.random() < ASTEROID_IMPACT_CHANCE) {
-        triggerAsteroidImpact(gameState);
-    }
-    if (Math.random() < RESOURCE_VEIN_CHANCE) {
-        triggerResourceVein(gameState);
-    }
-    if (Math.random() < SPACE_PLAGUE_CHANCE) {
-        triggerSpacePlague(gameState);
-    }
-    if (Math.random() < GHOST_SHIP_CHANCE) {
-        triggerGhostShip(gameState);
-    }
-    if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) {
-        triggerGalacticGoldRush(gameState);
-    }
-    if (Math.random() < STELLAR_AURORA_CHANCE) {
-        triggerStellarAurora(gameState);
-    }
+    if (Math.random() < SOLAR_FLARE_CHANCE) triggerSolarFlare(gameState);
+    if (Math.random() < PIRATE_MERCENARY_CHANCE) triggerPirateMercenary(gameState);
+    if (Math.random() < CONTRABAND_CHANCE) triggerContraband(gameState);
+    if (Math.random() < ANCIENT_ARTIFACT_CHANCE) triggerAncientArtifact(gameState);
+    if (Math.random() < ASTEROID_IMPACT_CHANCE) triggerAsteroidImpact(gameState);
+    if (Math.random() < RESOURCE_VEIN_CHANCE) triggerResourceVein(gameState);
+    if (Math.random() < SPACE_PLAGUE_CHANCE) triggerSpacePlague(gameState);
+    if (Math.random() < GHOST_SHIP_CHANCE) triggerGhostShip(gameState);
+    if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) triggerGalacticGoldRush(gameState);
+    if (Math.random() < STELLAR_AURORA_CHANCE) triggerStellarAurora(gameState);
 
     return gameState;
 };

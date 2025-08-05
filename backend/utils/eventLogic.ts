@@ -1,13 +1,15 @@
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony } from '../types.js';
+
+
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message } from '../types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
-const addMessage = (gameState: GameState, message: any) => {
+const addMessage = (gameState: GameState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     gameState.messages.unshift({
         id: `msg-${Date.now()}-${Math.random()}`,
         timestamp: Date.now(),
         isRead: false,
         ...message
-    });
+    } as Message);
 };
 
 // --- Event Trigger Functions ---
@@ -20,11 +22,11 @@ export const triggerSolarFlare = (gameState: GameState) => {
     if (isDisruption) {
         gameState.solarFlare.status = SolarFlareStatus.DISRUPTION;
         gameState.solarFlare.endTime = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
-        addMessage(gameState, { type: 'solar_flare', subject: 'Rozbłysk: Zakłócenia Systemów!', status: SolarFlareStatus.DISRUPTION } as SolarFlareMessage);
+        addMessage(gameState, { type: 'solar_flare', subject: 'Rozbłysk: Zakłócenia Systemów!', status: SolarFlareStatus.DISRUPTION });
     } else {
         gameState.solarFlare.status = SolarFlareStatus.POWER_BOOST;
         gameState.solarFlare.endTime = Date.now() + 12 * 60 * 60 * 1000; // 12 hours
-        addMessage(gameState, { type: 'solar_flare', subject: 'Rozbłysk: Bonus Energii!', status: SolarFlareStatus.POWER_BOOST } as SolarFlareMessage);
+        addMessage(gameState, { type: 'solar_flare', subject: 'Rozbłysk: Bonus Energii!', status: SolarFlareStatus.POWER_BOOST });
     }
 };
 
@@ -46,7 +48,7 @@ export const triggerAncientArtifact = (gameState: GameState) => {
     if (gameState.ancientArtifactState.status !== AncientArtifactStatus.INACTIVE) return;
     
     gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE;
-    addMessage(gameState, { type: 'info', subject: 'Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' } as InfoMessage);
+    addMessage(gameState, { type: 'info', subject: 'Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' });
 };
 
 export const triggerAsteroidImpact = (gameState: GameState) => {
@@ -61,7 +63,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
             subject: 'Deszcz Meteorytów!',
             impactType: AsteroidImpactType.BONUS,
             details: { resourceType, amount }
-        } as AsteroidImpactMessage);
+        });
     } else {
         const colonyIds = Object.keys(gameState.colonies);
         if (colonyIds.length === 0) return;
@@ -82,7 +84,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
                     subject: 'Uderzenie Asteroidy!',
                     impactType: AsteroidImpactType.DAMAGE,
                     details: { buildingId: buildingToDamage, newLevel }
-                } as AsteroidImpactMessage);
+                });
             }
         }
     }
@@ -101,7 +103,7 @@ export const triggerResourceVein = (gameState: GameState) => {
         resourceType,
         status: 'activated',
         bonusEndTime: gameState.resourceVeinBonus.endTime
-    } as ResourceVeinMessage);
+    });
 };
 
 export const triggerSpacePlague = (gameState: GameState) => {
@@ -124,7 +126,7 @@ export const triggerSpacePlague = (gameState: GameState) => {
             subject: 'Wykryto Kosmiczną Zarazę!',
             infectedShip: infectedShip as ShipType,
             status: 'activated'
-        } as SpacePlagueMessage);
+        });
     }
 };
 
@@ -151,7 +153,7 @@ export const triggerGhostShip = (gameState: GameState) => {
         subject: 'Wykryto Statek Widmo!',
         shipType: shipType,
         locationCoords: coords
-    } as GhostShipDiscoveryMessage);
+    });
 };
 
 export const triggerGalacticGoldRush = (gameState: GameState) => {
@@ -163,7 +165,7 @@ export const triggerGalacticGoldRush = (gameState: GameState) => {
         type: 'galactic_gold_rush',
         subject: 'Ogłoszono Galaktyczną Gorączkę Złota!',
         status: 'activated'
-    } as GalacticGoldRushMessage);
+    });
 };
 
 export const triggerStellarAurora = (gameState: GameState) => {
@@ -177,5 +179,5 @@ export const triggerStellarAurora = (gameState: GameState) => {
         subject: 'Pojawiła się Zorza Gwiezdna!',
         status: 'activated',
         durationHours: durationHours
-    } as StellarAuroraMessage);
+    });
 };
