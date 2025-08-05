@@ -19,7 +19,7 @@ const addMessage = <T extends Message>(playerState: PlayerState, message: Omit<T
         timestamp: Date.now(),
         isRead: false,
         ...message
-    } as Message);
+    } as T);
     if (playerState.messages.length > 200) {
         playerState.messages.pop();
     }
@@ -154,7 +154,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
             type: 'info',
             subject: 'Otrzymano Dzienną Skrzynię!',
             text: 'Twoja codzienna nagroda za lojalność została dodana do Twojego inwentarza. Aktywuj ją, kiedy zechcesz!'
-        });
+        } as Omit<InfoMessage, 'id' | 'timestamp' | 'isRead'>);
     }
 
     const lastSave = playerState.lastSaveTime || now;
@@ -255,7 +255,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     const status = isDisruption ? SolarFlareStatus.DISRUPTION : SolarFlareStatus.POWER_BOOST;
                     const endTime = Date.now() + (isDisruption ? 1 : 12) * 60 * 60 * 1000;
                     gameState.scopedSolarFlareState = { status, endTime };
-                    addMessage(gameState, { type: 'solar_flare', subject: `TEST: ${isDisruption ? 'Zakłócenia Systemów' : 'Bonus Energii'}!`, status });
+                    addMessage(gameState, { type: 'solar_flare', subject: `TEST: ${isDisruption ? 'Zakłócenia Systemów' : 'Bonus Energii'}!`, status } as Omit<SolarFlareMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.PIRATE_MERCENARY: {
@@ -266,7 +266,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         fleet: {},
                         hireCost: 0,
                     };
-                    addMessage(gameState, { type: 'info', subject: 'TEST: Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' });
+                    addMessage(gameState, { type: 'info', subject: 'TEST: Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' } as Omit<InfoMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.CONTRABAND: {
@@ -276,12 +276,12 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         departureTime: 0,
                         offer: null,
                     };
-                    addMessage(gameState, { type: 'info', subject: 'TEST: Zaszyfrowana transmisja!', text: 'Przemytnicy kontrabandy wkrótce złożą ofertę.' });
+                    addMessage(gameState, { type: 'info', subject: 'TEST: Zaszyfrowana transmisja!', text: 'Przemytnicy kontrabandy wkrótce złożą ofertę.' } as Omit<InfoMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.ANCIENT_ARTIFACT: {
                     gameState.scopedAncientArtifactState = { status: AncientArtifactStatus.AWAITING_CHOICE };
-                    addMessage(gameState, { type: 'info', subject: 'TEST: Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' });
+                    addMessage(gameState, { type: 'info', subject: 'TEST: Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' } as Omit<InfoMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.ASTEROID_IMPACT: {
@@ -299,7 +299,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         endTime,
                         bonusMultiplier: 1.25,
                     };
-                    addMessage(gameState, { type: 'resource_vein', subject: 'TEST: Odkryto Bogatą Żyłę!', resourceType, status: 'activated', bonusEndTime: endTime });
+                    addMessage(gameState, { type: 'resource_vein', subject: 'TEST: Odkryto Bogatą Żyłę!', resourceType, status: 'activated', bonusEndTime: endTime } as Omit<ResourceVeinMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.SPACE_PLAGUE: {
@@ -311,7 +311,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                             infectedShip: infectedShip as ShipType,
                             endTime: Date.now() + 6 * 60 * 60 * 1000,
                         };
-                        addMessage(gameState, { type: 'space_plague', subject: 'TEST: Wykryto Kosmiczną Zarazę!', infectedShip: infectedShip as ShipType, status: 'activated' });
+                        addMessage(gameState, { type: 'space_plague', subject: 'TEST: Wykryto Kosmiczną Zarazę!', infectedShip: infectedShip as ShipType, status: 'activated' } as Omit<SpacePlagueMessage, 'id' | 'timestamp' | 'isRead'>);
                     } else {
                         message = "Nie udało się uruchomić zarazy, brak statków.";
                     }
@@ -329,7 +329,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         locationCoords: coords,
                         shipType: shipType
                     };
-                    addMessage(gameState, { type: 'ghost_ship_discovery', subject: 'TEST: Wykryto Statek Widmo!', shipType, locationCoords: coords });
+                    addMessage(gameState, { type: 'ghost_ship_discovery', subject: 'TEST: Wykryto Statek Widmo!', shipType, locationCoords: coords } as Omit<GhostShipDiscoveryMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.GALACTIC_GOLD_RUSH: {
@@ -337,7 +337,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         active: true,
                         endTime: Date.now() + 24 * 60 * 60 * 1000,
                     };
-                    addMessage(gameState, { type: 'galactic_gold_rush', subject: 'TEST: Ogłoszono Galaktyczną Gorączkę Złota!', status: 'activated' });
+                    addMessage(gameState, { type: 'galactic_gold_rush', subject: 'TEST: Ogłoszono Galaktyczną Gorączkę Złota!', status: 'activated' } as Omit<GalacticGoldRushMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 case TestableEventType.STELLAR_AURORA: {
@@ -346,7 +346,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         active: true,
                         endTime: Date.now() + durationHours * 60 * 60 * 1000,
                     };
-                    addMessage(gameState, { type: 'stellar_aurora', subject: 'TEST: Pojawiła się Zorza Gwiezdna!', status: 'activated', durationHours });
+                    addMessage(gameState, { type: 'stellar_aurora', subject: 'TEST: Pojawiła się Zorza Gwiezdna!', status: 'activated', durationHours } as Omit<StellarAuroraMessage, 'id' | 'timestamp' | 'isRead'>);
                     break;
                 }
                 default:
@@ -484,7 +484,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                         subject = 'Porażka badawcza';
                         message = 'Badanie artefaktu nie powiodło się, zasoby zostały stracone.';
                     }
-                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome });
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
                     return { message };
                 }
                 case AncientArtifactChoice.SELL: {
@@ -493,13 +493,13 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     const outcome: AncientArtifactMessage['outcome'] = { creditsGained: SELL_GAIN };
                     const subject = 'Sprzedano artefakt';
                     const message = `Sprzedano artefakt za ${SELL_GAIN} kredytów.`;
-                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome });
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
                     return { message };
                 }
                 case AncientArtifactChoice.IGNORE: {
                     const subject = 'Zignorowano artefakt';
                     const message = 'Zdecydowano zostawić artefakt w spokoju.';
-                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome: {} });
+                    addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome: {} } as Omit<AncientArtifactMessage, 'id' | 'timestamp' | 'isRead'>);
                     return { message };
                 }
                 default:
@@ -543,7 +543,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     subject = 'Pusty Wrak';
                 }
             }
-             addMessage(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome });
+             addMessage(gameState, { type: 'ghost_ship_outcome', subject, choice, outcome } as Omit<GhostShipOutcomeMessage, 'id' | 'timestamp' | 'isRead'>);
              return { message: outcome.text };
         }
 
