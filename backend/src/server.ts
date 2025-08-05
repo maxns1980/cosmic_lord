@@ -1,12 +1,13 @@
 
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState, Json } from './src/types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants.js';
-import { supabase } from './src/config/db.js';
-import { calculatePlayerPoints } from './src/utils/pointsLogic.js';
-import { calculatePointsForNpc } from './src/utils/npcLogic.js';
+import { GameState, PlayerState, WorldState, Json } from './types.js';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants.js';
+import { supabase } from './config/db.js';
+import { calculatePlayerPoints } from './utils/pointsLogic.js';
+import { calculatePointsForNpc } from './utils/npcLogic.js';
 
 declare global {
     namespace Express {
@@ -30,7 +31,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json() as any);
+app.use(express.json());
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
     const MAX_ATTEMPTS = 1000; // To prevent an infinite loop in a full universe
@@ -175,7 +176,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: any, res: any) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -253,7 +254,7 @@ app.post('/api/signup', async (req: any, res: any) => {
     }
 });
 
-app.post('/api/login', async (req: any, res: any) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -281,7 +282,7 @@ app.post('/api/login', async (req: any, res: any) => {
     }
 });
 
-const authMiddleware = (req: any, res: any, next: any) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -371,9 +372,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: any, res: any) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: any, res: any) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -385,7 +386,7 @@ app.get('/api/state', authMiddleware, async (req: any, res: any) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: any, res: any) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

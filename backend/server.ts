@@ -1,5 +1,6 @@
 
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './src/types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
@@ -30,9 +31,23 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json() as any);
+app.use(express.json());
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
+    const MAX_ATTEMPTS = 1000; // To prevent an infinite loop in a full universe
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        const g = Math.floor(Math.random() * 9) + 1;
+        const s = Math.floor(Math.random() * 499) + 1;
+        const p = Math.floor(Math.random() * (12 - 4 + 1)) + 4; // Positions 4-12
+        const coords = `${g}:${s}:${p}`;
+        if (!occupied[coords]) {
+            console.log(`Found random unoccupied coordinates after ${i + 1} attempts: ${coords}`);
+            return coords;
+        }
+    }
+
+    // Fallback to sequential search if random attempts fail (for a very full universe)
+    console.warn(`Could not find random coordinates after ${MAX_ATTEMPTS} attempts. Falling back to sequential search.`);
     for (let g = 1; g <= 9; g++) {
         for (let s = 1; s <= 499; s++) {
             for (let p = 4; p <= 12; p++) {
@@ -43,8 +58,9 @@ const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => 
             }
         }
     }
-    // Fallback in case all preferred spots are taken
-    return `1:${Math.floor(Math.random() * 499) + 1}:16`; 
+
+    // Absolute fallback (should never be reached in a normal game)
+    return `1:${Math.floor(Math.random() * 499) + 1}:16`;
 };
 
 // Simplified and more robust world initialization
@@ -160,7 +176,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: any, res: any) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password }: { username?: string, password?: string } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -238,7 +254,7 @@ app.post('/api/signup', async (req: any, res: any) => {
     }
 });
 
-app.post('/api/login', async (req: any, res: any) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -266,7 +282,7 @@ app.post('/api/login', async (req: any, res: any) => {
     }
 });
 
-const authMiddleware = (req: any, res: any, next: any) => {
+const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -356,9 +372,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: any, res: any) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: any, res: any) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -370,7 +386,7 @@ app.get('/api/state', authMiddleware, async (req: any, res: any) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: any, res: any) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
