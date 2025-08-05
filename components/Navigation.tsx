@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { View, MerchantState, MerchantStatus, TestableEventType } from '../types';
 
@@ -11,6 +12,7 @@ interface NavigationProps {
     hasPhalanx: boolean;
     hasAlliance: boolean;
     onTriggerEvent: (eventType: TestableEventType) => void;
+    username: string;
 }
 
 const formatTime = (seconds: number) => {
@@ -57,7 +59,7 @@ const NavButton: React.FC<{ label: string, view: View, activeView: View, onClick
     </button>
 );
 
-const Navigation: React.FC<NavigationProps> = ({ activeView, setActiveView, unreadMessagesCount, merchantState, hasPhalanx, hasAlliance, onTriggerEvent }) => {
+const Navigation: React.FC<NavigationProps> = ({ activeView, setActiveView, unreadMessagesCount, merchantState, hasPhalanx, hasAlliance, onTriggerEvent, username }) => {
     const [isTestMenuOpen, setIsTestMenuOpen] = useState(false);
     let merchantCountdown: number | undefined;
     let merchantLabel = 'Kupiec';
@@ -102,29 +104,33 @@ const Navigation: React.FC<NavigationProps> = ({ activeView, setActiveView, unre
             <NavButton label="Galaktyka" view="galaxy" activeView={activeView} onClick={setActiveView} icon="🪐" />
             <NavButton label="Sojusz" view="alliance" activeView={activeView} onClick={setActiveView} icon="🤝" />
             <NavButton label="Wiadomości" view="messages" activeView={activeView} onClick={setActiveView} icon="✉️" badgeCount={unreadMessagesCount} />
-            <div className="relative">
-                <button
-                    onClick={() => setIsTestMenuOpen(!isTestMenuOpen)}
-                    className="w-full flex items-center justify-start px-4 py-3 text-sm md:text-base font-bold transition-all duration-300 rounded-lg text-left text-gray-400 hover:bg-gray-800 hover:text-white"
-                >
-                    <span className="text-xl mr-3 w-8 text-center">🧪</span>
-                    <span>Test Wydarzeń</span>
-                    <span className={`ml-auto transition-transform ${isTestMenuOpen ? 'rotate-180' : ''}`}>▼</span>
-                </button>
-                {isTestMenuOpen && (
-                    <div className="absolute left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
-                        {testEvents.map(event => (
-                            <button
-                                key={event.type}
-                                onClick={() => handleTestEventClick(event.type)}
-                                className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                            >
-                                {event.name}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
+            
+            {username === 'maxns1980' && (
+                <div className="relative">
+                    <button
+                        onClick={() => setIsTestMenuOpen(!isTestMenuOpen)}
+                        className="w-full flex items-center justify-start px-4 py-3 text-sm md:text-base font-bold transition-all duration-300 rounded-lg text-left text-gray-400 hover:bg-gray-800 hover:text-white"
+                    >
+                        <span className="text-xl mr-3 w-8 text-center">🧪</span>
+                        <span>Test Wydarzeń</span>
+                        <span className={`ml-auto transition-transform ${isTestMenuOpen ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+                    {isTestMenuOpen && (
+                        <div className="absolute left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
+                            {testEvents.map(event => (
+                                <button
+                                    key={event.type}
+                                    onClick={() => handleTestEventClick(event.type)}
+                                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                                >
+                                    {event.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+            
             {merchantState.status !== MerchantStatus.INACTIVE && (
                  <NavButton label={merchantLabel} view="merchant" activeView={activeView} onClick={setActiveView} icon="💰" countdownTime={merchantCountdown} />
             )}

@@ -1,3 +1,4 @@
+
 import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony } from '../types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
@@ -63,16 +64,20 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
             details: { resourceType, amount }
         } as AsteroidImpactMessage);
     } else {
-        const builtBuildings = Object.entries(gameState.colonies[Object.keys(gameState.colonies)[0]].buildings)
-            .filter(([, level]) => (level as number) > 0)
-            .map(([id]) => id as BuildingType);
+        const colonyIds = Object.keys(gameState.colonies);
+        if (colonyIds.length === 0) return;
+        const targetColonyId = colonyIds[Math.floor(Math.random() * colonyIds.length)];
+        const targetColony = gameState.colonies[targetColonyId];
+
+        const builtBuildings = (Object.keys(targetColony.buildings) as BuildingType[])
+            .filter(id => targetColony.buildings[id] > 0);
         
         if (builtBuildings.length > 0) {
             const buildingToDamage = builtBuildings[Math.floor(Math.random() * builtBuildings.length)];
-            const currentLevel = gameState.colonies[Object.keys(gameState.colonies)[0]].buildings[buildingToDamage];
+            const currentLevel = targetColony.buildings[buildingToDamage];
             if (currentLevel > 1) {
                 const newLevel = Math.max(1, currentLevel - 1);
-                gameState.colonies[Object.keys(gameState.colonies)[0]].buildings[buildingToDamage] = newLevel;
+                targetColony.buildings[buildingToDamage] = newLevel;
                 addMessage(gameState, {
                     type: 'asteroid_impact',
                     subject: 'Uderzenie Asteroidy!',

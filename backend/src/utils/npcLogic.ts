@@ -281,28 +281,32 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
                 case 'ship':
                     levelOrAmount = item.amount || 1;
                     data = ALL_SHIP_DATA[item.type as ShipType];
-                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
-                    currentCost = data.cost(1);
-                    if (currentCost) {
-                        const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
-                        if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
-                            updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
-                            cost = totalCost;
-                            hasBuilt = true;
+                    if (data) {
+                        requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                        currentCost = data.cost(1);
+                        if (currentCost) {
+                            const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                            if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
+                                updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
+                                cost = totalCost;
+                                hasBuilt = true;
+                            }
                         }
                     }
                     break;
                 case 'defense':
                     levelOrAmount = item.amount || 1;
                     data = DEFENSE_DATA[item.type as DefenseType];
-                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
-                    currentCost = data.cost(1);
-                     if (currentCost) {
-                        const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
-                        if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
-                            updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
-                            cost = totalDefenseCost;
-                            hasBuilt = true;
+                    if (data) {
+                        requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                        currentCost = data.cost(1);
+                         if (currentCost) {
+                            const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                            if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
+                                updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
+                                cost = totalDefenseCost;
+                                hasBuilt = true;
+                            }
                         }
                     }
                     break;

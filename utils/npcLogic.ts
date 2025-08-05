@@ -10,9 +10,9 @@ const calculateNpcProductions = (npc: NPCState) => {
     energyProduction += (fleet[ShipType.SOLAR_SATELLITE] || 0) * (satelliteData.energyProduction || 0);
     
     const energyConsumption = (Object.keys(buildings) as BuildingType[]).reduce((total, type) => {
-        const buildingInfo = BUILDING_DATA[type];
-        if (type !== BuildingType.FUSION_REACTOR && buildings[type] > 0) {
-           return total + (buildingInfo.energyConsumption?.(buildings[type]) ?? 0);
+        const buildingInfo = BUILDING_DATA[type as BuildingType];
+        if (type !== BuildingType.FUSION_REACTOR && buildings[type as BuildingType] > 0) {
+           return total + (buildingInfo.energyConsumption?.(buildings[type as BuildingType]) ?? 0);
         }
         return total;
     }, 0);
@@ -281,25 +281,33 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
                 case 'ship':
                     levelOrAmount = item.amount || 1;
                     data = ALL_SHIP_DATA[item.type as ShipType];
-                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
-                    currentCost = data.cost(1);
-                    const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
-                    if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
-                        updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
-                        cost = totalCost;
-                        hasBuilt = true;
+                    if (data) {
+                        requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                        currentCost = data.cost(1);
+                        if (currentCost) {
+                            const totalCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                            if (requirementsMet && canAfford(updatedNpc.resources, totalCost)) {
+                                updatedNpc.fleet[item.type as ShipType] = (updatedNpc.fleet[item.type as ShipType] || 0) + levelOrAmount;
+                                cost = totalCost;
+                                hasBuilt = true;
+                            }
+                        }
                     }
                     break;
                 case 'defense':
                     levelOrAmount = item.amount || 1;
                     data = DEFENSE_DATA[item.type as DefenseType];
-                    requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
-                    currentCost = data.cost(1);
-                    const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
-                     if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
-                        updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
-                        cost = totalDefenseCost;
-                        hasBuilt = true;
+                    if (data) {
+                        requirementsMet = checkNpcRequirements(data.requirements, updatedNpc.buildings, updatedNpc.research);
+                        currentCost = data.cost(1);
+                         if (currentCost) {
+                            const totalDefenseCost: Resources = { metal: currentCost.metal * levelOrAmount, crystal: currentCost.crystal * levelOrAmount, deuterium: currentCost.deuterium * levelOrAmount, energy: 0 };
+                            if (requirementsMet && canAfford(updatedNpc.resources, totalDefenseCost)) {
+                                updatedNpc.defenses[item.type as DefenseType] = (updatedNpc.defenses[item.type as DefenseType] || 0) + levelOrAmount;
+                                cost = totalDefenseCost;
+                                hasBuilt = true;
+                            }
+                        }
                     }
                     break;
             }
@@ -319,7 +327,7 @@ const spendResourcesAI = (npc: NPCState, isThreatened: boolean): NPCState => {
 
 const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission | null => {
      const militaryPower = Object.entries(npc.fleet).reduce((power, [shipId, count]) => {
-        const shipData = SHIPYARD_DATA[shipId as ShipType];
+        const shipData = ALL_SHIP_DATA[shipId as ShipType];
         if (shipData && count) {
             const finalAttack = shipData.attack * (1 + (npc.research[ResearchType.WEAPON_TECHNOLOGY] || 0) * 0.1);
             const finalShield = shipData.shield * (1 + (npc.research[ResearchType.SHIELDING_TECHNOLOGY] || 0) * 0.1);
@@ -367,7 +375,7 @@ const missionDecisionAI = (npc: NPCState, sourceCoords: string): NPCFleetMission
                 return {
                     id: `npc-m-${now}-${Math.random()}`,
                     sourceCoords,
-                    fleet: attackingFleet,
+                    fleet: attackingFleet as Fleet,
                     missionType: MissionType.ATTACK,
                     startTime: now,
                     arrivalTime: now + missionDuration
@@ -434,8 +442,7 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         image: sleeper.image,
         personality: sleeper.personality,
         developmentSpeed: sleeper.developmentSpeed,
-        resources: sleeper.resources ? { ...sleeper.resources } : { ...INITIAL_NPC_STATE.resources },
-        
+        resources: { ...INITIAL_NPC_STATE.resources, ...(sleeper.resources ?? {}) },
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
         fleet: {},
@@ -529,9 +536,9 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         const productions = calculateNpcProductions(regeneratedNpc);
         const maxResources = calculateNpcMaxResources(regeneratedNpc.buildings);
 
-        regeneratedNpc.resources.metal = Math.min(maxResources.metal, regeneratedNpc.resources.metal + (productions.metal / 3600) * offlineSeconds);
-        regeneratedNpc.resources.crystal = Math.min(maxResources.crystal, regeneratedNpc.resources.crystal + (productions.crystal / 3600) * offlineSeconds);
-        regeneratedNpc.resources.deuterium = Math.min(maxResources.deuterium, regeneratedNpc.resources.deuterium + (productions.deuterium / 3600) * offlineSeconds);
+        regeneratedNpc.resources.metal = Math.min(maxResources.metal, (regeneratedNpc.resources.metal || 0) + (productions.metal / 3600) * offlineSeconds);
+        regeneratedNpc.resources.crystal = Math.min(maxResources.crystal, (regeneratedNpc.resources.crystal || 0) + (productions.crystal / 3600) * offlineSeconds);
+        regeneratedNpc.resources.deuterium = Math.min(maxResources.deuterium, (regeneratedNpc.resources.deuterium || 0) + (productions.deuterium / 3600) * offlineSeconds);
     }
 
     // Set final update time to now, as it's now active
