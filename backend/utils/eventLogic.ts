@@ -1,7 +1,7 @@
 
 
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message } from '../types.js';
-import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMessage, ContrabandMessage } from '../src/types.js';
+import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../src/constants.js';
 
 const addMessage = (gameState: GameState, message: Omit<Message, 'id' | 'timestamp' | 'isRead'>) => {
     gameState.messages.unshift({
@@ -15,39 +15,52 @@ const addMessage = (gameState: GameState, message: Omit<Message, 'id' | 'timesta
 // --- Event Trigger Functions ---
 
 export const triggerSolarFlare = (gameState: GameState) => {
-    if (gameState.solarFlare.status !== SolarFlareStatus.INACTIVE) return;
+    if (gameState.scopedSolarFlareState && gameState.scopedSolarFlareState.status !== SolarFlareStatus.INACTIVE) return;
 
     const isDisruption = Math.random() < 0.3; // 30% chance for a negative event
 
-    if (isDisruption) {
-        gameState.solarFlare.status = SolarFlareStatus.DISRUPTION;
-        gameState.solarFlare.endTime = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
-        addMessage(gameState, { type: 'solar_flare', subject: 'Rozbłysk: Zakłócenia Systemów!', status: SolarFlareStatus.DISRUPTION });
-    } else {
-        gameState.solarFlare.status = SolarFlareStatus.POWER_BOOST;
-        gameState.solarFlare.endTime = Date.now() + 12 * 60 * 60 * 1000; // 12 hours
-        addMessage(gameState, { type: 'solar_flare', subject: 'Rozbłysk: Bonus Energii!', status: SolarFlareStatus.POWER_BOOST });
-    }
+    const status = isDisruption ? SolarFlareStatus.DISRUPTION : SolarFlareStatus.POWER_BOOST;
+    const endTime = Date.now() + (isDisruption ? 1 : 12) * 60 * 60 * 1000;
+    
+    gameState.scopedSolarFlareState = { status, endTime };
+
+    addMessage(gameState, { 
+        type: 'solar_flare', 
+        subject: isDisruption ? 'Rozbłysk: Zakłócenia Systemów!' : 'Rozbłysk: Bonus Energii!', 
+        status,
+        isEndMessage: false,
+    });
 };
 
 export const triggerPirateMercenary = (gameState: GameState) => {
-    if (gameState.pirateMercenaryState.status !== PirateMercenaryStatus.INACTIVE) return;
+    if (gameState.scopedPirateMercenaryState && gameState.scopedPirateMercenaryState.status !== PirateMercenaryStatus.INACTIVE) return;
     
-    gameState.pirateMercenaryState.status = PirateMercenaryStatus.INCOMING;
-    gameState.pirateMercenaryState.arrivalTime = Date.now() + 5 * 60 * 1000; // Arrives in 5 minutes
+    gameState.scopedPirateMercenaryState = {
+        status: PirateMercenaryStatus.INCOMING,
+        arrivalTime: Date.now() + 5 * 60 * 1000, // Arrives in 5 minutes
+        departureTime: 0,
+        fleet: {},
+        hireCost: 0,
+    };
+    addMessage(gameState, { type: 'info', subject: 'Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' });
 };
 
 export const triggerContraband = (gameState: GameState) => {
-    if (gameState.contrabandState.status !== ContrabandStatus.INACTIVE) return;
+    if (gameState.scopedContrabandState && gameState.scopedContrabandState.status !== ContrabandStatus.INACTIVE) return;
 
-    gameState.contrabandState.status = ContrabandStatus.INCOMING;
-    gameState.contrabandState.arrivalTime = Date.now() + 7 * 60 * 1000; // Arrives in 7 minutes
+    gameState.scopedContrabandState = {
+        status: ContrabandStatus.INCOMING,
+        arrivalTime: Date.now() + 7 * 60 * 1000, // Arrives in 7 minutes
+        departureTime: 0,
+        offer: null,
+    };
+    addMessage(gameState, { type: 'info', subject: 'Zaszyfrowana transmisja!', text: 'Przemytnicy kontrabandy wkrótce złożą ofertę.' });
 };
 
 export const triggerAncientArtifact = (gameState: GameState) => {
-    if (gameState.ancientArtifactState.status !== AncientArtifactStatus.INACTIVE) return;
+    if (gameState.scopedAncientArtifactState && gameState.scopedAncientArtifactState.status !== AncientArtifactStatus.INACTIVE) return;
     
-    gameState.ancientArtifactState.status = AncientArtifactStatus.AWAITING_CHOICE;
+    gameState.scopedAncientArtifactState = { status: AncientArtifactStatus.AWAITING_CHOICE };
     addMessage(gameState, { type: 'info', subject: 'Odkryto Starożytny Artefakt!', text: 'Na jednej z twoich planet odkryto tajemniczy obiekt. Sprawdź wiadomości, aby podjąć decyzję.' });
 };
 
@@ -91,23 +104,29 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
 };
 
 export const triggerResourceVein = (gameState: GameState) => {
-    if (gameState.resourceVeinBonus.active) return;
+    if (gameState.scopedResourceVeinBonus && gameState.scopedResourceVeinBonus.active) return;
 
     const resourceType = ['metal', 'crystal', 'deuterium'][Math.floor(Math.random() * 3)] as keyof Omit<Resources, 'energy'>;
-    gameState.resourceVeinBonus.active = true;
-    gameState.resourceVeinBonus.resourceType = resourceType;
-    gameState.resourceVeinBonus.endTime = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    const endTime = Date.now() + 24 * 60 * 60 * 1000;
+    
+    gameState.scopedResourceVeinBonus = {
+        active: true,
+        resourceType,
+        endTime,
+        bonusMultiplier: 1.25,
+    };
+
     addMessage(gameState, {
         type: 'resource_vein',
         subject: 'Odkryto Bogatą Żyłę!',
         resourceType,
         status: 'activated',
-        bonusEndTime: gameState.resourceVeinBonus.endTime
+        bonusEndTime: endTime
     });
 };
 
 export const triggerSpacePlague = (gameState: GameState) => {
-    if (gameState.spacePlague.active) return;
+    if (gameState.scopedSpacePlagueState && gameState.scopedSpacePlagueState.active) return;
 
     const playerFleet = Object.values(gameState.colonies)
         .flatMap((colony: Colony): [string, number | undefined][] => Object.entries(colony.fleet))
@@ -118,9 +137,13 @@ export const triggerSpacePlague = (gameState: GameState) => {
         
     if (playerFleet.length > 0) {
         const [infectedShip] = playerFleet[Math.floor(Math.random() * playerFleet.length)];
-        gameState.spacePlague.active = true;
-        gameState.spacePlague.infectedShip = infectedShip as ShipType;
-        gameState.spacePlague.endTime = Date.now() + 6 * 60 * 60 * 1000; // 6 hours
+        
+        gameState.scopedSpacePlagueState = {
+            active: true,
+            infectedShip: infectedShip as ShipType,
+            endTime: Date.now() + 6 * 60 * 60 * 1000, // 6 hours
+        };
+
         addMessage(gameState, {
             type: 'space_plague',
             subject: 'Wykryto Kosmiczną Zarazę!',
@@ -131,6 +154,58 @@ export const triggerSpacePlague = (gameState: GameState) => {
 };
 
 export const triggerGhostShip = (gameState: GameState) => {
-    if (gameState.ghostShipState.status !== GhostShipStatus.INACTIVE) return;
+    if (gameState.scopedGhostShipState && gameState.scopedGhostShipState.status !== GhostShipStatus.INACTIVE) return;
     
+    // Find an empty location
+    const galaxy = Math.floor(Math.random() * 3) + 1;
+    const system = Math.floor(Math.random() * 499) + 1;
+    const position = Math.floor(Math.random() * 15) + 1;
+    const coords = `${galaxy}:${system}:${position}`;
     
+    const powerfulShips = [ShipType.BATTLESHIP, ShipType.CRUISER, ShipType.DESTROYER, ShipType.BATTLECRUISER];
+    const shipType = powerfulShips[Math.floor(Math.random() * powerfulShips.length)];
+
+    gameState.scopedGhostShipState = {
+        status: GhostShipStatus.AWAITING_CHOICE,
+        locationCoords: coords,
+        shipType: shipType
+    };
+    
+    addMessage(gameState, {
+        type: 'ghost_ship_discovery',
+        subject: 'Wykryto Statek Widmo!',
+        shipType: shipType,
+        locationCoords: coords
+    });
+};
+
+export const triggerGalacticGoldRush = (gameState: GameState) => {
+    if (gameState.scopedGalacticGoldRushState && gameState.scopedGalacticGoldRushState.active) return;
+    
+    gameState.scopedGalacticGoldRushState = {
+        active: true,
+        endTime: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    };
+
+    addMessage(gameState, {
+        type: 'galactic_gold_rush',
+        subject: 'Ogłoszono Galaktyczną Gorączkę Złota!',
+        status: 'activated'
+    });
+};
+
+export const triggerStellarAurora = (gameState: GameState) => {
+    if (gameState.scopedStellarAuroraState && gameState.scopedStellarAuroraState.active) return;
+    
+    const durationHours = [4, 6, 8][Math.floor(Math.random() * 3)];
+    gameState.scopedStellarAuroraState = {
+        active: true,
+        endTime: Date.now() + durationHours * 60 * 60 * 1000,
+    };
+    addMessage(gameState, {
+        type: 'stellar_aurora',
+        subject: 'Pojawiła się Zorza Gwiezdna!',
+        status: 'activated',
+        durationHours: durationHours
+    });
+};

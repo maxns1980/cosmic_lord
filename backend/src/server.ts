@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
@@ -81,7 +82,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert({ id: 1, state: initialWorldState as unknown as Json });
+            .insert([{ id: 1, state: initialWorldState as unknown as Json }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -174,7 +175,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: Request, res: Response) => {
+app.post('/api/signup', async (req: Request<{}, {}, { username?: string, password?: string }>, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -199,7 +200,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
 
         // 2. Get world state to find a free spot
         const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-        if (worldError || !worldData) {
+        if (worldError || !worldData || !worldData.state) {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
@@ -212,7 +213,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         // 4. Create the new user
         const { error: insertUserError } = await supabase
             .from('users')
-            .insert({ username, password });
+            .insert([{ username, password }]);
 
         if (insertUserError) {
             console.error('Signup insert user error:', insertUserError);
@@ -222,7 +223,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert({ user_id: username, state: newPlayerState as unknown as Json });
+            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -252,7 +253,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/login', async (req: Request, res: Response) => {
+app.post('/api/login', async (req: Request<{}, {}, { username?: string, password?: string }>, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -378,6 +379,9 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
     const gameState = await loadCombinedGameState(req.userId);
     if (gameState) {
+        // Save the potentially modified state back to the database.
+        // This is important for persisting changes from passive updates like event triggers.
+        await saveStates(req.userId, gameState);
         res.json(gameState);
     } else {
         res.status(404).json({ message: 'Nie znaleziono stanu gry dla tego użytkownika.' });
