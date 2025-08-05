@@ -1,11 +1,11 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState } from './src/types.js';
-import { Json } from './src/database.types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
 import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants.js';
 import { supabase } from './src/config/db.js';
 import { calculatePlayerPoints } from './src/utils/pointsLogic.js';
+import { calculatePointsForNpc } from './src/utils/npcLogic.js';
 
 declare global {
     namespace Express {
@@ -29,7 +29,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
 const findUnoccupiedCoordinates = (occupied: Record<string, string>): string => {
@@ -79,10 +78,25 @@ const initializeWorld = async () => {
         console.log("World state loaded.");
         const worldState = (data as any).state as WorldState;
         
-        // MIGRATION: Add publicPlayerData if it doesn't exist
+        let migrationNeeded = false;
         if (!worldState.publicPlayerData) {
-            console.log("Migrating world state: adding publicPlayerData.");
-            worldState.publicPlayerData = {};
+             migrationNeeded = true;
+        } else if (worldState.npcStates) {
+            // Check if publicPlayerData is missing for any NPC
+            for (const npc of Object.values(worldState.npcStates)) {
+                if (!worldState.publicPlayerData[npc.name]) {
+                    migrationNeeded = true;
+                    break;
+                }
+            }
+        }
+        
+        // MIGRATION: Add publicPlayerData if it doesn't exist or is incomplete for NPCs
+        if (migrationNeeded) {
+            console.log("Migrating world state: adding or completing publicPlayerData.");
+            if (!worldState.publicPlayerData) {
+                worldState.publicPlayerData = {};
+            }
             
             const { data: allPlayers, error: allPlayersError } = await supabase.from('player_states').select('user_id, state');
 
@@ -97,8 +111,21 @@ const initializeWorld = async () => {
                         lastActivity: playerState.lastSaveTime || Date.now()
                     };
                 }
-                console.log(`Migration successful. Populated public data for ${allPlayers.length} players.`);
+                console.log(`Migration successful. Populated/verified public data for ${allPlayers.length} players.`);
             }
+
+            // Handle NPCs
+            if (worldState.npcStates) {
+                for (const npc of Object.values(worldState.npcStates)) {
+                    const points = calculatePointsForNpc(npc);
+                    worldState.publicPlayerData[npc.name] = {
+                        points: points,
+                        lastActivity: npc.lastUpdateTime
+                    };
+                }
+                console.log(`Migration successful. Populated public data for ${Object.keys(worldState.npcStates).length} NPCs.`);
+            }
+
              const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
             if (updateError) {
                 console.error("MIGRATION FAILED: Could not save migrated world state.", updateError);

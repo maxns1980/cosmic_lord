@@ -1,5 +1,5 @@
-import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types.js';
-import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants.js';
+import { Fleet, Defenses, ResearchLevels, Resources, ShipType, DefenseType, ResearchType, Loot, BuildingLevels, BuildingType, RoundReport, ShipLevels, CombatParty, SolarFlareStatus } from '../types';
+import { ALL_SHIP_DATA, DEFENSE_DATA, DEBRIS_FIELD_RECOVERY_RATE, PROTECTED_RESOURCES_FACTOR, BUILDING_DATA, BASE_STORAGE_CAPACITY } from '../constants';
 
 // The combat logic has been refactored to use a "health pool" (HP pool) model for each group of units.
 // This solves a critical flaw in the previous per-unit simulation where damage against a large number of weak units
@@ -44,8 +44,8 @@ const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, numbe
         },
         [ShipType.BATTLESHIP]: { [ShipType.BATTLECRUISER]: 2 },
         [ShipType.DEATHSTAR]: {
-             ...(Object.fromEntries(Object.values(ShipType).map(v => [v, 250])) as Record<string, number>),
-             ...(Object.fromEntries(Object.values(DefenseType).map(v => [v, 250])) as Record<string, number>),
+             ...(Object.values(ShipType).reduce((acc, val) => ({...acc, [val]: 250}), {})),
+             ...(Object.values(DefenseType).reduce((acc, val) => ({...acc, [val]: 250}), {})),
         }
     };
     return rapidFireData[unitId as ShipType] || {};
@@ -305,8 +305,8 @@ export const calculateCombat = (
         const data = ALL_SHIP_DATA[id as ShipType];
         if (data && count) {
             const cost = data.cost(1);
-            debris.metal += cost.metal * count * DEBRIS_FIELD_RECOVERY_RATE;
-            debris.crystal += cost.crystal * count * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.metal += cost.metal * Number(count) * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.crystal += cost.crystal * Number(count) * DEBRIS_FIELD_RECOVERY_RATE;
         }
     });
     

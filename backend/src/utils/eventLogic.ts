@@ -1,4 +1,4 @@
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage } from '../types.js';
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony } from '../types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
 const addMessage = (gameState: GameState, message: any) => {
@@ -64,7 +64,7 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
         } as AsteroidImpactMessage);
     } else {
         const builtBuildings = Object.entries(gameState.colonies[Object.keys(gameState.colonies)[0]].buildings)
-            .filter(([, level]) => level > 0)
+            .filter(([, level]) => (level as number) > 0)
             .map(([id]) => id as BuildingType);
         
         if (builtBuildings.length > 0) {
@@ -104,7 +104,7 @@ export const triggerSpacePlague = (gameState: GameState) => {
     if (gameState.spacePlague.active) return;
 
     const playerFleet = Object.values(gameState.colonies)
-        .flatMap(colony => Object.entries(colony.fleet))
+        .flatMap((colony: Colony) => Object.entries(colony.fleet))
         .filter(([, count]) => (count || 0) > 0);
         
     if (playerFleet.length > 0) {
