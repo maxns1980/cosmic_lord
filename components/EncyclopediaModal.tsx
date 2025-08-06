@@ -27,11 +27,13 @@ const formatTime = (seconds: number) => {
 }
 
 const CostDisplay: React.FC<{ cost: Resources }> = ({ cost }) => {
-    const costs = [];
-    if (cost.metal > 0) costs.push(<span key="m" className="flex items-center text-sm">🔩<span className="ml-1.5 text-gray-400">Metal:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.metal)}</span></span>);
-    if (cost.crystal > 0) costs.push(<span key="c" className="flex items-center text-sm">💎<span className="ml-1.5 text-gray-400">Kryształ:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.crystal)}</span></span>);
-    if (cost.deuterium > 0) costs.push(<span key="d" className="flex items-center text-sm">💧<span className="ml-1.5 text-gray-400">Deuter:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.deuterium)}</span></span>);
-    return <div className="space-y-1 mt-1">{costs}</div>;
+    return (
+        <div className="space-y-1 mt-1">
+            {cost.metal > 0 && <span key="m" className="flex items-center text-sm">🔩<span className="ml-1.5 text-gray-400">Metal:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.metal)}</span></span>}
+            {cost.crystal > 0 && <span key="c" className="flex items-center text-sm">💎<span className="ml-1.5 text-gray-400">Kryształ:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.crystal)}</span></span>}
+            {cost.deuterium > 0 && <span key="d" className="flex items-center text-sm">💧<span className="ml-1.5 text-gray-400">Deuter:</span><span className="ml-2 font-mono text-white">{formatNumber(cost.deuterium)}</span></span>}
+        </div>
+    );
 };
 
 const RequirementsDisplay: React.FC<{ requirements?: Partial<BuildingLevels & ResearchLevels> }> = ({ requirements }) => {
