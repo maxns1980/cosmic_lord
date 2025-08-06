@@ -91,7 +91,7 @@ const initializeWorld = async () => {
         }
     } else {
         console.log("World state loaded.");
-        const worldState = data.state as unknown as WorldState;
+        const worldState = data.state as WorldState;
         
         let migrationNeeded = false;
         if (!worldState.publicPlayerData) {
@@ -120,11 +120,10 @@ const initializeWorld = async () => {
                 console.error("MIGRATION FAILED: could not fetch players to build public data.", allPlayersError);
             } else if (allPlayers) {
                 for (const player of allPlayers) {
-                    const userId = player.user_id;
-                    if (!userId) continue;
-                    const playerState = player.state as unknown as PlayerState;
+                    if (!player.user_id) continue;
+                    const playerState = player.state as PlayerState;
                     const points = calculatePlayerPoints(playerState);
-                    worldState.publicPlayerData[userId] = {
+                    worldState.publicPlayerData[player.user_id] = {
                         points: points,
                         lastActivity: playerState.lastSaveTime || Date.now()
                     };
@@ -204,7 +203,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
-        const worldState = worldData.state as unknown as WorldState;
+        const worldState = worldData.state as WorldState;
 
         // 3. Find coordinates and create initial player state
         const homeCoords = findUnoccupiedCoordinates(worldState.occupiedCoordinates);
@@ -303,8 +302,8 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         return null;
     }
     
-    let playerState = playerData.state as unknown as PlayerState;
-    let worldState = worldData.state as unknown as WorldState;
+    let playerState = playerData.state as PlayerState;
+    let worldState = worldData.state as WorldState;
 
     const lastNpcCheckBefore = worldState.lastGlobalNpcCheck;
     const { updatedWorldState } = updateWorldState(worldState);
@@ -358,8 +357,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
         lastActivity: Date.now(),
     };
 
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as PlayerState }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as WorldState }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -374,13 +373,12 @@ const saveStates = async (userId: string, gameState: GameState) => {
 app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
 app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
-    const userId = req.userId;
-    if (!userId) {
+    if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
-    const gameState = await loadCombinedGameState(userId);
+    const gameState = await loadCombinedGameState(req.userId);
     if (gameState) {
-        await saveStates(userId, gameState);
+        await saveStates(req.userId, gameState);
         res.json(gameState);
     } else {
         res.status(404).json({ message: 'Nie znaleziono stanu gry dla tego użytkownika.' });
@@ -388,23 +386,23 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
 });
 
 app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
-    const userId = req.userId;
-    if (!userId) {
+    if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
-    let gameState = await loadCombinedGameState(userId);
+    let gameState = await loadCombinedGameState(req.userId);
     if (!gameState) {
         return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });
     }
 
     const { type, payload } = req.body;
     try {
-        const result = handleAction(gameState, type, payload, userId);
+        const result = handleAction(gameState, type, payload, req.userId);
         if (result?.error) {
             return res.status(400).json({ message: result.error });
         }
 
-        if (type === 'DELETE_ACCOUNT' && userId) {
+        if (type === 'DELETE_ACCOUNT' && req.userId) {
+            const userId = req.userId;
             console.log(`Processing account deletion for user: ${userId}`);
 
             const { error: playerStateError } = await supabase.from('player_states').delete().eq('user_id', userId);
@@ -420,20 +418,20 @@ app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
                     (worldState as any)[key] = (gameState as any)[key];
                 }
             }
-            const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as WorldState }).eq('id', 1);
+            const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState }).eq('id', 1);
             if (worldSaveError) console.error(`Error saving world state after account deletion for ${userId}:`, worldSaveError);
             
             console.log(`Account deletion for user ${userId} completed.`);
             return res.status(200).json({ message: result.message });
         }
 
-        if (userId) {
-            await saveStates(userId, gameState);
+        if (req.userId) {
+            await saveStates(req.userId, gameState);
         }
 
         res.status(200).json({ message: result?.message || 'Akcja przetworzona', gameState });
     } catch (e: any) {
-        console.error(`Error processing action ${type} for user ${userId}:`, e);
+        console.error(`Error processing action ${type} for user ${req.userId}:`, e);
         res.status(500).json({ message: e.message || 'Wystąpił błąd podczas przetwarzania akcji.' });
     }
 });
@@ -454,3 +452,4 @@ const startServer = async () => {
 };
 
 startServer();
+app.listen(3001);
