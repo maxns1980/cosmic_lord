@@ -1,6 +1,7 @@
 
-import { PlayerState, BuildingType, ResearchType, ShipType, DefenseType, Resources } from '../types';
-import { BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA } from '../constants';
+
+import { PlayerState, BuildingType, ResearchType, ShipType, DefenseType, Resources } from '../types.js';
+import { BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA } from '../constants.js';
 
 const costToPoints = (cost: Resources) => (cost.metal + cost.crystal + cost.deuterium) / 1000;
 
