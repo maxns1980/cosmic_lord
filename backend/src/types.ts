@@ -1,4 +1,4 @@
-import { Json } from './database.types';
+import { Json } from './database.types.js';
 
 export type View = 'overview' | 'buildings' | 'research' | 'shipyard' | 'defense' | 'fleet' | 'messages' | 'merchant' | 'galaxy' | 'fleet_upgrades' | 'phalanx' | 'alliance';
 

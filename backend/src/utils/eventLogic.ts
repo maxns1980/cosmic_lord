@@ -1,5 +1,5 @@
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMessage, ContrabandMessage, PirateMercenaryState, AncientArtifactMessage, ContrabandOffer } from '../types';
-import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants';
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMessage, ContrabandMessage, PirateMercenaryState, AncientArtifactMessage, ContrabandOffer } from '../types.js';
+import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
 const addMessage = <T extends Message>(gameState: GameState, message: Omit<T, 'id' | 'timestamp' | 'isRead'>) => {
     gameState.messages.unshift({
@@ -42,7 +42,7 @@ export const triggerPirateMercenary = (gameState: GameState) => {
         fleet: {},
         hireCost: 0,
     };
-    addMessage<InfoMessage>(gameState, { type: 'info', subject: 'Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' });
+    addMessage<InfoMessage>(gameState, { type: 'info', subject: 'Wykryto sygnatury Piratów!', text: 'Zbliżają się do Twojego systemu.' });
 };
 
 export const triggerContraband = (gameState: GameState) => {
