@@ -2,12 +2,12 @@
 import express from 'express';
 import { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState, Json } from './types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants.js';
-import { supabase } from './config/db.js';
-import { calculatePlayerPoints } from './utils/pointsLogic.js';
-import { calculatePointsForNpc } from './utils/npcLogic.js';
+import { GameState, PlayerState, WorldState, Json } from './types';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants';
+import { supabase } from './config/db';
+import { calculatePlayerPoints } from './utils/pointsLogic';
+import { calculatePointsForNpc } from './utils/npcLogic';
 
 declare global {
     namespace Express {
@@ -176,7 +176,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req, res) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -201,7 +201,7 @@ app.post('/api/signup', async (req, res) => {
 
         // 2. Get world state to find a free spot
         const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-        if (worldError || !worldData || !worldData.state) {
+        if (worldError || !worldData) {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
@@ -254,7 +254,7 @@ app.post('/api/signup', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -293,13 +293,13 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
 
 const loadCombinedGameState = async (userId: string): Promise<GameState | null> => {
     const { data: playerData, error: playerError } = await supabase.from('player_states').select('state').eq('user_id', userId).single();
-    if (playerError || !playerData || !playerData.state) {
+    if (playerError || !playerData) {
         console.error(`Error loading player state for user ${userId}:`, playerError);
         return null;
     }
     
     const { data: worldData, error: worldError } = await supabase.from('world_state').select('state').eq('id', 1).single();
-    if (worldError || !worldData || !worldData.state) {
+    if (worldError || !worldData) {
         console.error(`Error loading world state:`, worldError);
         return null;
     }
@@ -372,9 +372,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req, res) => {
+app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -387,7 +387,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req, res) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

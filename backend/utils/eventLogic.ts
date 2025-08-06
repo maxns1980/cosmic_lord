@@ -1,5 +1,6 @@
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMessage, ContrabandMessage, PirateMercenaryState, AncientArtifactMessage, ContrabandOffer } from '../src/types.js';
-import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../src/constants.js';
+
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMessage, ContrabandMessage, PirateMercenaryState, AncientArtifactMessage, ContrabandOffer } from '../src/types';
+import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../src/constants';
 
 const addMessage = <T extends Message>(gameState: GameState, message: Omit<T, 'id' | 'timestamp' | 'isRead'>) => {
     gameState.messages.unshift({
@@ -33,9 +34,11 @@ export const triggerSolarFlare = (gameState: GameState) => {
 export const triggerPirateMercenary = (gameState: GameState) => {
     if (gameState.scopedPirateMercenaryState && gameState.scopedPirateMercenaryState.status !== PirateMercenaryStatus.INACTIVE) return;
     
+    const arrivalMinutes = Math.floor(Math.random() * (60 - 10 + 1)) + 10; // Random between 10 and 60 minutes
+    
     gameState.scopedPirateMercenaryState = {
         status: PirateMercenaryStatus.INCOMING,
-        arrivalTime: Date.now() + 5 * 60 * 1000, // Arrives in 5 minutes
+        arrivalTime: Date.now() + arrivalMinutes * 60 * 1000,
         departureTime: 0,
         fleet: {},
         hireCost: 0,
@@ -46,9 +49,10 @@ export const triggerPirateMercenary = (gameState: GameState) => {
 export const triggerContraband = (gameState: GameState) => {
     if (gameState.scopedContrabandState && gameState.scopedContrabandState.status !== ContrabandStatus.INACTIVE) return;
 
+    const arrivalMinutes = Math.floor(Math.random() * (60 - 7 + 1)) + 7; // Random between 7 and 60 minutes
     gameState.scopedContrabandState = {
         status: ContrabandStatus.INCOMING,
-        arrivalTime: Date.now() + 7 * 60 * 1000, // Arrives in 7 minutes
+        arrivalTime: Date.now() + arrivalMinutes * 60 * 1000,
         departureTime: 0,
         offer: null,
     };
@@ -102,7 +106,10 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
 };
 
 export const triggerResourceVein = (gameState: GameState) => {
-    if (gameState.scopedResourceVeinBonus && gameState.scopedResourceVeinBonus.active) return;
+    // If a resource vein is already active, block the trigger for a new one.
+    if (gameState.scopedResourceVeinBonus && gameState.scopedResourceVeinBonus.active) {
+        return;
+    }
 
     const resourceType = ['metal', 'crystal', 'deuterium'][Math.floor(Math.random() * 3)] as keyof Omit<Resources, 'energy'>;
     const endTime = Date.now() + 24 * 60 * 60 * 1000;
