@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GameState, Colony, Moon, QueueItem, FleetMission, NPCFleetMission, Resources, MissionType, ShipType, PirateMercenaryStatus, ContrabandStatus } from '../types';
 import { PLAYER_HOME_COORDS, ALL_GAME_OBJECTS, ALL_SHIP_DATA } from '../constants';
