@@ -44,10 +44,12 @@ const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, numbe
             [DefenseType.PLASMA_TURRET]: 10,
         },
         [ShipType.BATTLESHIP]: { [ShipType.BATTLECRUISER]: 2 },
-        [ShipType.DEATHSTAR]: {
-             ...Object.fromEntries(Object.values(ShipType).map(val => [val, 250])),
-             ...Object.fromEntries(Object.values(DefenseType).map(val => [val, 250])),
-        }
+        [ShipType.DEATHSTAR]: (() => {
+            const rf: Record<string, number> = {};
+            for (const type of Object.values(ShipType)) rf[type] = 250;
+            for (const type of Object.values(DefenseType)) rf[type] = 250;
+            return rf;
+        })(),
     };
     return rapidFireData[unitId as ShipType] || {};
 };
@@ -304,8 +306,8 @@ export const calculateCombat = (
 
     allShipLosses.forEach(([id, count]) => {
         const data = ALL_SHIP_DATA[id as ShipType];
-        const numCount = Number(count);
-        if (data && !isNaN(numCount)) {
+        const numCount = count || 0;
+        if (data && numCount > 0) {
             const cost = data.cost(1);
             debris.metal += cost.metal * numCount * DEBRIS_FIELD_RECOVERY_RATE;
             debris.crystal += cost.crystal * numCount * DEBRIS_FIELD_RECOVERY_RATE;
