@@ -1,3 +1,4 @@
+
 import { PlayerState, BuildingType, ResearchType, ShipType, DefenseType, Resources } from '../types.js';
 import { BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA } from '../constants.js';
 
