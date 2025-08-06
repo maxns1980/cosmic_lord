@@ -86,7 +86,7 @@ const LocationSwitcher: React.FC<{
         .forEach(colony => {
             locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });
             if (moons[colony.id]) {
-                locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${homeworld.id}]` });
+                locations.push({ id: `${colony.id}_moon`, name: `  -> Księżyc [${colony.id}]` });
             }
         });
     
