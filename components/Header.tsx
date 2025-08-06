@@ -81,7 +81,7 @@ const LocationSwitcher: React.FC<{
 
 
     Object.values(colonies)
-        .filter(c => c.id !== homeworld?.id)
+        .filter(c => !homeworld || c.id !== homeworld.id)
         .sort((a,b) => a.creationTime - b.creationTime)
         .forEach(colony => {
             locations.push({ id: colony.id, name: `${colony.name} [${colony.id}]` });

@@ -12,15 +12,15 @@ export interface Database {
       player_states: {
         Row: {
           user_id: string
-          state: Json
+          state: any
         }
         Insert: {
           user_id: string
-          state: Json
+          state: any
         }
         Update: {
           user_id?: string
-          state?: Json
+          state?: any
         }
         Relationships: [
           {
@@ -49,15 +49,15 @@ export interface Database {
       world_state: {
         Row: {
           id: number
-          state: Json
+          state: any
         }
         Insert: {
           id?: number
-          state: Json
+          state: any
         }
         Update: {
           id?: number
-          state?: Json
+          state?: any
         }
         Relationships: []
       }

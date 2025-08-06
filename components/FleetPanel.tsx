@@ -12,8 +12,8 @@ interface FleetPanelProps {
     onRecallFleet: (missionId: string) => void;
     initialTarget: {coords: string, mission: MissionType} | null;
     onClearInitialTarget: () => void;
-    spacePlague: SpacePlagueState;
-    solarFlare: SolarFlareState;
+    spacePlague?: SpacePlagueState;
+    solarFlare?: SolarFlareState;
     colonies: Record<string, Colony>;
     npcStates: NPCStates;
     fleetTemplates: FleetTemplate[];
@@ -311,7 +311,7 @@ const FleetPanel: React.FC<FleetPanelProps> = ({ fleet, resources, fleetMissions
     const hasColonyShip = (fleet[ShipType.COLONY_SHIP] || 0) > 0;
     const hasResearchVessel = (fleet[ShipType.RESEARCH_VESSEL] || 0) > 0;
     const isTargetOccupied = !!(npcStates[targetCoords] || colonies[targetCoords]);
-    const isDisruptionActive = solarFlare.status === SolarFlareStatus.DISRUPTION;
+    const isDisruptionActive = solarFlare?.status === SolarFlareStatus.DISRUPTION;
     const hasEnoughFuel = fuelCost === null || fuelCost === 0 || resources.deuterium >= fuelCost;
     
     const totalShipsInMission = Object.values(missionFleet).reduce((sum, count) => sum + (count || 0), 0);
@@ -351,7 +351,7 @@ const FleetPanel: React.FC<FleetPanelProps> = ({ fleet, resources, fleetMissions
                     <>
                         <div className="space-y-4">
                             {availableShips.map(type => {
-                                const isPlagued = spacePlague.active && spacePlague.infectedShip === type;
+                                const isPlagued = spacePlague?.active && spacePlague.infectedShip === type;
                                 const shipData = ALL_SHIP_DATA[type];
                                 const shipInputDisabled = isExploreMissionWithoutVessel && type !== ShipType.RESEARCH_VESSEL;
                                 const level = shipLevels[type] || 0;

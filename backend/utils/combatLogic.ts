@@ -44,12 +44,10 @@ const getRapidFireBonus = (unitId: ShipType | DefenseType): Record<string, numbe
             [DefenseType.PLASMA_TURRET]: 10,
         },
         [ShipType.BATTLESHIP]: { [ShipType.BATTLECRUISER]: 2 },
-        [ShipType.DEATHSTAR]: (() => {
-            const rf: Record<string, number> = {};
-            for (const type of Object.values(ShipType)) rf[type] = 250;
-            for (const type of Object.values(DefenseType)) rf[type] = 250;
-            return rf;
-        })(),
+        [ShipType.DEATHSTAR]: {
+             ...(Object.values(ShipType).reduce((acc, val) => ({...acc, [val]: 250}), {})),
+             ...(Object.values(DefenseType).reduce((acc, val) => ({...acc, [val]: 250}), {})),
+        }
     };
     return rapidFireData[unitId as ShipType] || {};
 };
@@ -306,11 +304,10 @@ export const calculateCombat = (
 
     allShipLosses.forEach(([id, count]) => {
         const data = ALL_SHIP_DATA[id as ShipType];
-        const numCount = count || 0;
-        if (data && numCount > 0) {
+        if (data && count) {
             const cost = data.cost(1);
-            debris.metal += cost.metal * numCount * DEBRIS_FIELD_RECOVERY_RATE;
-            debris.crystal += cost.crystal * numCount * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.metal += cost.metal * count * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.crystal += cost.crystal * count * DEBRIS_FIELD_RECOVERY_RATE;
         }
     });
     
@@ -354,11 +351,11 @@ export const calculateCombat = (
         const protectedCrystal = crystalCapacity * protectionFactor;
         const protectedDeuterium = deuteriumCapacity * protectionFactor;
 
-        const lootableMetal = Math.max(0, (defenderResources.metal || 0) - protectedMetal);
-        const lootableCrystal = Math.max(0, (defenderResources.crystal || 0) - protectedCrystal);
-        const lootableDeuterium = Math.max(0, (defenderResources.deuterium || 0) - protectedDeuterium);
+        const lootableMetal = Math.max(0, defenderResources.metal - protectedMetal);
+        const lootableCrystal = Math.max(0, defenderResources.crystal - protectedCrystal);
+        const lootableDeuterium = Math.max(0, defenderResources.deuterium - protectedDeuterium);
         
-        const LOOT_FACTOR = 0.5; // Standard loot is 50% of unprotected resources
+        const LOOT_FACTOR = 1.0; // Standard loot is 100% of unprotected resources
         const metalToLoot = lootableMetal * LOOT_FACTOR;
         const crystalToLoot = lootableCrystal * LOOT_FACTOR;
         const deuteriumToLoot = lootableDeuterium * LOOT_FACTOR;
