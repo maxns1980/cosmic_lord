@@ -1,6 +1,6 @@
 
 
-import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMercenaryState } from '../types.js';
+import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMercenaryState, ContrabandMessage, AncientArtifactMessage, ContrabandOffer } from '../types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
 const addMessage = <T extends Message>(gameState: GameState, message: Omit<T, 'id' | 'timestamp' | 'isRead'>) => {
@@ -27,7 +27,8 @@ export const triggerSolarFlare = (gameState: GameState) => {
     addMessage<SolarFlareMessage>(gameState, { 
         type: 'solar_flare', 
         subject: isDisruption ? 'Rozbłysk: Zakłócenia Systemów!' : 'Rozbłysk: Bonus Energii!', 
-        status
+        status,
+        isEndMessage: false,
     });
 };
 
@@ -103,7 +104,10 @@ export const triggerAsteroidImpact = (gameState: GameState) => {
 };
 
 export const triggerResourceVein = (gameState: GameState) => {
-    if (gameState.scopedResourceVeinBonus && gameState.scopedResourceVeinBonus.active) return;
+    // If a resource vein is already active, block the trigger for a new one.
+    if (gameState.scopedResourceVeinBonus && gameState.scopedResourceVeinBonus.active) {
+        return;
+    }
 
     const resourceType = ['metal', 'crystal', 'deuterium'][Math.floor(Math.random() * 3)] as keyof Omit<Resources, 'energy'>;
     const endTime = Date.now() + 24 * 60 * 60 * 1000;
