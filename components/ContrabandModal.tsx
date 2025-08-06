@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { ContrabandState, ContrabandOfferType, Resources, NPCStates } from '../types';
 import { ALL_SHIP_DATA } from '../constants';
@@ -10,15 +9,17 @@ interface ContrabandModalProps {
     credits: number;
     npcStates: NPCStates;
     onDeal: (accepted: boolean) => void;
+    onClose: () => void;
 }
 
 const formatNumber = (num: number) => Math.floor(num).toLocaleString('pl-PL');
 
 const formatTime = (seconds: number) => {
     if (seconds < 0) seconds = 0;
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
     const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+    return `${h}:${m}:${s}`;
 }
 
 const Countdown: React.FC<{ targetTime: number, onEnd?: () => void }> = ({ targetTime, onEnd }) => {
@@ -40,12 +41,12 @@ const Countdown: React.FC<{ targetTime: number, onEnd?: () => void }> = ({ targe
 }
 
 
-const ContrabandModal: React.FC<ContrabandModalProps> = ({ contrabandState, resources, credits, npcStates, onDeal }) => {
+const ContrabandModal: React.FC<ContrabandModalProps> = ({ contrabandState, resources, credits, npcStates, onDeal, onClose }) => {
     const { offer, departureTime } = contrabandState;
 
     if (!offer) return null;
 
-    const canAfford = credits >= offer.cost.credits && resources.deuterium >= offer.cost.deuterium;
+    const canAfford = credits >= offer.cost.credits && resources.deuterium >= offer.cost.deuterium && resources.crystal >= offer.cost.crystal;
 
     const getOfferDetails = () => {
         switch (offer.type) {
@@ -85,8 +86,15 @@ const ContrabandModal: React.FC<ContrabandModalProps> = ({ contrabandState, reso
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog">
-            <div className="bg-gray-800 border-2 border-red-500 rounded-2xl shadow-2xl max-w-2xl w-full p-8 text-center transform transition-all animate-pulse">
+        <div className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50 p-4" aria-modal="true" role="dialog" onClick={onClose}>
+            <div className="bg-gray-800 border-2 border-red-500 rounded-2xl shadow-2xl max-w-2xl w-full p-8 text-center transform transition-all" onClick={e => e.stopPropagation()}>
+                 <button 
+                    onClick={onClose} 
+                    className="absolute top-2 left-4 text-gray-400 hover:text-white text-3xl font-bold"
+                    aria-label="Zamknij"
+                >
+                    &times;
+                </button>
                 <div className="absolute top-4 right-4">
                     <Countdown targetTime={departureTime} onEnd={() => onDeal(false)} />
                 </div>
@@ -102,6 +110,7 @@ const ContrabandModal: React.FC<ContrabandModalProps> = ({ contrabandState, reso
                         <h4 className="font-bold text-lg text-white">Koszt Operacji:</h4>
                         <div className="flex justify-center items-center gap-6 mt-1">
                             <span className={`text-lg font-mono ${credits >= offer.cost.credits ? 'text-yellow-300' : 'text-red-500'}`}>💰 {formatNumber(offer.cost.credits)}</span>
+                            <span className={`text-lg font-mono ${resources.crystal >= offer.cost.crystal ? 'text-blue-300' : 'text-red-500'}`}>💎 {formatNumber(offer.cost.crystal)}</span>
                             <span className={`text-lg font-mono ${resources.deuterium >= offer.cost.deuterium ? 'text-purple-300' : 'text-red-500'}`}>💧 {formatNumber(offer.cost.deuterium)}</span>
                         </div>
                     </div>

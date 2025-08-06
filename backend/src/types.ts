@@ -1,3 +1,4 @@
+
 import { Json } from './database.types.js';
 
 export type View = 'overview' | 'buildings' | 'research' | 'shipyard' | 'defense' | 'fleet' | 'messages' | 'merchant' | 'galaxy' | 'fleet_upgrades' | 'phalanx' | 'alliance';
@@ -417,6 +418,7 @@ export interface ContrabandOffer {
     cost: {
         credits: number;
         deuterium: number;
+        crystal: number;
     };
 }
 

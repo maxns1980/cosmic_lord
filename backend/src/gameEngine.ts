@@ -1,3 +1,4 @@
+
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
     Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ContrabandState, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType
@@ -107,8 +108,8 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         if (!c) return undefined;
         if (c.status === ContrabandStatus.INCOMING && now >= c.arrivalTime) {
             c.status = ContrabandStatus.ACTIVE;
-            c.departureTime = now + 5 * 60 * 1000;
-            c.offer = { type: ContrabandOfferType.PROTOTYPE_SHIP, shipType: ShipType.SHADOW_CORSAIR, cost: { credits: 50000, deuterium: 10000 }};
+            c.departureTime = now + 1 * 60 * 60 * 1000; // Stay for 1 hour
+            c.offer = { type: ContrabandOfferType.PROTOTYPE_SHIP, shipType: ShipType.SHADOW_CORSAIR, cost: { credits: 70000, deuterium: 10000, crystal: 15000 }};
             addMessage(gameState, { type: 'contraband', subject: `Oferta Kontrabandy!`, accepted: false, offer: c.offer, outcomeText: '', isArrivalAnnouncement: true } as any);
         }
         if (c.status === ContrabandStatus.ACTIVE && now >= c.departureTime) {
@@ -504,7 +505,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     gameState.credits += SELL_GAIN;
                     const outcome: AncientArtifactMessage['outcome'] = { creditsGained: SELL_GAIN };
                     const subject = 'Sprzedano artefakt';
-                    const message = `Sprzedano artefakt za ${SELL_GAIN} kredytów.`;
+                    const message = `Sprzedano artefakt za ${SELL_GAIN} kredytów. Dobry interes!`;
                     addMessage(gameState, { type: 'ancient_artifact', subject, choice, outcome } as any);
                     return { message };
                 }
@@ -572,12 +573,13 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
             gameState.scopedContrabandState = undefined;
         
             if (accepted) {
-                if (gameState.credits < offer.cost.credits || gameState.resources.deuterium < offer.cost.deuterium) {
+                if (gameState.credits < offer.cost.credits || gameState.resources.deuterium < offer.cost.deuterium || gameState.resources.crystal < offer.cost.crystal) {
                     return { error: 'Nie masz wystarczających środków. Oferta przepadła.' };
                 }
         
                 gameState.credits -= offer.cost.credits;
                 gameState.resources.deuterium -= offer.cost.deuterium;
+                gameState.resources.crystal -= offer.cost.crystal;
         
                 let outcomeText = '';
                 let subject = 'Transakcja z Przemytnikami';

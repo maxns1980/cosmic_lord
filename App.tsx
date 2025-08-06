@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, Fleet, QueueItem, QueueItemType, GameObject, 
@@ -190,6 +191,7 @@ function App() {
   const [isEncyclopediaOpen, setIsEncyclopediaOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [isPirateModalOpen, setIsPirateModalOpen] = useState(false);
+  const [isContrabandModalOpen, setIsContrabandModalOpen] = useState(false);
 
   const API_URL = 'https://cosmic-lord-1skk.onrender.com';
 
@@ -263,6 +265,12 @@ function App() {
             setIsPirateModalOpen(true);
         }
     }, [gameState?.scopedPirateMercenaryState?.status]);
+    
+    useEffect(() => {
+        if (gameState?.scopedContrabandState?.status === ContrabandStatus.ACTIVE) {
+            setIsContrabandModalOpen(true);
+        }
+    }, [gameState?.scopedContrabandState?.status]);
 
   const performAction = async (type: string, payload: any) => {
       if (!API_URL || !authToken) return;
@@ -590,6 +598,7 @@ function App() {
                             }
                         }}
                         onShowPirateOffer={() => setIsPirateModalOpen(true)}
+                        onShowContrabandOffer={() => setIsContrabandModalOpen(true)}
                     />
                 )}
                 {activeView === 'merchant' && merchantState.status !== MerchantStatus.INACTIVE && (
@@ -705,13 +714,17 @@ function App() {
          {scopedAncientArtifactState?.status === AncientArtifactStatus.AWAITING_CHOICE && (
             <AncientArtifactModal onChoice={(choice) => performAction('ANCIENT_ARTIFACT_CHOICE', { choice })} />
         )}
-        {scopedContrabandState?.status === ContrabandStatus.ACTIVE && (
+        {isContrabandModalOpen && scopedContrabandState?.status === ContrabandStatus.ACTIVE && (
             <ContrabandModal 
                 contrabandState={scopedContrabandState} 
                 resources={resources}
                 credits={credits}
                 npcStates={npcStates}
-                onDeal={(accepted) => performAction('CONTRABAND_DEAL', { accepted })} 
+                onDeal={(accepted) => {
+                    performAction('CONTRABAND_DEAL', { accepted });
+                    setIsContrabandModalOpen(false);
+                }}
+                onClose={() => setIsContrabandModalOpen(false)}
             />
         )}
         {isInventoryOpen && (

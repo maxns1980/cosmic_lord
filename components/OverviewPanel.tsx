@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { GameState, Colony, Moon, QueueItem, FleetMission, NPCFleetMission, Resources, MissionType, ShipType, PirateMercenaryStatus } from '../types';
+import { GameState, Colony, Moon, QueueItem, FleetMission, NPCFleetMission, Resources, MissionType, ShipType, PirateMercenaryStatus, ContrabandStatus } from '../types';
 import { PLAYER_HOME_COORDS, ALL_GAME_OBJECTS, ALL_SHIP_DATA } from '../constants';
 
 interface OverviewPanelProps {
@@ -177,11 +178,12 @@ const MissionRow: React.FC<{mission: FleetMission | NPCFleetMission, onRecall?: 
 
 
 const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, onRecallFleet }) => {
-    const { colonies, moons, fleetMissions, npcFleetMissions, scopedPirateMercenaryState } = gameState;
+    const { colonies, moons, fleetMissions, npcFleetMissions, scopedPirateMercenaryState, scopedContrabandState } = gameState;
 
     const allPlanets = Object.values(colonies);
 
     const allMissions = [...fleetMissions, ...npcFleetMissions].sort((a, b) => a.arrivalTime - b.arrivalTime);
+    const incomingEventsCount = (scopedPirateMercenaryState?.status === 'INCOMING' ? 1 : 0) + (scopedContrabandState?.status === 'INCOMING' ? 1 : 0);
     
     return (
         <div className="bg-gray-800 bg-opacity-70 backdrop-blur-sm border border-gray-700 rounded-xl shadow-2xl p-4 md:p-6 space-y-6">
@@ -204,7 +206,7 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, o
             
             {/* Fleet Movements */}
             <section>
-                <h3 className="text-xl font-bold text-white mb-3">Ruch Flot ({allMissions.length + (scopedPirateMercenaryState?.status === 'INCOMING' ? 1 : 0) })</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Ruch Flot ({allMissions.length + incomingEventsCount})</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                     {scopedPirateMercenaryState?.status === PirateMercenaryStatus.INCOMING && (
                          <div className="bg-purple-900 bg-opacity-30 p-3 rounded-lg flex justify-between items-center gap-2 border-l-4 border-purple-500">
@@ -217,10 +219,21 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, o
                             <div className="text-lg font-mono text-yellow-300">{formatTime((scopedPirateMercenaryState.arrivalTime - Date.now()) / 1000)}</div>
                         </div>
                     )}
+                    {scopedContrabandState?.status === ContrabandStatus.INCOMING && (
+                         <div className="bg-red-900 bg-opacity-30 p-3 rounded-lg flex justify-between items-center gap-2 border-l-4 border-red-500">
+                            <div>
+                                <p className="font-semibold text-red-300">
+                                    Obca flota: Przemytnicy Kontrabandy (W drodze)
+                                </p>
+                                <p className="text-sm text-gray-400">Cel: Planeta Matka</p>
+                            </div>
+                            <div className="text-lg font-mono text-yellow-300">{formatTime((scopedContrabandState.arrivalTime - Date.now()) / 1000)}</div>
+                        </div>
+                    )}
                     {allMissions.length > 0 ? (
                         allMissions.map(mission => <MissionRow key={mission.id} mission={mission} onRecall={'returnTime' in mission ? onRecallFleet : undefined} />)
                     ) : (
-                         (scopedPirateMercenaryState?.status !== PirateMercenaryStatus.INCOMING) && <p className="text-gray-500 italic">Brak aktywnych misji.</p>
+                         (incomingEventsCount === 0) && <p className="text-gray-500 italic">Brak aktywnych misji.</p>
                     )}
                 </div>
             </section>
