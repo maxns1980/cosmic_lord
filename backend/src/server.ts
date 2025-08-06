@@ -91,7 +91,7 @@ const initializeWorld = async () => {
         }
     } else {
         console.log("World state loaded.");
-        const worldState = data.state as WorldState;
+        const worldState = data.state as unknown as WorldState;
         
         let migrationNeeded = false;
         if (!worldState.publicPlayerData) {
@@ -121,7 +121,7 @@ const initializeWorld = async () => {
             } else if (allPlayers) {
                 for (const player of allPlayers) {
                     if (!player.user_id) continue;
-                    const playerState = player.state as PlayerState;
+                    const playerState = player.state as unknown as PlayerState;
                     const points = calculatePlayerPoints(playerState);
                     worldState.publicPlayerData[player.user_id] = {
                         points: points,
@@ -203,7 +203,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
             console.error('Signup world load error:', worldError);
             return res.status(500).json({ message: 'Błąd krytyczny: Nie można załadować świata gry.' });
         }
-        const worldState = worldData.state as WorldState;
+        const worldState = worldData.state as unknown as WorldState;
 
         // 3. Find coordinates and create initial player state
         const homeCoords = findUnoccupiedCoordinates(worldState.occupiedCoordinates);
@@ -302,8 +302,8 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         return null;
     }
     
-    let playerState = playerData.state as PlayerState;
-    let worldState = worldData.state as WorldState;
+    let playerState = playerData.state as unknown as PlayerState;
+    let worldState = worldData.state as unknown as WorldState;
 
     const lastNpcCheckBefore = worldState.lastGlobalNpcCheck;
     const { updatedWorldState } = updateWorldState(worldState);
