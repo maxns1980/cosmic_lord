@@ -144,8 +144,9 @@ const PlanetRow: React.FC<{
 }
 
 const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, debrisFields, gameState, favoritePlanets, onToggleFavorite, username, homeworld }) => {
-    const [galaxy, setGalaxy] = useState(1);
-    const [system, setSystem] = useState(42);
+    const initialCoords = homeworld?.id.split(':').map(Number) || [1, 42, 8];
+    const [galaxy, setGalaxy] = useState(initialCoords[0]);
+    const [system, setSystem] = useState(initialCoords[1]);
 
     const handleSystemChange = (delta: number) => {
         let newSystem = system + delta;

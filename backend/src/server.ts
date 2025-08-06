@@ -1,11 +1,11 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState, Json } from './types.js';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
-import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants.js';
-import { supabase } from './config/db.js';
-import { calculatePlayerPoints } from './utils/pointsLogic.js';
-import { calculatePointsForNpc } from './utils/npcLogic.js';
+import { GameState, PlayerState, WorldState, Json } from './types';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './constants';
+import { supabase } from './config/db';
+import { calculatePlayerPoints } from './utils/pointsLogic';
+import { calculatePointsForNpc } from './utils/npcLogic';
 
 declare global {
     namespace Express {
@@ -81,7 +81,7 @@ const initializeWorld = async () => {
         const initialWorldState = getInitialWorldState();
         const { error: insertError } = await supabase
             .from('world_state')
-            .insert([{ id: 1, state: initialWorldState as any }]);
+            .insert([{ id: 1, state: initialWorldState as unknown as Json }]);
 
         if (insertError) {
             console.error("FATAL: Could not initialize world state.", insertError);
@@ -144,7 +144,7 @@ const initializeWorld = async () => {
                 console.log(`Migration successful. Populated public data for ${Object.keys(worldState.npcStates).length} NPCs.`);
             }
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
             if (updateError) {
                 console.error("MIGRATION FAILED: Could not save migrated world state.", updateError);
             }
@@ -161,7 +161,7 @@ const initializeWorld = async () => {
              // Merge coordinates, preserving existing player locations
              worldState.occupiedCoordinates = { ...worldState.occupiedCoordinates, ...npcOccupiedCoordinates };
 
-             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+             const { error: updateError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
             if (updateError) {
                 console.error("FATAL: Could not migrate world state to add NPCs.", updateError);
                 throw new Error("FATAL: Could not migrate world state.");
@@ -222,7 +222,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         // 5. Create the player state
         const { error: insertStateError } = await supabase
             .from('player_states')
-            .insert([{ user_id: username, state: newPlayerState as any }]);
+            .insert([{ user_id: username, state: newPlayerState as unknown as Json }]);
         
         if (insertStateError) {
             console.error('Signup insert state error:', insertStateError);
@@ -239,7 +239,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
         const initialPoints = calculatePlayerPoints(newPlayerState);
         worldState.publicPlayerData[username] = { points: initialPoints, lastActivity: Date.now() };
 
-        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+        const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
         if (worldSaveError) {
              console.error('Signup world save error:', worldSaveError);
              // This is not a fatal error for the user, but should be logged.
@@ -311,7 +311,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
     // If the world state was updated (e.g., NPCs evolved), save it back to the database.
     // This is crucial to persist world evolution outside of specific player actions.
     if (updatedWorldState.lastGlobalNpcCheck > lastNpcCheckBefore) {
-        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as any }).eq('id', 1);
+        const { error } = await supabase.from('world_state').update({ state: updatedWorldState as unknown as Json }).eq('id', 1);
         if (error) {
             console.error("Error saving world state after background update:", error);
         }
@@ -357,8 +357,8 @@ const saveStates = async (userId: string, gameState: GameState) => {
         lastActivity: Date.now(),
     };
 
-    const playerSavePromise = supabase.from('player_states').update({ state: playerState as any }).eq('user_id', userId);
-    const worldSavePromise = supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
+    const playerSavePromise = supabase.from('player_states').update({ state: playerState as unknown as Json }).eq('user_id', userId);
+    const worldSavePromise = supabase.from('world_state').update({ state: worldState as unknown as Json }).eq('id', 1);
 
     const [playerResult, worldResult] = await Promise.all([playerSavePromise, worldSavePromise]);
 
@@ -381,74 +381,4 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
         await saveStates(req.userId, gameState);
         res.json(gameState);
     } else {
-        res.status(404).json({ message: 'Nie znaleziono stanu gry dla tego użytkownika.' });
-    }
-});
-
-app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
-    if (!req.userId) {
-        return res.status(401).json({ message: 'Brak autoryzacji.' });
-    }
-    let gameState = await loadCombinedGameState(req.userId);
-    if (!gameState) {
-        return res.status(404).json({ message: 'Nie znaleziono stanu gry.' });
-    }
-
-    const { type, payload } = req.body;
-    try {
-        const result = handleAction(gameState, type, payload, req.userId);
-        if (result?.error) {
-            return res.status(400).json({ message: result.error });
-        }
-
-        if (type === 'DELETE_ACCOUNT' && req.userId) {
-            const userId = req.userId;
-            console.log(`Processing account deletion for user: ${userId}`);
-
-            const { error: playerStateError } = await supabase.from('player_states').delete().eq('user_id', userId);
-            if (playerStateError) console.error(`Error deleting player_state for ${userId}:`, playerStateError);
-
-            const { error: userError } = await supabase.from('users').delete().eq('username', userId);
-            if (userError) console.error(`Error deleting user for ${userId}:`, userError);
-            
-            const worldStateKeys = Object.keys(getInitialWorldState());
-            const worldState: Partial<WorldState> = {};
-            for (const key in gameState) {
-                if (worldStateKeys.includes(key)) {
-                    (worldState as any)[key] = (gameState as any)[key];
-                }
-            }
-            const { error: worldSaveError } = await supabase.from('world_state').update({ state: worldState as any }).eq('id', 1);
-            if (worldSaveError) console.error(`Error saving world state after account deletion for ${userId}:`, worldSaveError);
-            
-            console.log(`Account deletion for user ${userId} completed.`);
-            return res.status(200).json({ message: result.message });
-        }
-
-        if (req.userId) {
-            await saveStates(req.userId, gameState);
-        }
-
-        res.status(200).json({ message: result?.message || 'Akcja przetworzona', gameState });
-    } catch (e: any) {
-        console.error(`Error processing action ${type} for user ${req.userId}:`, e);
-        res.status(500).json({ message: e.message || 'Wystąpił błąd podczas przetwarzania akcji.' });
-    }
-});
-
-const startServer = async () => {
-    console.log("SERVER CODE VERSION: 4.0 - Attempting to start server...");
-    try {
-        await initializeWorld();
-        app.listen(PORT, () => {
-            console.log(`Backend server running on port ${PORT}`);
-            console.log(`Persistence provider: Supabase`);
-            console.log("✅ SERVER V4.0 IS LIVE!");
-        });
-    } catch (error) {
-        console.error("❌ FATAL V4.0: Server failed to start due to world initialization failure.", error);
-        (process as any).exit(1);
-    }
-};
-
-startServer();
+        res.status(40
