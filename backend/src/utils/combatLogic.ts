@@ -303,10 +303,11 @@ export const calculateCombat = (
 
     allShipLosses.forEach(([id, count]) => {
         const data = ALL_SHIP_DATA[id as ShipType];
-        if (data && count) {
+        const numCount = Number(count);
+        if (data && !isNaN(numCount)) {
             const cost = data.cost(1);
-            debris.metal += cost.metal * Number(count) * DEBRIS_FIELD_RECOVERY_RATE;
-            debris.crystal += cost.crystal * Number(count) * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.metal += cost.metal * numCount * DEBRIS_FIELD_RECOVERY_RATE;
+            debris.crystal += cost.crystal * numCount * DEBRIS_FIELD_RECOVERY_RATE;
         }
     });
     

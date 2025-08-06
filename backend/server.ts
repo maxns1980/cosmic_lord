@@ -386,7 +386,7 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/action', authMiddleware, async (req: Request<{}, any, { type: string, payload: any }>, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

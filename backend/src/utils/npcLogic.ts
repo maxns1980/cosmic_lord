@@ -1,4 +1,4 @@
-import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState } from '../types.js';
+import { NPCState, BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, NPCPersonality, ShipType, DefenseType, NPCFleetMission, MissionType, Fleet, SleeperNpcState, Defenses } from '../types.js';
 import { BUILDING_DATA, BASE_STORAGE_CAPACITY, RESEARCH_DATA, SHIPYARD_DATA, DEFENSE_DATA, ALL_SHIP_DATA, ALL_GAME_OBJECTS, INITIAL_NPC_STATE, INITIAL_BUILDING_LEVELS, INITIAL_RESEARCH_LEVELS } from '../constants.js';
 
 const calculateNpcProductions = (npc: NPCState) => {
@@ -444,8 +444,8 @@ export const regenerateNpcFromSleeper = (sleeper: SleeperNpcState): NPCState => 
         resources: { ...INITIAL_NPC_STATE.resources, ...(sleeper.resources ?? {}) },
         buildings: { ...INITIAL_BUILDING_LEVELS },
         research: { ...INITIAL_RESEARCH_LEVELS },
-        fleet: {},
-        defenses: {},
+        fleet: {} as Fleet,
+        defenses: {} as Defenses,
         lastUpdateTime: sleeper.lastUpdate,
     };
 

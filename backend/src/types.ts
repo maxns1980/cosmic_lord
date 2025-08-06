@@ -786,3 +786,5 @@ export interface PlayerState {
 // --- GameState for Client-Server communication ---
 // The client will always receive the combined state
 export type GameState = PlayerState & WorldState;
+
+export { Json };
