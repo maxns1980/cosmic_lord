@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './gameEngine.js';
@@ -174,7 +175,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: Request<{}, any, { username?: string, password?: string }>, res: Response) => {
+app.post('/api/signup', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -252,7 +253,7 @@ app.post('/api/signup', async (req: Request<{}, any, { username?: string, passwo
     }
 });
 
-app.post('/api/login', async (req: Request<{}, any, { username?: string, password?: string }>, res: Response) => {
+app.post('/api/login', async (req: Request, res: Response) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -385,7 +386,7 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: Request<{}, any, { type: string, payload: any }>, res: Response) => {
+app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

@@ -197,7 +197,8 @@ const ResourceDisplay: React.FC<{
     bonus?: ResourceVeinBonus; 
     isBoosted: boolean;
     energyDetails?: { produced: number; consumed: number; efficiency: number; };
-}> = ({ label, resKey, value, production, capacity, icon, colorClass, bonus, isBoosted, energyDetails }) => {
+    stellarAuroraState?: StellarAuroraState;
+}> = ({ label, resKey, value, production, capacity, icon, colorClass, bonus, isBoosted, energyDetails, stellarAuroraState }) => {
     if (resKey === 'energy' && energyDetails) {
         const netEnergy = energyDetails.produced - energyDetails.consumed;
         const netColor = netEnergy >= 0 ? 'text-green-400' : 'text-red-400';
@@ -228,7 +229,14 @@ const ResourceDisplay: React.FC<{
                  ) : (
                     <div className="h-[16px] mt-1"></div>
                  )}
-                <div className="h-[16px]"></div> {/* Placeholder to match height */}
+                {stellarAuroraState?.active ? (
+                    <div className="text-xs text-center text-cyan-300 flex items-center justify-center gap-1" title="Zorza Gwiezdna: +30% do produkcji z Elektrowni Słonecznych">
+                        <span>🌌 +30%</span>
+                        (<Countdown targetTime={stellarAuroraState.endTime} />)
+                    </div>
+                ) : (
+                    <div className="h-[16px]"></div>
+                )}
             </div>
         );
     }
@@ -347,6 +355,7 @@ const Header: React.FC<HeaderProps> = ({ resources, productions, maxResources, c
                                 bonus={{active: false, resourceType: null, endTime: 0, bonusMultiplier: 1}} 
                                 isBoosted={false} 
                                 energyDetails={productions.energy}
+                                stellarAuroraState={stellarAuroraState}
                            />
                            <CreditsDisplay value={credits} hourlyIncome={blackMarketHourlyIncome} />
                         </div>
