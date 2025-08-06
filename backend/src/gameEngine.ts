@@ -90,7 +90,7 @@ export const processRandomEvents = (gameState: GameState): GameState => {
         if (!p) return undefined;
         if (p.status === PirateMercenaryStatus.INCOMING && now >= p.arrivalTime) {
             p.status = PirateMercenaryStatus.AVAILABLE;
-            p.departureTime = now + 10 * 60 * 1000;
+            p.departureTime = now + 60 * 60 * 1000; // Stay for 1 hour
             p.fleet = { [ShipType.LIGHT_FIGHTER]: 50, [ShipType.CRUISER]: 5 };
             p.hireCost = 25000;
             addMessage(gameState, { type: 'pirate', subject: `Piraci-Najemnicy przybyli!`, pirateState: p } as any);
@@ -421,7 +421,36 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
 
             return { message: `${data.name} dodano do kolejki.` };
         }
-        
+        case 'PIRATE_MERCENARY_DEAL': {
+            const { accepted } = payload;
+            const pirateState = gameState.scopedPirateMercenaryState;
+
+            if (!pirateState || pirateState.status !== PirateMercenaryStatus.AVAILABLE) {
+                return { error: 'Oferta najemników nie jest już dostępna.' };
+            }
+            
+            gameState.scopedPirateMercenaryState = undefined; // Clear the event state
+
+            if (accepted) {
+                if (gameState.credits < pirateState.hireCost) {
+                    addMessage(gameState, { type: 'info', subject: 'Transakcja nieudana', text: 'Nie miałeś wystarczająco kredytów, aby wynająć najemników.' } as any);
+                    return { error: 'Niewystarczająca ilość kredytów.' };
+                }
+
+                gameState.credits -= pirateState.hireCost;
+                const homeworld = Object.values(gameState.colonies).sort((a, b) => a.creationTime - b.creationTime)[0];
+                if (homeworld) {
+                    for (const shipId in pirateState.fleet) {
+                        homeworld.fleet[shipId as ShipType] = (homeworld.fleet[shipId as ShipType] || 0) + (pirateState.fleet[shipId as ShipType] || 0);
+                    }
+                }
+                addMessage(gameState, { type: 'info', subject: 'Wynajęto najemników', text: 'Flota najemników dołączyła do Twoich sił na Planecie Matce.' } as any);
+                return { message: 'Najemnicy wynajęci!' };
+            } else {
+                addMessage(gameState, { type: 'info', subject: 'Odrzucono ofertę', text: 'Odrzuciłeś ofertę najemników. Odlecieli w poszukiwaniu innego pracodawcy.' } as any);
+                return { message: 'Odrzucono ofertę.' };
+            }
+        }
         case 'ANCIENT_ARTIFACT_CHOICE': {
             const { choice } = payload;
             if (!gameState.scopedAncientArtifactState || gameState.scopedAncientArtifactState.status !== AncientArtifactStatus.AWAITING_CHOICE) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameState, Colony, Moon, QueueItem, FleetMission, NPCFleetMission, Resources, MissionType, ShipType } from '../types';
+import { GameState, Colony, Moon, QueueItem, FleetMission, NPCFleetMission, Resources, MissionType, ShipType, PirateMercenaryStatus } from '../types';
 import { PLAYER_HOME_COORDS, ALL_GAME_OBJECTS, ALL_SHIP_DATA } from '../constants';
 
 interface OverviewPanelProps {
@@ -177,7 +177,7 @@ const MissionRow: React.FC<{mission: FleetMission | NPCFleetMission, onRecall?: 
 
 
 const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, onRecallFleet }) => {
-    const { colonies, moons, fleetMissions, npcFleetMissions } = gameState;
+    const { colonies, moons, fleetMissions, npcFleetMissions, scopedPirateMercenaryState } = gameState;
 
     const allPlanets = Object.values(colonies);
 
@@ -204,12 +204,23 @@ const OverviewPanel: React.FC<OverviewPanelProps> = ({ gameState, productions, o
             
             {/* Fleet Movements */}
             <section>
-                <h3 className="text-xl font-bold text-white mb-3">Ruch Flot ({allMissions.length})</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Ruch Flot ({allMissions.length + (scopedPirateMercenaryState?.status === 'INCOMING' ? 1 : 0) })</h3>
                 <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                    {scopedPirateMercenaryState?.status === PirateMercenaryStatus.INCOMING && (
+                         <div className="bg-purple-900 bg-opacity-30 p-3 rounded-lg flex justify-between items-center gap-2 border-l-4 border-purple-500">
+                            <div>
+                                <p className="font-semibold text-purple-300">
+                                    Obca flota: Najemnicy (W drodze)
+                                </p>
+                                <p className="text-sm text-gray-400">Cel: Planeta Matka</p>
+                            </div>
+                            <div className="text-lg font-mono text-yellow-300">{formatTime((scopedPirateMercenaryState.arrivalTime - Date.now()) / 1000)}</div>
+                        </div>
+                    )}
                     {allMissions.length > 0 ? (
                         allMissions.map(mission => <MissionRow key={mission.id} mission={mission} onRecall={'returnTime' in mission ? onRecallFleet : undefined} />)
                     ) : (
-                         <p className="text-gray-500 italic">Brak aktywnych misji.</p>
+                         (scopedPirateMercenaryState?.status !== PirateMercenaryStatus.INCOMING) && <p className="text-gray-500 italic">Brak aktywnych misji.</p>
                     )}
                 </div>
             </section>

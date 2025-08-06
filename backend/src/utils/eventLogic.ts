@@ -1,5 +1,3 @@
-
-
 import { GameState, SolarFlareStatus, PirateMercenaryStatus, ContrabandStatus, AncientArtifactStatus, AsteroidImpactType, BuildingType, Resources, ShipType, SpacePlagueState, ContrabandOfferType, ResearchType, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, InfoMessage, SolarFlareMessage, AsteroidImpactMessage, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, Colony, Message, PirateMercenaryState, ContrabandMessage, AncientArtifactMessage, ContrabandOffer } from '../types.js';
 import { ALL_SHIP_DATA, BUILDING_DATA, RESEARCH_DATA } from '../constants.js';
 
@@ -35,9 +33,11 @@ export const triggerSolarFlare = (gameState: GameState) => {
 export const triggerPirateMercenary = (gameState: GameState) => {
     if (gameState.scopedPirateMercenaryState && gameState.scopedPirateMercenaryState.status !== PirateMercenaryStatus.INACTIVE) return;
     
+    const arrivalMinutes = Math.floor(Math.random() * (60 - 10 + 1)) + 10; // Random between 10 and 60 minutes
+    
     gameState.scopedPirateMercenaryState = {
         status: PirateMercenaryStatus.INCOMING,
-        arrivalTime: Date.now() + 5 * 60 * 1000, // Arrives in 5 minutes
+        arrivalTime: Date.now() + arrivalMinutes * 60 * 1000,
         departureTime: 0,
         fleet: {},
         hireCost: 0,

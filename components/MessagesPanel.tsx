@@ -10,6 +10,7 @@ interface MessagesPanelProps {
     onGhostShipChoice: (choice: GhostShipChoice) => void;
     onAction: (targetCoords: string, missionType: MissionType) => void;
     gameState: GameState; // Add gameState to props
+    onShowPirateOffer: () => void;
 }
 
 type MessageCategory = 'all' | 'spy' | 'battle' | 'mission';
@@ -249,7 +250,7 @@ const EspionageEventDisplay: React.FC<{ message: EspionageEventMessage }> = ({ m
     return <p>Twoja planeta została wyszpiegowana przez flotę z koordynatów <span className="font-bold text-yellow-400">[{message.spyCoords}]</span>. Napastnik jest znany jako <span className="font-bold text-red-400">{message.spyName || 'Nieznany'}</span>.</p>
 };
 
-const PirateMessageDisplay: React.FC<{ message: PirateMessage }> = ({ message }) => {
+const PirateMessageDisplay: React.FC<{ message: PirateMessage; onShowOffer: () => void }> = ({ message, onShowOffer }) => {
     const { pirateState } = message;
     let text = '';
     switch (pirateState.status) {
@@ -257,8 +258,17 @@ const PirateMessageDisplay: React.FC<{ message: PirateMessage }> = ({ message })
             text = `Wykryto sygnaturę floty piratów-najemników. Zbliżają się do Twojego systemu.`;
             break;
         case PirateMercenaryStatus.AVAILABLE:
-            text = `Piraci-najemnicy przybyli i oferują swoje usługi. Ich oferta jest ograniczona czasowo.`;
-            break;
+            return (
+                <div>
+                    <p>Piraci-najemnicy przybyli i oferują swoje usługi. Ich oferta jest ograniczona czasowo.</p>
+                    <button 
+                        onClick={onShowOffer}
+                        className="mt-3 px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded-md text-sm font-bold transition-transform transform hover:scale-105"
+                    >
+                        Pokaż Ofertę
+                    </button>
+                </div>
+            );
         case PirateMercenaryStatus.DEPARTED:
              text = `Oferta najemników wygasła i odlecieli w poszukiwaniu innych klientów.`;
             break;
@@ -512,7 +522,7 @@ const PhalanxReportDisplay: React.FC<{ report: PhalanxReportMessage }> = ({ repo
 };
 
 
-const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => void, onGhostShipChoice: (choice: GhostShipChoice) => void, onAction: (targetCoords: string, missionType: MissionType) => void, gameState: GameState }> = ({ message, onDelete, onGhostShipChoice, onAction, gameState }) => {
+const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => void, onGhostShipChoice: (choice: GhostShipChoice) => void, onAction: (targetCoords: string, missionType: MissionType) => void, gameState: GameState, onShowPirateOffer: () => void }> = ({ message, onDelete, onGhostShipChoice, onAction, gameState, onShowPirateOffer }) => {
     const renderContent = () => {
         switch (message.type) {
             case 'info': return <p>{message.text}</p>;
@@ -520,7 +530,7 @@ const MessageContent: React.FC<{ message: Message, onDelete: (id: string) => voi
             case 'battle': return <BattleReportDisplay report={message.report} />;
             case 'merchant': return <MerchantInfoDisplay message={message} />;
             case 'espionage_event': return <EspionageEventDisplay message={message} />;
-            case 'pirate': return <PirateMessageDisplay message={message} />;
+            case 'pirate': return <PirateMessageDisplay message={message} onShowOffer={onShowPirateOffer} />;
             case 'asteroid_impact': return <AsteroidImpactDisplay message={message} />;
             case 'resource_vein': return <ResourceVeinDisplay message={message} />;
             case 'ancient_artifact': return <AncientArtifactDisplay message={message} />;
@@ -611,7 +621,7 @@ const filterMessages = (messages: Message[], category: MessageCategory): Message
     }
 };
 
-const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelete, onDeleteAll, onGhostShipChoice, onAction, gameState }) => {
+const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelete, onDeleteAll, onGhostShipChoice, onAction, gameState, onShowPirateOffer }) => {
     const [activeCategory, setActiveCategory] = useState<MessageCategory>('all');
     const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
 
@@ -694,7 +704,7 @@ const MessagesPanel: React.FC<MessagesPanelProps> = ({ messages, onRead, onDelet
                 </div>
                 <div className="w-full md:w-2/3">
                     {selectedMessage ? (
-                        <MessageContent message={selectedMessage} onDelete={onDelete} onGhostShipChoice={onGhostShipChoice} onAction={onAction} gameState={gameState} />
+                        <MessageContent message={selectedMessage} onDelete={onDelete} onGhostShipChoice={onGhostShipChoice} onAction={onAction} gameState={gameState} onShowPirateOffer={onShowPirateOffer} />
                     ) : (
                         <div className="flex items-center justify-center h-full text-gray-500">
                             <p>Wybierz wiadomość, aby ją przeczytać.</p>

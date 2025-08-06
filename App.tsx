@@ -37,7 +37,7 @@ import QueuePanel from './components/QueuePanel';
 import GalaxyPanel from './components/GalaxyPanel';
 import FleetUpgradesPanel from './components/FleetUpgradesPanel';
 import PhalanxPanel from './components/PhalanxPanel';
-import PirateMercenaryPanel from './components/PirateMercenaryPanel';
+import PirateMercenaryModal from './components/PirateMercenaryModal';
 import AncientArtifactModal from './components/AncientArtifactModal';
 import ContrabandModal from './components/ContrabandModal';
 import InfoModal from './components/InfoModal';
@@ -189,6 +189,7 @@ function App() {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [isEncyclopediaOpen, setIsEncyclopediaOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [isPirateModalOpen, setIsPirateModalOpen] = useState(false);
 
   const API_URL = 'https://cosmic-lord-1skk.onrender.com';
 
@@ -257,6 +258,12 @@ function App() {
     }
   }, [gameState, activeLocationId]);
   
+    useEffect(() => {
+        if (gameState?.scopedPirateMercenaryState?.status === PirateMercenaryStatus.AVAILABLE) {
+            setIsPirateModalOpen(true);
+        }
+    }, [gameState?.scopedPirateMercenaryState?.status]);
+
   const performAction = async (type: string, payload: any) => {
       if (!API_URL || !authToken) return;
       try {
@@ -363,6 +370,11 @@ function App() {
       if (window.confirm('Czy na pewno chcesz zresetować grę? Cały postęp zostanie utracony!')) {
           performAction('RESET_GAME', {});
       }
+  }, []);
+
+  const handlePirateDeal = useCallback((accepted: boolean) => {
+      performAction('PIRATE_MERCENARY_DEAL', { accepted });
+      setIsPirateModalOpen(false);
   }, []);
 
   const handleDeleteAccount = useCallback(() => {
@@ -577,6 +589,7 @@ function App() {
                                 setActiveView('fleet');
                             }
                         }}
+                        onShowPirateOffer={() => setIsPirateModalOpen(true)}
                     />
                 )}
                 {activeView === 'merchant' && merchantState.status !== MerchantStatus.INACTIVE && (
@@ -709,6 +722,14 @@ function App() {
                     setIsInventoryOpen(false);
                 }}
                 onClose={() => setIsInventoryOpen(false)}
+            />
+        )}
+        {isPirateModalOpen && scopedPirateMercenaryState?.status === PirateMercenaryStatus.AVAILABLE && (
+            <PirateMercenaryModal
+                pirateState={scopedPirateMercenaryState}
+                credits={credits}
+                onDeal={handlePirateDeal}
+                onClose={() => setIsPirateModalOpen(false)}
             />
         )}
     </div>
