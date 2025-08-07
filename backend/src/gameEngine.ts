@@ -252,7 +252,7 @@ const updateMerchantState = (worldState: WorldState): WorldState => {
         if (Math.random() < 0.5) {
             const availableShips = [ShipType.LIGHT_FIGHTER, ShipType.MEDIUM_FIGHTER, ShipType.HEAVY_FIGHTER, ShipType.CRUISER, ShipType.CARGO_SHIP];
             const shipToOffer = availableShips[Math.floor(Math.random() * availableShips.length)];
-            const baseCost = (SHIPYARD_DATA[shipToOffer].cost(1).metal + SHIPYARD_DATA[shipToOffer].cost(1).crystal) * 1.5;
+            const baseCost = (ALL_SHIP_DATA[shipToOffer].cost(1).metal + ALL_SHIP_DATA[shipToOffer].cost(1).crystal) * 1.5;
             merchantState.shipOffers = {
                 [shipToOffer]: {
                     price: Math.floor(baseCost),
