@@ -759,7 +759,7 @@ export interface PlayerState {
     lastSaveTime: number;
     nextBlackMarketIncome: number;
     lastBlackMarketIncomeCheck: number;
-    lastBonusClaimTime: number;
+    lastBonusGrantTime: number;
 
     // Player-scoped test events
     scopedPirateMercenaryState?: PirateMercenaryState;

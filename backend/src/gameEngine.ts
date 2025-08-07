@@ -1,3 +1,4 @@
+
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
     Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ContrabandState, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType, MerchantStatus
@@ -175,9 +176,8 @@ export const processRandomEvents = (gameState: GameState): GameState => {
 export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, worldState: WorldState): PlayerState => {
     const now = Date.now();
     const twentyFourHours = 24 * 60 * 60 * 1000;
-    const hasUnclaimedBonus = playerState.inventory.boosts.some(b => b.type === BoostType.DAILY_BONUS_CRATE);
 
-    if (now - playerState.lastBonusClaimTime > twentyFourHours && !hasUnclaimedBonus) {
+    if (now - playerState.lastBonusGrantTime > twentyFourHours) {
         const rewards = {
             metal: Math.floor(Math.random() * 1001) + 1000,
             crystal: Math.floor(Math.random() * 501) + 500,
@@ -193,6 +193,7 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
         };
 
         playerState.inventory.boosts.push(bonusCrate);
+        playerState.lastBonusGrantTime = now; // Update grant time immediately
         
         addMessage(playerState, {
             type: 'info',
@@ -408,7 +409,6 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                 gameState.credits += boost.rewards.credits || 0;
                 
                 gameState.inventory.boosts.splice(boostIndex, 1);
-                gameState.lastBonusClaimTime = Date.now();
                 return { message: "Odebrano nagrody ze skrzyni!" };
             }
 

@@ -1,3 +1,4 @@
+
 import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, PlayerState, InfoMessage } from './types';
 
 export const TICK_INTERVAL = 1000; // ms
@@ -1049,5 +1050,5 @@ export const getInitialPlayerState = (username: string, homeCoords: string): Pla
   lastSaveTime: Date.now(),
   nextBlackMarketIncome: 0,
   lastBlackMarketIncomeCheck: Date.now(),
-  lastBonusClaimTime: 0,
+  lastBonusGrantTime: 0,
 });

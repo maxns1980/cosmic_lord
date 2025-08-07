@@ -1,3 +1,4 @@
+
 import { BuildingType, ResearchType, ShipType, DefenseType, Resources, BuildingLevels, ResearchLevels, Fleet, Defenses, BuildingCategory, MerchantState, MerchantStatus, NPCState, NPCFleetMission, ShipLevels, DebrisField, PirateMercenaryState, PirateMercenaryStatus, ResourceVeinBonus, AncientArtifactState, AncientArtifactStatus, SpacePlagueState, CombatStats, Colony, Inventory, ActiveBoosts, NPCPersonality, SolarFlareState, SolarFlareStatus, ContrabandState, ContrabandStatus, Moon, FleetTemplate, GhostShipState, GhostShipStatus, GalacticGoldRushState, StellarAuroraState, Boost, BoostType, GameState, PlanetSpecialization, PlayerState, WorldState, InfoMessage, NPCStates } from './types.js';
 import { calculatePointsForNpc } from './utils/npcLogic.js';
 
@@ -1057,7 +1058,7 @@ export const getInitialPlayerState = (username: string, homeCoords: string): Pla
   lastSaveTime: Date.now(),
   nextBlackMarketIncome: 0,
   lastBlackMarketIncomeCheck: Date.now(),
-  lastBonusClaimTime: 0,
+  lastBonusGrantTime: 0,
   lastPlayerEventCheckTime: Date.now(),
   scopedPirateMercenaryState: INITIAL_PIRATE_MERCENARY_STATE,
   scopedResourceVeinBonus: INITIAL_RESOURCE_VEIN_BONUS,

@@ -318,7 +318,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         }
     }
     worldState = updatedWorldState;
-
+    
     playerState = updatePlayerStateForOfflineProgress(playerState, worldState);
     
     // Combine states before event processing

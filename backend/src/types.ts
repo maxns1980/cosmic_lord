@@ -1,3 +1,4 @@
+
 import { Json } from './database.types.js';
 
 export type View = 'overview' | 'buildings' | 'research' | 'shipyard' | 'defense' | 'fleet' | 'messages' | 'merchant' | 'galaxy' | 'fleet_upgrades' | 'phalanx' | 'alliance';
@@ -768,7 +769,7 @@ export interface PlayerState {
     lastSaveTime: number;
     nextBlackMarketIncome: number;
     lastBlackMarketIncomeCheck: number;
-    lastBonusClaimTime: number;
+    lastBonusGrantTime: number;
     lastPlayerEventCheckTime: number;
 
     // Player-scoped events

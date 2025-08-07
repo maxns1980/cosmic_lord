@@ -431,7 +431,7 @@ function App() {
   
   const { 
       resources, research, shipLevels, fleetMissions, npcFleetMissions, messages, credits, merchantState, npcStates, debrisFields, 
-      colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusClaimTime, favoritePlanets,
+      colonies, moons, inventory, activeBoosts, fleetTemplates, alliance, nextBlackMarketIncome, lastBonusGrantTime, favoritePlanets,
       scopedPirateMercenaryState, scopedSolarFlareState, scopedContrabandState, scopedGhostShipState, scopedAncientArtifactState, scopedSpacePlagueState,
       scopedResourceVeinBonus, scopedStellarAuroraState
   } = gameState;

@@ -1,12 +1,12 @@
 
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { GameState, PlayerState, WorldState, Json } from './src/types';
-import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine';
-import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants';
-import { supabase } from './src/config/db';
-import { calculatePlayerPoints } from './src/utils/pointsLogic';
-import { calculatePointsForNpc } from './src/utils/npcLogic';
+import { GameState, PlayerState, WorldState, Json } from './src/types.js';
+import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
+import { getInitialPlayerState, getInitialWorldState, getInitialNpcPopulation, TOTAL_NPC_COUNT } from './src/constants.js';
+import { supabase } from './src/config/db.js';
+import { calculatePlayerPoints } from './src/utils/pointsLogic.js';
+import { calculatePointsForNpc } from './src/utils/npcLogic.js';
 
 declare global {
     namespace Express {
