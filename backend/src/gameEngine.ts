@@ -1,10 +1,11 @@
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ContrabandState, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ContrabandState, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType, MerchantStatus
 } from './types.js';
 import { 
     ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
-    RANDOM_EVENT_CHECK_INTERVAL, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE
+    RANDOM_EVENT_CHECK_INTERVAL, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE,
+    MERCHANT_CHECK_INTERVAL, MERCHANT_SPAWN_CHANCE, SHIPYARD_DATA
 } from './constants.js';
 import { calculateProductions } from './utils/gameLogic.js';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
@@ -231,46 +232,94 @@ export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, wo
     return playerState;
 };
 
+const updateMerchantState = (worldState: WorldState): WorldState => {
+    const now = Date.now();
+    const { merchantState } = worldState;
+
+    // Check 1: If merchant is incoming and has arrived
+    if (merchantState.status === MerchantStatus.INCOMING && now >= merchantState.arrivalTime) {
+        merchantState.status = MerchantStatus.ACTIVE;
+        merchantState.departureTime = now + (1 * 60 * 60 * 1000); // Stays for 1 hour
+
+        // Generate new rates and offers
+        merchantState.rates = {
+            metal: { buy: 2 + Math.random(), sell: 1 + Math.random() * 0.5 },
+            crystal: { buy: 4 + Math.random() * 2, sell: 2 + Math.random() },
+            deuterium: { buy: 6 + Math.random() * 3, sell: 3 + Math.random() * 1.5 },
+        };
+        
+        // Chance to have a ship offer
+        if (Math.random() < 0.5) {
+            const availableShips = [ShipType.LIGHT_FIGHTER, ShipType.MEDIUM_FIGHTER, ShipType.HEAVY_FIGHTER, ShipType.CRUISER, ShipType.CARGO_SHIP];
+            const shipToOffer = availableShips[Math.floor(Math.random() * availableShips.length)];
+            const baseCost = (SHIPYARD_DATA[shipToOffer].cost(1).metal + SHIPYARD_DATA[shipToOffer].cost(1).crystal) * 1.5;
+            merchantState.shipOffers = {
+                [shipToOffer]: {
+                    price: Math.floor(baseCost),
+                    stock: Math.floor(Math.random() * 5) + 1,
+                }
+            };
+        } else {
+             merchantState.shipOffers = {};
+        }
+    }
+    // Check 2: If merchant is active and should depart
+    else if (merchantState.status === MerchantStatus.ACTIVE && now >= merchantState.departureTime) {
+        merchantState.status = MerchantStatus.INACTIVE;
+    }
+    // Check 3: If merchant is inactive, check if it's time for a potential spawn
+    else if (merchantState.status === MerchantStatus.INACTIVE && now >= worldState.nextMerchantCheckTime) {
+        worldState.nextMerchantCheckTime = now + MERCHANT_CHECK_INTERVAL;
+        
+        if (Math.random() < MERCHANT_SPAWN_CHANCE) {
+            merchantState.status = MerchantStatus.INCOMING;
+            merchantState.arrivalTime = now + (3 * 60 * 60 * 1000); // Arrives in 3 hours
+            merchantState.shipOffers = {};
+        }
+    }
+
+    return worldState;
+}
+
 export const updateWorldState = (worldState: WorldState): { updatedWorldState: WorldState, newPlayerMessages: Record<string, Message[]> } => {
     const now = Date.now();
     const lastCheck = worldState.lastGlobalNpcCheck || (now - 60 * 1000);
     const deltaSeconds = (now - lastCheck) / 1000;
 
-    if (deltaSeconds < 60) {
-        return { updatedWorldState: worldState, newPlayerMessages: {} };
-    }
-    
-    const updatedNpcStates = { ...worldState.npcStates };
-    const newNpcMissions = [...worldState.npcFleetMissions];
-    const updatedPublicPlayerData = { ...worldState.publicPlayerData };
+    let updatedWorldState = { ...worldState };
 
-    for (const coords in updatedNpcStates) {
-        const npc = updatedNpcStates[coords];
-        const isThreatened = false;
-        
-        const { updatedNpc, mission } = evolveNpc(npc, deltaSeconds, coords, isThreatened);
-        updatedNpcStates[coords] = updatedNpc;
+    if (deltaSeconds >= 60) {
+        const updatedNpcStates = { ...worldState.npcStates };
+        const newNpcMissions = [...worldState.npcFleetMissions];
+        const updatedPublicPlayerData = { ...worldState.publicPlayerData };
 
-        const npcPoints = calculatePointsForNpc(updatedNpc);
-        updatedPublicPlayerData[updatedNpc.name] = {
-            points: npcPoints,
-            lastActivity: updatedNpc.lastUpdateTime
-        };
-        
-        if (mission) {
-            newNpcMissions.push(mission);
+        for (const coords in updatedNpcStates) {
+            const npc = updatedNpcStates[coords];
+            const isThreatened = false;
+            
+            const { updatedNpc, mission } = evolveNpc(npc, deltaSeconds, coords, isThreatened);
+            updatedNpcStates[coords] = updatedNpc;
+
+            const npcPoints = calculatePointsForNpc(updatedNpc);
+            updatedPublicPlayerData[updatedNpc.name] = {
+                points: npcPoints,
+                lastActivity: updatedNpc.lastUpdateTime
+            };
+            
+            if (mission) {
+                newNpcMissions.push(mission);
+            }
         }
-    }
-    
-    const activeNpcMissions = newNpcMissions.filter(mission => now < mission.arrivalTime);
+        
+        const activeNpcMissions = newNpcMissions.filter(mission => now < mission.arrivalTime);
 
-    const updatedWorldState: WorldState = {
-        ...worldState,
-        npcStates: updatedNpcStates,
-        npcFleetMissions: activeNpcMissions,
-        publicPlayerData: updatedPublicPlayerData,
-        lastGlobalNpcCheck: now,
-    };
+        updatedWorldState.npcStates = updatedNpcStates;
+        updatedWorldState.npcFleetMissions = activeNpcMissions;
+        updatedWorldState.publicPlayerData = updatedPublicPlayerData;
+        updatedWorldState.lastGlobalNpcCheck = now;
+    }
+
+    updatedWorldState = updateMerchantState(updatedWorldState);
 
     return { updatedWorldState, newPlayerMessages: {} };
 }

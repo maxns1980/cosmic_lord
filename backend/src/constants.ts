@@ -14,8 +14,8 @@ export const COLONY_INCOME_BONUS_PER_HOUR: Omit<Resources, 'energy'> = {
     deuterium: 100,
 };
 
-export const MERCHANT_CHECK_INTERVAL = (6 * 60 + 15) * 60 * 1000; // 6 hours 15 minutes
-export const MERCHANT_SPAWN_CHANCE = 0.2; // 20%
+export const MERCHANT_CHECK_INTERVAL = (5 * 60 * 60 * 1000); // 5 hours
+export const MERCHANT_SPAWN_CHANCE = 0.25; // 25%
 export const PHALANX_SCAN_COST = 5000;
 
 // --- NPC Management ---
