@@ -331,29 +331,31 @@ function App() {
     performAction('DELETE_ALL_MESSAGES', {});
   }, []);
 
-  const handleSendFleet = useCallback((missionFleet: Fleet, targetCoords: string, missionType: MissionType, durationSeconds: number, fuelCost: number) => {
-    performAction('SEND_FLEET', { missionFleet, targetCoords, missionType, durationSeconds, fuelCost, activeLocationId });
+  const handleSendFleet = useCallback((missionFleet: Fleet, targetCoords: string, missionType: MissionType, durationSeconds: number, fuelCost: number, explorationDurationSeconds?: number) => {
+    performAction('SEND_FLEET', { missionFleet, targetCoords, missionType, durationSeconds, fuelCost, explorationDurationSeconds, activeLocationId });
   }, [activeLocationId]);
-
+  
   const handleSendSpyMission = useCallback((probeCount: number, targetCoords: string, durationSeconds: number, fuelCost: number) => {
-    performAction('SEND_SPY', { probeCount, targetCoords, durationSeconds, fuelCost, activeLocationId });
+    const missionFleet = { [ShipType.SPY_PROBE]: probeCount };
+    handleSendFleet(missionFleet, targetCoords, MissionType.SPY, durationSeconds, fuelCost);
     setSpyModalTarget(null);
-  }, [activeLocationId]);
-
+  }, [activeLocationId, handleSendFleet]);
+  
   const handleSendExpeditionMission = useCallback((missionFleet: Fleet, targetCoords: string, durationSeconds: number, explorationDurationSeconds: number, fuelCost: number) => {
-     performAction('SEND_EXPEDITION', { missionFleet, targetCoords, durationSeconds, explorationDurationSeconds, fuelCost, activeLocationId });
-     setExpeditionModalTargetCoords(null);
-  }, [activeLocationId]);
-
+    handleSendFleet(missionFleet, targetCoords, MissionType.EXPEDITION, durationSeconds, fuelCost, explorationDurationSeconds);
+    setExpeditionModalTargetCoords(null);
+  }, [activeLocationId, handleSendFleet]);
+  
   const handleSendExploreMission = useCallback((missionFleet: Fleet, targetCoords: string, durationSeconds: number, fuelCost: number) => {
-      performAction('SEND_EXPLORE', { missionFleet, targetCoords, durationSeconds, fuelCost, activeLocationId });
-      setExploreModalTargetCoords(null);
-  }, [activeLocationId]);
-
+    handleSendFleet(missionFleet, targetCoords, MissionType.EXPLORE, durationSeconds, fuelCost);
+    setExploreModalTargetCoords(null);
+  }, [activeLocationId, handleSendFleet]);
+  
   const handleSendHarvestMission = useCallback((recyclerCount: number, targetCoords: string, durationSeconds: number, fuelCost: number) => {
-      performAction('SEND_HARVEST', { recyclerCount, targetCoords, durationSeconds, fuelCost, activeLocationId });
-      setHarvestModalTarget(null);
-  }, [activeLocationId]);
+    const missionFleet = { [ShipType.RECYCLER]: recyclerCount };
+    handleSendFleet(missionFleet, targetCoords, MissionType.HARVEST, durationSeconds, fuelCost);
+    setHarvestModalTarget(null);
+  }, [activeLocationId, handleSendFleet]);
 
   const handlePhalanxScan = useCallback((sourceMoonId: string, targetCoords: string) => {
     performAction('PHALANX_SCAN', { sourceMoonId, targetCoords });

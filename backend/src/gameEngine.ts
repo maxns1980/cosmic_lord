@@ -1,19 +1,17 @@
-
 import {
     GameState, QueueItem, BuildingType, ResearchType, ShipType, DefenseType, FleetMission, MissionType, Message, GameObject, QueueItemType, AncientArtifactStatus, AncientArtifactChoice, AncientArtifactMessage,
-    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ContrabandState, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType, MerchantStatus
+    Alliance, WorldState, PlayerState, Resources, Boost, BoostType, InfoMessage, DebrisField, BattleReport, BattleMessage, Colony, PlanetSpecialization, Moon, MoonCreationMessage, FleetTemplate, EspionageEventMessage, PhalanxReportMessage, DetectedFleetMission, PirateMercenaryState, PirateMercenaryStatus, NPCFleetMission, GhostShipChoice, GhostShipStatus, GhostShipOutcomeMessage, SolarFlareStatus, SolarFlareMessage, ContrabandStatus, ContrabandState, ResourceVeinMessage, SpacePlagueMessage, GhostShipDiscoveryMessage, GalacticGoldRushMessage, StellarAuroraMessage, GalacticGoldRushState, StellarAuroraState, SolarFlareState, ResourceVeinBonus, SpacePlagueState, PirateMessage, ContrabandMessage, ContrabandOfferType, MerchantStatus, CombatParty, SpyReport, SpyMessage, ColonizationMessage
 } from './types.js';
 import { 
     ALL_GAME_OBJECTS, getInitialPlayerState, BUILDING_DATA, RESEARCH_DATA, ALL_SHIP_DATA, DEFENSE_DATA, SHIP_UPGRADE_DATA, HOMEWORLD_MAX_FIELDS_BASE, TERRAFORMER_FIELDS_BONUS, PHALANX_SCAN_COST,
     RANDOM_EVENT_CHECK_INTERVAL, SOLAR_FLARE_CHANCE, PIRATE_MERCENARY_CHANCE, CONTRABAND_CHANCE, ANCIENT_ARTIFACT_CHANCE, ASTEROID_IMPACT_CHANCE, RESOURCE_VEIN_CHANCE, SPACE_PLAGUE_CHANCE, GHOST_SHIP_CHANCE, GALACTIC_GOLD_RUSH_CHANCE, STELLAR_AURORA_CHANCE,
     MERCHANT_CHECK_INTERVAL, MERCHANT_SPAWN_CHANCE, SHIPYARD_DATA
 } from './constants.js';
-import { calculateProductions } from './utils/gameLogic.js';
+import { calculateProductions, calculateMaxResources } from './utils/gameLogic.js';
 import { triggerAncientArtifact, triggerAsteroidImpact, triggerContraband, triggerGalacticGoldRush, triggerGhostShip, triggerPirateMercenary, triggerResourceVein, triggerSolarFlare, triggerSpacePlague, triggerStellarAurora } from './utils/eventLogic.js';
 import { TestableEventType } from './types.js';
 import { calculateCombat } from './utils/combatLogic.js';
 import { evolveNpc, regenerateNpcFromSleeper, calculatePointsForNpc } from './utils/npcLogic.js';
-import { calculateMaxResources } from './utils/gameLogic.js';
 
 const addMessage = <T extends Message>(playerState: PlayerState, message: Omit<T, 'id' | 'timestamp' | 'isRead'>) => {
     playerState.messages.unshift({
@@ -59,29 +57,6 @@ const processQueues = (playerState: PlayerState, now: number) => {
             }
         }
     }
-};
-
-const processFleetMissions = (playerState: PlayerState, now: number) => {
-    const missionsToRemove: string[] = [];
-    for (const mission of playerState.fleetMissions) {
-        if (!mission.processedArrival && now >= mission.arrivalTime) {
-            mission.processedArrival = true;
-            // Handle different mission arrivals
-        }
-        if (mission.processedArrival && now >= mission.returnTime) {
-            const sourceLocation = playerState.colonies[mission.sourceLocationId] || playerState.moons[mission.sourceLocationId];
-            if (sourceLocation) {
-                for (const shipType in mission.fleet) {
-                    sourceLocation.fleet[shipType as ShipType] = (sourceLocation.fleet[shipType as ShipType] || 0) + (mission.fleet[shipType as ShipType] || 0);
-                }
-            }
-            playerState.resources.metal += mission.loot.metal || 0;
-            playerState.resources.crystal += mission.loot.crystal || 0;
-            playerState.resources.deuterium += mission.loot.deuterium || 0;
-            missionsToRemove.push(mission.id);
-        }
-    }
-    playerState.fleetMissions = playerState.fleetMissions.filter((m: FleetMission) => !missionsToRemove.includes(m.id));
 };
 
 export const processRandomEvents = (gameState: GameState): GameState => {
@@ -173,83 +148,149 @@ export const processRandomEvents = (gameState: GameState): GameState => {
 };
 
 
-export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, worldState: WorldState): PlayerState => {
+export const updatePlayerStateForOfflineProgress = (playerState: PlayerState, worldState: WorldState): GameState => {
     const now = Date.now();
-    const twentyFourHours = 24 * 60 * 60 * 1000;
-
-    if (now - playerState.lastBonusGrantTime > twentyFourHours) {
-        const rewards = {
-            metal: Math.floor(Math.random() * 1001) + 1000,
-            crystal: Math.floor(Math.random() * 501) + 500,
-            credits: Math.floor(Math.random() * 401) + 100,
-        };
-
-        const bonusCrate: Boost = {
-            id: `daily-bonus-${now}`,
-            type: BoostType.DAILY_BONUS_CRATE,
-            level: 1,
-            duration: 0,
-            rewards,
-        };
-
-        playerState.inventory.boosts.push(bonusCrate);
-        playerState.lastBonusGrantTime = now; // Update grant time immediately
-        
-        addMessage(playerState, {
-            type: 'info',
-            subject: 'Otrzymano Dzienną Skrzynię!',
-            text: 'Twoja codzienna nagroda za lojalność została dodana do Twojego inwentarza. Aktywuj ją, kiedy zechcesz!'
-        } as any);
-    }
-
     const lastSave = playerState.lastSaveTime || now;
     const deltaSeconds = (now - lastSave) / 1000;
 
-    if (deltaSeconds <= 1) {
-        playerState.lastSaveTime = now;
-        return playerState;
+    let gameState: GameState = { ...playerState, ...worldState };
+
+    // 1. Update player resources and queues
+    if (deltaSeconds > 1) {
+        const productions = calculateProductions(gameState);
+        const perColonyMaxRes = calculateMaxResources(playerState.colonies);
+        const totalMaxResources: Resources = Object.values(perColonyMaxRes).reduce((acc: Resources, res: Resources) => {
+            acc.metal += res.metal;
+            acc.crystal += res.crystal;
+            acc.deuterium += res.deuterium;
+            acc.energy += res.energy;
+            return acc;
+        }, { metal: 0, crystal: 0, deuterium: 0, energy: 0 });
+
+        gameState.resources.metal = Math.min(totalMaxResources.metal, gameState.resources.metal + (productions.metal / 3600) * deltaSeconds);
+        gameState.resources.crystal = Math.min(totalMaxResources.crystal, gameState.resources.crystal + (productions.crystal / 3600) * deltaSeconds);
+        gameState.resources.deuterium = Math.min(totalMaxResources.deuterium, gameState.resources.deuterium + (productions.deuterium / 3600) * deltaSeconds);
+
+        processQueues(gameState, now);
     }
     
-    const tempGameState = { ...playerState, ...worldState } as GameState;
-    const productions = calculateProductions(tempGameState);
-    
-    const perColonyMaxRes = calculateMaxResources(playerState.colonies);
-    const totalMaxResources: Resources = Object.values(perColonyMaxRes).reduce((acc: Resources, res: Resources) => {
-        acc.metal += res.metal;
-        acc.crystal += res.crystal;
-        acc.deuterium += res.deuterium;
-        acc.energy += res.energy;
-        return acc;
-    }, { metal: 0, crystal: 0, deuterium: 0, energy: 0 });
+    // 2. Process fleet missions
+    const missionsToRemove: string[] = [];
+    for (const mission of gameState.fleetMissions) {
+        // Arrival Logic
+        if (!mission.processedArrival && now >= mission.arrivalTime) {
+            mission.processedArrival = true;
+            const targetNpc = gameState.npcStates[mission.targetCoords];
 
-    playerState.resources.metal = Math.min(totalMaxResources.metal, playerState.resources.metal + (productions.metal / 3600) * deltaSeconds);
-    playerState.resources.crystal = Math.min(totalMaxResources.crystal, playerState.resources.crystal + (productions.crystal / 3600) * deltaSeconds);
-    playerState.resources.deuterium = Math.min(totalMaxResources.deuterium, playerState.resources.deuterium + (productions.deuterium / 3600) * deltaSeconds);
+            switch (mission.missionType) {
+                case MissionType.ATTACK: {
+                    if (targetNpc) {
+                        const attackerParty: CombatParty = {
+                            fleet: mission.fleet,
+                            research: gameState.research,
+                            name: mission.ownerId,
+                            shipLevels: gameState.shipLevels,
+                        };
+                        const defenderParty: CombatParty = {
+                            fleet: targetNpc.fleet,
+                            defenses: targetNpc.defenses,
+                            research: targetNpc.research,
+                            name: targetNpc.name,
+                        };
+                        const combatResult = calculateCombat(attackerParty, defenderParty, targetNpc.resources, targetNpc.buildings);
+                        
+                        targetNpc.fleet = combatResult.finalDefenderFleet;
+                        targetNpc.defenses = combatResult.finalDefenderDefenses;
+                        targetNpc.resources.metal -= combatResult.loot.metal || 0;
+                        targetNpc.resources.crystal -= combatResult.loot.crystal || 0;
+                        targetNpc.resources.deuterium -= combatResult.loot.deuterium || 0;
+                        
+                        mission.loot = combatResult.loot;
+                        
+                        if ((combatResult.debrisCreated.metal || 0) > 0 || (combatResult.debrisCreated.crystal || 0) > 0) {
+                            const existingDebris = gameState.debrisFields[mission.targetCoords] || {};
+                            existingDebris.metal = (existingDebris.metal || 0) + (combatResult.debrisCreated.metal || 0);
+                            existingDebris.crystal = (existingDebris.crystal || 0) + (combatResult.debrisCreated.crystal || 0);
+                            gameState.debrisFields[mission.targetCoords] = existingDebris;
+                        }
 
-    processQueues(playerState, now);
-    processFleetMissions(playerState, now);
+                        // Update mission fleet with survivors
+                        const survivingFleet = { ...mission.fleet };
+                        for (const shipId in combatResult.attackerLosses) {
+                            survivingFleet[shipId as ShipType] = (survivingFleet[shipId as ShipType] || 0) - (combatResult.attackerLosses[shipId as ShipType] || 0);
+                        }
+                        mission.fleet = survivingFleet;
 
-    playerState.lastSaveTime = now;
-    return playerState;
+                        const battleReport: BattleReport = {
+                            id: `br-${now}-${Math.random()}`,
+                            targetCoords: mission.targetCoords,
+                            attackerName: mission.ownerId,
+                            defenderName: targetNpc.name,
+                            isPlayerAttacker: true,
+                            winner: combatResult.winner,
+                            attackerFleet: attackerParty.fleet,
+                            defenderFleet: defenderParty.fleet,
+                            defenderDefenses: defenderParty.defenses || {},
+                            attackerLosses: combatResult.attackerLosses,
+                            defenderLosses: combatResult.defenderLosses,
+                            defenderDefensesLosses: combatResult.defenderDefensesLosses,
+                            loot: combatResult.loot,
+                            debrisCreated: combatResult.debrisCreated,
+                            rounds: combatResult.rounds,
+                        };
+                        
+                        addMessage<BattleMessage>(gameState, {
+                            type: 'battle',
+                            subject: `Wynik bitwy o [${mission.targetCoords}]`,
+                            report: battleReport,
+                        });
+                    }
+                    break;
+                }
+                 // Implement other mission arrivals...
+            }
+        }
+        
+        // Return Logic
+        if (mission.processedArrival && now >= mission.returnTime) {
+            const sourceLocation = gameState.colonies[mission.sourceLocationId] || gameState.moons[mission.sourceLocationId];
+            if (sourceLocation) {
+                for (const shipType in mission.fleet) {
+                    const count = mission.fleet[shipType as ShipType] || 0;
+                    if (count > 0) {
+                        sourceLocation.fleet[shipType as ShipType] = (sourceLocation.fleet[shipType as ShipType] || 0) + count;
+                    }
+                }
+            }
+            
+            gameState.resources.metal += mission.loot.metal || 0;
+            gameState.resources.crystal += mission.loot.crystal || 0;
+            gameState.resources.deuterium += mission.loot.deuterium || 0;
+            
+            missionsToRemove.push(mission.id);
+            addMessage<InfoMessage>(gameState, { type: 'info', subject: `Powrót floty z [${mission.targetCoords}]`, text: 'Twoja flota powróciła z misji.' });
+        }
+    }
+    gameState.fleetMissions = gameState.fleetMissions.filter((m: FleetMission) => !missionsToRemove.includes(m.id));
+
+    gameState.lastSaveTime = now;
+    return gameState;
 };
 
 const updateMerchantState = (worldState: WorldState): WorldState => {
     const now = Date.now();
     const { merchantState } = worldState;
 
-    // Check 1: If merchant is incoming and has arrived
     if (merchantState.status === MerchantStatus.INCOMING && now >= merchantState.arrivalTime) {
         merchantState.status = MerchantStatus.ACTIVE;
-        merchantState.departureTime = now + (1 * 60 * 60 * 1000); // Stays for 1 hour
+        merchantState.departureTime = now + (1 * 60 * 60 * 1000); 
 
-        // Generate new rates and offers
         merchantState.rates = {
             metal: { buy: 2 + Math.random(), sell: 1 + Math.random() * 0.5 },
             crystal: { buy: 4 + Math.random() * 2, sell: 2 + Math.random() },
             deuterium: { buy: 6 + Math.random() * 3, sell: 3 + Math.random() * 1.5 },
         };
         
-        // Chance to have a ship offer
         if (Math.random() < 0.5) {
             const availableShips = [ShipType.LIGHT_FIGHTER, ShipType.MEDIUM_FIGHTER, ShipType.HEAVY_FIGHTER, ShipType.CRUISER, ShipType.CARGO_SHIP];
             const shipToOffer = availableShips[Math.floor(Math.random() * availableShips.length)];
@@ -264,17 +305,15 @@ const updateMerchantState = (worldState: WorldState): WorldState => {
              merchantState.shipOffers = {};
         }
     }
-    // Check 2: If merchant is active and should depart
     else if (merchantState.status === MerchantStatus.ACTIVE && now >= merchantState.departureTime) {
         merchantState.status = MerchantStatus.INACTIVE;
     }
-    // Check 3: If merchant is inactive, check if it's time for a potential spawn
     else if (merchantState.status === MerchantStatus.INACTIVE && now >= worldState.nextMerchantCheckTime) {
         worldState.nextMerchantCheckTime = now + MERCHANT_CHECK_INTERVAL;
         
         if (Math.random() < MERCHANT_SPAWN_CHANCE) {
             merchantState.status = MerchantStatus.INCOMING;
-            merchantState.arrivalTime = now + (3 * 60 * 60 * 1000); // Arrives in 3 hours
+            merchantState.arrivalTime = now + (3 * 60 * 60 * 1000);
             merchantState.shipOffers = {};
         }
     }
@@ -328,6 +367,69 @@ export const updateWorldState = (worldState: WorldState): { updatedWorldState: W
 
 export const handleAction = (gameState: GameState, type: string, payload: any, userId?: string): { message?: string, error?: string } => {
     switch (type) {
+        case 'SEND_FLEET': {
+            const { missionFleet, targetCoords, missionType, durationSeconds, fuelCost, activeLocationId, explorationDurationSeconds } = payload;
+        
+            if (!userId) {
+                return { error: 'Brak autoryzacji.' };
+            }
+        
+            if (!missionFleet || !targetCoords || !missionType || !activeLocationId || typeof durationSeconds === 'undefined' || typeof fuelCost === 'undefined') {
+                return { error: 'Niekompletne dane misji.' };
+            }
+        
+            const sourceLocation = gameState.colonies[activeLocationId] || gameState.moons[activeLocationId];
+            if (!sourceLocation) {
+                return { error: 'Nie znaleziono planety startowej.' };
+            }
+            
+            const homeworld = Object.values(gameState.colonies).sort((a,b) => a.creationTime - b.creationTime)[0];
+            const maxFleetSlots = 1 + (gameState.research[ResearchType.COMPUTER_TECHNOLOGY] || 0) + (homeworld?.buildings[BuildingType.COMMAND_CENTER] || 0);
+            if (gameState.fleetMissions.length >= maxFleetSlots) {
+                return { error: 'Wszystkie sloty flot są zajęte.' };
+            }
+        
+            for (const shipId in missionFleet) {
+                const requiredCount = missionFleet[shipId as ShipType] || 0;
+                const availableCount = sourceLocation.fleet[shipId as ShipType] || 0;
+                if (requiredCount > availableCount) {
+                    return { error: `Niewystarczająca liczba statków: ${ALL_SHIP_DATA[shipId as ShipType].name}` };
+                }
+            }
+            if (gameState.resources.deuterium < fuelCost) {
+                return { error: 'Niewystarczająca ilość deuteru.' };
+            }
+        
+            for (const shipId in missionFleet) {
+                const requiredCount = missionFleet[shipId as ShipType] || 0;
+                sourceLocation.fleet[shipId as ShipType] = (sourceLocation.fleet[shipId as ShipType] || 0) - requiredCount;
+            }
+            gameState.resources.deuterium -= fuelCost;
+        
+            const now = Date.now();
+            const arrivalTime = now + durationSeconds * 1000;
+            const newMission: FleetMission = {
+                id: `fleet-${now}-${Math.random()}`,
+                ownerId: userId,
+                sourceLocationId: activeLocationId,
+                fleet: missionFleet,
+                missionType,
+                targetCoords,
+                startTime: now,
+                arrivalTime,
+                returnTime: arrivalTime + durationSeconds * 1000,
+                processedArrival: false,
+                loot: {},
+                recalled: false,
+            };
+        
+            if (missionType === MissionType.EXPEDITION && explorationDurationSeconds) {
+                newMission.explorationEndTime = arrivalTime + (explorationDurationSeconds * 1000);
+            }
+            
+            gameState.fleetMissions.push(newMission);
+            return { message: 'Flota wysłana pomyślnie!' };
+        }
         case 'DELETE_ACCOUNT': {
             if (!userId) return { error: 'Brak autoryzacji.' };
             
@@ -347,49 +449,17 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
             let message = 'Lokalne wydarzenie testowe uruchomione!';
 
             switch (eventType as TestableEventType) {
-                case TestableEventType.SOLAR_FLARE: {
-                    triggerSolarFlare(gameState);
-                    break;
-                }
-                case TestableEventType.PIRATE_MERCENARY: {
-                    triggerPirateMercenary(gameState);
-                    break;
-                }
-                case TestableEventType.CONTRABAND: {
-                    triggerContraband(gameState);
-                    break;
-                }
-                case TestableEventType.ANCIENT_ARTIFACT: {
-                    triggerAncientArtifact(gameState);
-                    break;
-                }
-                case TestableEventType.ASTEROID_IMPACT: {
-                    triggerAsteroidImpact(gameState);
-                    message = "Lokalne wydarzenie testowe 'Uderzenie Asteroidy' uruchomione!";
-                    break;
-                }
-                case TestableEventType.RESOURCE_VEIN: {
-                    triggerResourceVein(gameState);
-                    break;
-                }
-                case TestableEventType.SPACE_PLAGUE: {
-                    triggerSpacePlague(gameState);
-                    break;
-                }
-                case TestableEventType.GHOST_SHIP: {
-                    triggerGhostShip(gameState);
-                    break;
-                }
-                case TestableEventType.GALACTIC_GOLD_RUSH: {
-                    triggerGalacticGoldRush(gameState);
-                    break;
-                }
-                case TestableEventType.STELLAR_AURORA: {
-                    triggerStellarAurora(gameState);
-                    break;
-                }
-                default:
-                    return { error: 'Nieznany typ wydarzenia testowego.' };
+                case TestableEventType.SOLAR_FLARE: triggerSolarFlare(gameState); break;
+                case TestableEventType.PIRATE_MERCENARY: triggerPirateMercenary(gameState); break;
+                case TestableEventType.CONTRABAND: triggerContraband(gameState); break;
+                case TestableEventType.ANCIENT_ARTIFACT: triggerAncientArtifact(gameState); break;
+                case TestableEventType.ASTEROID_IMPACT: triggerAsteroidImpact(gameState); message = "Lokalne wydarzenie testowe 'Uderzenie Asteroidy' uruchomione!"; break;
+                case TestableEventType.RESOURCE_VEIN: triggerResourceVein(gameState); break;
+                case TestableEventType.SPACE_PLAGUE: triggerSpacePlague(gameState); break;
+                case TestableEventType.GHOST_SHIP: triggerGhostShip(gameState); break;
+                case TestableEventType.GALACTIC_GOLD_RUSH: triggerGalacticGoldRush(gameState); break;
+                case TestableEventType.STELLAR_AURORA: triggerStellarAurora(gameState); break;
+                default: return { error: 'Nieznany typ wydarzenia testowego.' };
             }
             
             return { message };
@@ -414,8 +484,6 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
 
             return { error: "Tego bonusa nie można aktywować w ten sposób." };
         }
-
-        // Other actions will go here...
         case 'ADD_TO_QUEUE': {
             const { id, type: queueType, amount, activeLocationId } = payload;
             const location = gameState.colonies[activeLocationId] || gameState.moons[activeLocationId];
@@ -478,7 +546,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                 return { error: 'Oferta najemników nie jest już dostępna.' };
             }
             
-            gameState.scopedPirateMercenaryState = undefined; // Clear the event state
+            gameState.scopedPirateMercenaryState = undefined; 
 
             if (accepted) {
                 if (gameState.credits < pirateState.hireCost) {
@@ -583,7 +651,7 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                 subject = 'Zignorowano Statek Widmo';
             } else if (choice === GhostShipChoice.INVESTIGATE) {
                 const rand = Math.random();
-                if (rand < 0.4) { // 40% chance for resources
+                if (rand < 0.4) { 
                     const resourcesGained = {
                         metal: Math.floor(Math.random() * 10000) + 5000,
                         crystal: Math.floor(Math.random() * 5000) + 2500,
@@ -593,11 +661,10 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                     outcome.resourcesGained = resourcesGained;
                     outcome.text = 'Ekipa badawcza z sukcesem odzyskała cenne surowce z wraku!';
                     subject = 'Odzyskano surowce z wraku';
-                } else if (rand < 0.7) { // 30% chance for an ambush
+                } else if (rand < 0.7) { 
                     outcome.text = 'To była pułapka! Wrak był przynętą dla starożytnych dronów obronnych. Twoja ekipa musi walczyć o przetrwanie!';
                     subject = 'Zasadzka przy Wraku!';
-                    // Here you would trigger a simple battle against a predefined drone fleet
-                } else { // 30% chance for nothing
+                } else { 
                     outcome.text = 'Wysłana ekipa nie znalazła niczego wartościowego. Wrak był pusty.';
                     subject = 'Pusty Wrak';
                 }

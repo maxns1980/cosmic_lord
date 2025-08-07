@@ -1,6 +1,4 @@
-
-
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './src/types.js';
 import { handleAction, updatePlayerStateForOfflineProgress, updateWorldState, processRandomEvents } from './src/gameEngine.js';
@@ -282,7 +280,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const token = req.headers.authorization;
     if (!token) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
@@ -319,7 +317,7 @@ const loadCombinedGameState = async (userId: string): Promise<GameState | null> 
         }
     }
     worldState = updatedWorldState;
-
+    
     playerState = updatePlayerStateForOfflineProgress(playerState, worldState);
     
     // Combine states before event processing
