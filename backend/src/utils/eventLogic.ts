@@ -42,7 +42,7 @@ export const triggerPirateMercenary = (gameState: GameState) => {
         fleet: {},
         hireCost: 0,
     };
-    addMessage<InfoMessage>(gameState, { type: 'info', subject: 'Wykryto sygnatury Piratów!', text: 'Zbliżają się do Twojego systemu.' });
+    addMessage<InfoMessage>(gameState, { type: 'info', subject: 'Wykryto sygnaturę Piratów!', text: 'Zbliżają się do Twojego systemu.' });
 };
 
 export const triggerContraband = (gameState: GameState) => {

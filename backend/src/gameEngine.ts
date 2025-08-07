@@ -525,7 +525,6 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                 return { error: 'Nie ma aktywnego Statku Widmo.' };
             }
 
-            const { shipType } = gameState.scopedGhostShipState;
             gameState.scopedGhostShipState = undefined;
             const outcome: GhostShipOutcomeMessage['outcome'] = { text: '' };
             let subject: string = 'Statek Widmo';
@@ -548,10 +547,6 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
                 } else if (rand < 0.7) { // 30% chance for an ambush
                     outcome.text = 'To była pułapka! Wrak był przynętą dla starożytnych dronów obronnych. Twoja ekipa musi walczyć o przetrwanie!';
                     subject = 'Zasadzka przy Wraku!';
-                    const homeworld = Object.values(gameState.colonies).sort((a: Colony, b: Colony) => a.creationTime - b.creationTime)[0];
-                    if (homeworld) {
-                        homeworld.fleet[shipType] = (homeworld.fleet[shipType] || 0) + 1;
-                    }
                     // Here you would trigger a simple battle against a predefined drone fleet
                 } else { // 30% chance for nothing
                     outcome.text = 'Wysłana ekipa nie znalazła niczego wartościowego. Wrak był pusty.';
