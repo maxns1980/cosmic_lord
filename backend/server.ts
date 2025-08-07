@@ -1,4 +1,5 @@
 
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { GameState, PlayerState, WorldState, Json } from './src/types.js';
@@ -175,7 +176,7 @@ const initializeWorld = async () => {
 
 // --- Auth Endpoints ---
 
-app.post('/api/signup', async (req: Request, res: Response) => {
+app.post('/api/signup', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password || username.length < 3 || password.length < 3) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło muszą mieć co najmniej 3 znaki.' });
@@ -253,7 +254,7 @@ app.post('/api/signup', async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/login', async (req: Request, res: Response) => {
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: 'Nazwa użytkownika i hasło są wymagane.' });
@@ -371,9 +372,9 @@ const saveStates = async (userId: string, gameState: GameState) => {
     }
 };
 
-app.get('/health', (req: Request, res: Response) => res.status(200).send('OK'));
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
-app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
+app.get('/api/state', authMiddleware, async (req, res) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }
@@ -386,7 +387,7 @@ app.get('/api/state', authMiddleware, async (req: Request, res: Response) => {
     }
 });
 
-app.post('/api/action', authMiddleware, async (req: Request, res: Response) => {
+app.post('/api/action', authMiddleware, async (req, res) => {
     if (!req.userId) {
         return res.status(401).json({ message: 'Brak autoryzacji.' });
     }

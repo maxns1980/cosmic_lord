@@ -1,4 +1,5 @@
 
+
 export type View = 'overview' | 'buildings' | 'research' | 'shipyard' | 'defense' | 'fleet' | 'messages' | 'merchant' | 'galaxy' | 'fleet_upgrades' | 'phalanx' | 'alliance';
 
 export enum BuildingType {
@@ -139,6 +140,7 @@ export enum MissionType {
 
 export interface FleetMission {
     id: string;
+    ownerId: string; // Username of the player who sent it
     sourceLocationId: string; // New: Can be planet coords or moon ID
     fleet: Fleet;
     missionType: MissionType;
