@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
     BuildingType, Resources, BuildingLevels, ResearchLevels, ResearchType, Fleet, QueueItem, QueueItemType, GameObject, 
@@ -628,6 +629,7 @@ function App() {
                          onToggleFavorite={handleToggleFavoritePlanet}
                          username={username}
                          homeworld={homeworld}
+                         activeLocationId={activeLocationId}
                     />
                 )}
                 {activeView === 'phalanx' && (

@@ -15,6 +15,7 @@ interface GalaxyPanelProps {
     onToggleFavorite: (coords: string) => void;
     username: string;
     homeworld: Colony | null;
+    activeLocationId: string;
 }
 
 const formatNumber = (num: number) => Math.floor(num).toLocaleString('pl-PL');
@@ -143,9 +144,25 @@ const PlanetRow: React.FC<{
     )
 }
 
-const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, debrisFields, gameState, favoritePlanets, onToggleFavorite, username, homeworld }) => {
-    const [galaxy, setGalaxy] = useState(1);
-    const [system, setSystem] = useState(42);
+const GalaxyPanel: React.FC<GalaxyPanelProps> = ({ onAction, onSpy, onExpedition, onExplore, onHarvest, npcStates, debrisFields, gameState, favoritePlanets, onToggleFavorite, username, homeworld, activeLocationId }) => {
+    
+    const parseCurrentLocation = useCallback(() => {
+        const cleanCoords = activeLocationId.replace('_moon', '');
+        const parts = cleanCoords.split(':').map(p => parseInt(p, 10));
+        if (parts.length === 3 && !parts.some(isNaN)) {
+            return { galaxy: parts[0], system: parts[1] };
+        }
+        return { galaxy: 1, system: 42 }; // Fallback to homeworld system
+    }, [activeLocationId]);
+
+    const [galaxy, setGalaxy] = useState(() => parseCurrentLocation().galaxy);
+    const [system, setSystem] = useState(() => parseCurrentLocation().system);
+
+    useEffect(() => {
+        const { galaxy: newGalaxy, system: newSystem } = parseCurrentLocation();
+        setGalaxy(newGalaxy);
+        setSystem(newSystem);
+    }, [activeLocationId, parseCurrentLocation]);
 
     const handleSystemChange = (delta: number) => {
         let newSystem = system + delta;
