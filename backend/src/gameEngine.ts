@@ -129,19 +129,27 @@ export const processRandomEvents = (gameState: GameState): GameState => {
     }
 
     // --- TRIGGER NEW PLAYER-SCOPED EVENTS ---
-    if (now - (gameState.lastPlayerEventCheckTime || 0) >= RANDOM_EVENT_CHECK_INTERVAL) {
-        gameState.lastPlayerEventCheckTime = now;
+    const timeSinceLastCheck = now - (gameState.lastPlayerEventCheckTime || now);
+    const checksToRun = Math.floor(timeSinceLastCheck / RANDOM_EVENT_CHECK_INTERVAL);
 
-        if (Math.random() < SOLAR_FLARE_CHANCE) triggerSolarFlare(gameState);
-        if (Math.random() < PIRATE_MERCENARY_CHANCE) triggerPirateMercenary(gameState);
-        if (Math.random() < CONTRABAND_CHANCE) triggerContraband(gameState);
-        if (Math.random() < ANCIENT_ARTIFACT_CHANCE) triggerAncientArtifact(gameState);
-        if (Math.random() < ASTEROID_IMPACT_CHANCE) triggerAsteroidImpact(gameState);
-        if (Math.random() < RESOURCE_VEIN_CHANCE) triggerResourceVein(gameState);
-        if (Math.random() < SPACE_PLAGUE_CHANCE) triggerSpacePlague(gameState);
-        if (Math.random() < GHOST_SHIP_CHANCE) triggerGhostShip(gameState);
-        if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) triggerGalacticGoldRush(gameState);
-        if (Math.random() < STELLAR_AURORA_CHANCE) triggerStellarAurora(gameState);
+    if (checksToRun > 0) {
+        const cappedChecks = Math.min(checksToRun, 24 * 60);
+
+        for (let i = 0; i < cappedChecks; i++) {
+            const simulatedTimestamp = gameState.lastPlayerEventCheckTime + (i + 1) * RANDOM_EVENT_CHECK_INTERVAL;
+            if (Math.random() < SOLAR_FLARE_CHANCE) triggerSolarFlare(gameState, simulatedTimestamp);
+            if (Math.random() < PIRATE_MERCENARY_CHANCE) triggerPirateMercenary(gameState, simulatedTimestamp);
+            if (Math.random() < CONTRABAND_CHANCE) triggerContraband(gameState, simulatedTimestamp);
+            if (Math.random() < ANCIENT_ARTIFACT_CHANCE) triggerAncientArtifact(gameState, simulatedTimestamp);
+            if (Math.random() < ASTEROID_IMPACT_CHANCE) triggerAsteroidImpact(gameState, simulatedTimestamp);
+            if (Math.random() < RESOURCE_VEIN_CHANCE) triggerResourceVein(gameState, simulatedTimestamp);
+            if (Math.random() < SPACE_PLAGUE_CHANCE) triggerSpacePlague(gameState, simulatedTimestamp);
+            if (Math.random() < GHOST_SHIP_CHANCE) triggerGhostShip(gameState, simulatedTimestamp);
+            if (Math.random() < GALACTIC_GOLD_RUSH_CHANCE) triggerGalacticGoldRush(gameState, simulatedTimestamp);
+            if (Math.random() < STELLAR_AURORA_CHANCE) triggerStellarAurora(gameState, simulatedTimestamp);
+        }
+        
+        gameState.lastPlayerEventCheckTime = now;
     }
 
     return gameState;
