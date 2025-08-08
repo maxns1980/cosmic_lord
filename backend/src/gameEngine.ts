@@ -749,12 +749,16 @@ export const handleAction = (gameState: GameState, type: string, payload: any, u
             if (!messageId) {
                 return { error: 'Brak ID wiadomości.' };
             }
-            gameState.messages = gameState.messages.filter((m: Message) => m.id !== messageId);
-            return { message: 'Wiadomość usunięta.' };
+            const messageIndex = gameState.messages.findIndex((m: Message) => m.id === messageId);
+            if (messageIndex > -1) {
+                gameState.messages.splice(messageIndex, 1);
+                return { message: 'Wiadomość usunięta.' };
+            }
+            return { error: 'Nie znaleziono wiadomości.' };
         }
 
         case 'DELETE_ALL_MESSAGES': {
-            gameState.messages = [];
+            gameState.messages.length = 0;
             return { message: 'Wszystkie wiadomości zostały usunięte.' };
         }
 
